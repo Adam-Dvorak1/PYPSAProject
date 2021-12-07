@@ -391,17 +391,17 @@ def penetration_chart():
 
 
     fig, axs = plt.subplots(2,2)
-    axs[0, 0].stackplot(s_cost, DNK_sp, DNK_wp, DNK_gp, DNK_bp, DNK_hp, labels = ["solar", "wind", "gas", "battery", "hydrogen"]
-                    , colors = ["#ffd966", "#2986cc", "#d5a6bd", "#540077", "#fb0a66"])
+    axs[0, 0].stackplot(s_cost, DNK_sp, DNK_wp, DNK_gp, DNK_bp, DNK_hp, labels = ["solar", "wind", "gas"]
+                    , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
     axs[0, 0].set_title("Denmark penetration")
-    axs[0, 1].stackplot(s_cost, ESP_sp, ESP_wp, ESP_gp, ESP_bp, ESP_hp, labels = ["solar", "wind", "gas", "battery", "hydrogen"]
-                    , colors = ["#ffd966", "#2986cc", "#d5a6bd", "#540077", "#fb0a66"])
+    axs[0, 1].stackplot(s_cost, ESP_sp, ESP_wp, ESP_gp, ESP_bp, ESP_hp, labels = ["solar", "wind", "gas"]
+                    , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
     axs[0, 1].set_title("Spain penetration")
-    axs[1, 0].stackplot(s_cost, CO_sp, CO_wp, CO_gp, CO_bp, CO_hp, labels = ["solar", "wind", "gas", "battery", "hydrogen"]
-                    , colors = ["#ffd966", "#2986cc", "#d5a6bd", "#540077", "#fb0a66"])
+    axs[1, 0].stackplot(s_cost, CO_sp, CO_wp, CO_gp, CO_bp, CO_hp, labels = ["solar", "wind", "gas"]
+                    , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
     axs[1, 0].set_title("Colorado penetration")
-    axs[1, 1].stackplot(s_cost, CAL_sp, CAL_wp, CAL_gp, CAL_bp, CAL_hp, labels = ["solar", "wind", "gas", "battery", "hydrogen"]
-                    , colors = ["#ffd966", "#2986cc", "#d5a6bd", "#540077", "#fb0a66"])
+    axs[1, 1].stackplot(s_cost, CAL_sp, CAL_wp, CAL_gp, CAL_bp, CAL_hp, labels = ["solar", "wind", "gas"]
+                    , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
     axs[1, 1].set_title("California penetration")
 
 

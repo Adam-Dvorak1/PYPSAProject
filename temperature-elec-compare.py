@@ -69,6 +69,79 @@ def plot_all_temp():
         plot_temp_data(each)
 
 
+def get_solar_data(timeframe):
+    '''This function fetches solar data capacity factors for all regions. It returns a tuple of dataframes'''
+    df_solar = pd.read_csv('data_extra/pv_optimal.csv', sep=';', index_col=0)
+    df_solar.index = pd.to_datetime(df_solar.index)
+
+    df_cal_solar = pd.read_csv('data_extra/CaliforniaTimeSeries.csv', index_col=0)
+    df_cal_solar.index = pd.to_datetime(df_cal_solar.index)
+
+    df_co_solar = pd.read_csv('data_extra/ColoradoTimeSeries.csv', index_col=0)
+    df_co_solar.index = pd.to_datetime(df_co_solar.index)
+
+    ESP_solar = df_solar["ESP"]['2015-01-01 00:00:00':'2015-12-31 23:00:00']
+    DNK_solar = df_solar["DNK"]['2015-01-01 00:00:00':'2015-12-31 23:00:00']
+    CO_solar = df_co_solar['solar']['2011-01-01 00:00:00':'2011-12-31 23:00:00']
+    CA_solar = df_cal_solar['solar']['2011-01-01 00:00:00':'2011-12-31 23:00:00']
+    
+    if timeframe == "weekly":
+        ESP_solar = ESP_solar.rolling(168).mean()
+        ESP_solar = ESP_solar.iloc[::168].shift(-1)[:-1]
+        DNK_solar = DNK_solar.rolling(168).mean()
+        DNK_solar = DNK_solar.iloc[::168].shift(-1)[:-1]
+        CO_solar = CO_solar.rolling(168).mean()
+        CO_solar = CO_solar.iloc[::168].shift(-1)[:-1]
+        CA_solar = CA_solar.rolling(168).mean()
+        CA_solar  = CA_solar .iloc[::168].shift(-1)[:-1]
+    elif timeframe == "daily":
+        ESP_solar = ESP_solar.rolling(24).mean()
+        ESP_solar = ESP_solar.iloc[::24].shift(-1)[:-1]
+        DNK_solar = DNK_solar.rolling(24).mean()
+        DNK_solar = DNK_solar.iloc[::24].shift(-1)[:-1]
+        CO_solar = CO_solar.rolling(24).mean()
+        CO_solar = CO_solar.iloc[::24].shift(-1)[:-1]
+        CA_solar = CA_solar.rolling(24).mean()
+        CA_solar  = CA_solar .iloc[::24].shift(-1)[:-1]
+
+    return ESP_solar, DNK_solar, CO_solar, CA_solar
+
+def get_wind_data(timeframe):
+    '''This function fetches wind data capacity factors for all regions. It returns a tuple of dataframes'''
+    df_onshorewind = pd.read_csv('data_extra/onshore_wind_1979-2017.csv', sep=';', index_col=0)
+    df_onshorewind.index = pd.to_datetime(df_onshorewind.index)
+
+    df_cal_onshorewind = pd.read_csv('data_extra/CaliforniaTimeSeries.csv', index_col=0)
+    df_cal_onshorewind.index = pd.to_datetime(df_cal_onshorewind.index)
+
+    df_co_onshorewind = pd.read_csv('data_extra/ColoradoTimeSeries.csv', index_col=0)
+    df_co_onshorewind.index = pd.to_datetime(df_co_onshorewind.index)
+
+    ESP_wind = df_onshorewind['ESP']['2015-01-01 00:00:00':'2015-12-31 23:00:00']
+    DNK_wind = df_onshorewind['DNK']['2015-01-01 00:00:00':'2015-12-31 23:00:00']
+    CO_wind = df_cal_onshorewind['onwind']['2011-01-01 00:00:00':'2011-12-31 23:00:00']
+    CA_wind = df_co_onshorewind['onwind']['2011-01-01 00:00:00':'2011-12-31 23:00:00']
+    
+    if timeframe == "weekly":
+        ESP_wind = ESP_wind.rolling(168).mean()
+        ESP_wind = ESP_wind.iloc[::168].shift(-1)[:-1]
+        DNK_wind  = DNK_wind.rolling(168).mean()
+        DNK_wind  = DNK_wind.iloc[::168].shift(-1)[:-1]
+        CO_wind = CO_wind.rolling(168).mean()
+        CO_wind = CO_wind.iloc[::168].shift(-1)[:-1]
+        CA_wind = CA_wind.rolling(168).mean()
+        CA_wind  = CA_wind.iloc[::168].shift(-1)[:-1]
+    elif timeframe == "daily":
+        ESP_wind = ESP_wind.rolling(24).mean()
+        ESP_wind = ESP_wind.iloc[::24].shift(-1)[:-1]
+        DNK_wind  = DNK_wind.rolling(24).mean()
+        DNK_wind  = DNK_wind.iloc[::24].shift(-1)[:-1]
+        CO_wind = CO_wind.rolling(24).mean()
+        CO_wind = CO_wind.iloc[::24].shift(-1)[:-1]
+        CA_wind = CA_wind.rolling(24).mean()
+        CA_wind  = CA_wind.iloc[::24].shift(-1)[:-1]
+
+    return ESP_wind, DNK_wind, CO_wind, CA_wind
 
 #Select between "daily" or "weekly" timeframe averages
 def get_electricity_data(timeframe):
@@ -117,13 +190,38 @@ def get_electricity_data(timeframe):
     CODayElec.columns = ["ColoradoElec"]
     CADayElec.columns = ["CaliforniaElec"]
 
-    return ESDayElec, DKDayElec, CODayElec, CADayElec
 
     
+    return ESDayElec, DKDayElec, CODayElec, CADayElec
 
-def plot_electricity_data(elec_df):
-    elec_df.plot()
-    plt.show()
+
+def get_heat_demand_data(timeframe):
+    df_heat = pd.read_csv('data/heat_demand.csv', sep=';', index_col=0)# in MWh
+    df_heat.index = pd.to_datetime(df_heat.index) #change index to datatime
+
+    ES_heat = df_heat['ESP']
+    DK_heat = df_heat['DNK']
+
+    if timeframe == "weekly":
+        ESDayheat = ES_heat.rolling(168).mean()
+        ESDayheat = ESDayheat.iloc[::168].shift(-1)[:-1]
+        DKDayheat = DK_heat.rolling(168).mean()
+        DKDayheat = DKDayheat.iloc[::168].shift(-1)[:-1]
+
+    elif timeframe == "daily":
+        ESDayheat = ES_heat.rolling(24).mean()
+        ESDayheat = ESDayheat.iloc[::24].shift(-1)[:-1]
+        DKDayheat = DK_heat.rolling(24).mean()
+        DKDayheat = DKDayheat.iloc[::24].shift(-1)[:-1]
+
+    else:
+        ESDayheat = ES_heat
+        DKDayheat = DK_heat
+
+    return ESDayheat, DKDayheat
+
+
+
 
 
 
@@ -256,16 +354,68 @@ def elec_vs_temp(elec, temp, country):
     plt.show()
 
 
+def temp_to_elec():
+    '''In this function, we want to add 3x of the heating demand to elec.
+    We are assuming a world of 100% electricity.'''
+    
+    #Here, we unpack the elec and heat data from get_electricity_data and 
+    # get_heat_demand_data
+    elec_data = get_electricity_data("weekly")
+    heat_data = get_heat_demand_data("weekly")
+
+    ESP_elec = elec_data[0]
+    DNK_elec = elec_data[1]
+
+    ESP_heat = heat_data[0]
+    DNK_heat = heat_data[1]
+
+    #Here, we make a new dataframe and add elec and 1/3 heat to it
+
+    new_elec = pd.DataFrame()
+    new_elec["ESP_demand"] = ESP_elec + 3 * ESP_heat 
+    new_elec["DNK_demand"] = DNK_elec + 3 * DNK_heat
+
+    return new_elec
+
+    #Here, we return the new dataframe
+
+def plot_ED_and_CF_data():
+    '''This function plots the electricity demand for one country on one axis and the capacity factors on other axes (sharing a y axis).
+    Modify it to change which country (make sure CA and CO use "Time in 2011")'''
+    elec = get_electricity_data("weekly")[0]
+    solar = get_solar_data("weekly")[0]
+    wind = get_wind_data("weekly")[0]
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    ax2= fig.add_subplot(111, frame_on=False)
+    ax3 = fig.add_subplot(111, sharey = ax2, frame_on=False)
+    ax1.plot(elec, 'C0-', label = "Electricity demand")
+    ax2.plot(solar, 'C1-', label = "Solar CF")
+    ax3.plot(wind, 'C2-', label = "Wind CF")
+
+    ax1.set_xlabel("Time in 2015")
+    ax1.set_ylabel('Electricity demand (MWh)')
+    ax2.set_xticks([])
+    ax2.set_ylabel('Capacity factors')
+    ax2.yaxis.set_label_position("right")
 
 
-elec_vs_temp(get_electricity_data("weekly")[1], get_temp_data("weekly")[1], "Denmark")
+    ax2.yaxis.tick_right()
+    ax3.set_xticks([])
+    ax3.yaxis.set_visible(False)
+
+    ax1.set_title("Spain Electricity Demand and Capacity factors")
 
 
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    lines3, labels3 = ax3.get_legend_handles_labels()
 
-#plot_elec_and_temp(get_electricity_data()[2], get_temp_data()[2])
-#print(get_temp_data()[3])
-
-#same_plot_elec_temp(get_electricity_data("daily")[3], get_temp_data("daily")[3], "2011", "California", "Daily")
+    ax2.legend(lines1 + lines2 + lines3, labels1 + labels2 + labels3)
+    fig.set_size_inches(12, 10)
+    #plt.savefig("images/EDandCFSpain")
+    plt.show()
 
 
 
