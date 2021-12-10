@@ -194,7 +194,6 @@ def get_electricity_data(timeframe):
     
     return ESDayElec, DKDayElec, CODayElec, CADayElec
 
-
 def get_heat_demand_data(timeframe):
     df_heat = pd.read_csv('data/heat_demand.csv', sep=';', index_col=0)# in MWh
     df_heat.index = pd.to_datetime(df_heat.index) #change index to datatime
@@ -241,7 +240,6 @@ def plot_elec_and_temp(elec_df, temp_df):
 
     plt.show()
 
-
 #In this function, I will plot electricity data and temperature data on the same subplot
 def same_plot_elec_temp(elec_df, temp_df, year, country, timeframe):
         
@@ -265,7 +263,6 @@ def same_plot_elec_temp(elec_df, temp_df, year, country, timeframe):
 
 
 #In this function, I will plot the first week of January
-
 def Jan_plot_elec_temp(elec_df, temp_df, year, country):
     
     elec_selec = elec_df[0:168]
@@ -287,9 +284,6 @@ def Jan_plot_elec_temp(elec_df, temp_df, year, country):
     fig.set_size_inches(12, 10)
     plt.savefig("images/Jan"+country+"EDandT.png")
     plt.show()
-
-
-#Jan_plot_elec_temp(get_electricity_data("h")[3], get_temp_data("h")[3], "2011", "California")
 
 def July_plot_elec_temp(elec_df, temp_df, year, country):
     
@@ -313,48 +307,11 @@ def July_plot_elec_temp(elec_df, temp_df, year, country):
     plt.savefig("images/July"+country+"EDandT.png")
     plt.show()
 
-#July_plot_elec_temp(get_electricity_data("h")[0], get_temp_data("h")[0], "2015", "Spain")
-
-def mod_dfs(elec, temp):
-    df = pd.DataFrame()
-    df['a'] = elec
-    print(temp.head())
-    df['b'] = temp
-    print(df.head())
 
 
-#mod_dfs(get_electricity_data("weekly")[1], get_temp_data("weekly")[1])
-
-def elec_vs_temp(elec, temp, country):
-    # x = temp
-    # y = elec
-    df = pd.DataFrame()
-    df['a'] = temp
-    df['b'] = elec
-
-    x = df['a']
-    y = df['b']
-
-    fig, ax = plt.subplots()
-    ax.scatter(x, y)
-    ax.set_xlabel("Temperature (C)")
-    ax.set_ylabel("Electricity demand (MWh)")
-    ax.set_title ("Weekly electricity demand vs temperature in " + country )
-
-    mod_x  = x[x>15]
-    mod_y = y[x>15]
-    theta = np.polyfit(mod_x, mod_y, 1)
-
-    print(f'The parameters of the curve: {theta}')
 
 
-    plt.plot(np.unique(mod_x), np.poly1d(np.polyfit(mod_x, mod_y, 1))(np.unique(mod_x)))
-
-    plt.savefig("images/" + country + "EDvsT")
-    plt.show()
-
-
-def temp_to_elec():
+def heat_to_elec():
     '''In this function, we want to add 3x of the heating demand to elec.
     We are assuming a world of 100% electricity.'''
     
@@ -379,12 +336,99 @@ def temp_to_elec():
 
     #Here, we return the new dataframe
 
+def elec_vs_temp_Spain():
+
+    '''This makes a plot of the electricity demand (or heating demand or elec+heating demand) vs temperature
+    I need to do some more work playing with annotate vs '''
+    # x = temp
+    # y = elec
+   
+    y = heat_to_elec()["ESP_demand"]
+    #y = get_electricity_data("weekly")[0]
+    #y = get_heat_demand_data("weekly")[0]
+    x = get_temp_data("weekly")[0]
+
+    
+
+    fig, ax = plt.subplots()
+    fig.subplots_adjust(left = 0.2)
+    ax.scatter(x, y)
+    ax.set_xlabel("Temperature (C)")
+    ax.set_ylabel("Electricity demand (MWh)")
+    ax.set_title ("Weekly electricity (incl heating) demand vs temperature in Spain")
+
+    mod_x  = x[x<16]
+    mod_y = y[x<16]
+
+    corr = np.corrcoef(mod_x, mod_y).round(decimals = 3)[0, 1]
+
+    theta = np.polyfit(mod_x, mod_y, 1).round(decimals = 3)
+
+    #settings 
+    ax.annotate(f'{theta[0]}x + {theta[1]}', xy = (mod_x[4], mod_y[4]), xytext = (mod_x[4] , mod_y[4]* 1.01 ))
+    ax.annotate(f'correlation = {corr} ', xy = (mod_x[4], mod_y[4]), xytext = (mod_x[4] + 12, mod_y[4] * 1.02))
+
+
+    plt.plot(np.unique(mod_x), np.poly1d(np.polyfit(mod_x, mod_y, 1))(np.unique(mod_x)))
+
+    #plt.savefig("images/SpainED_plus_HDvsT")
+    plt.show()
+
+def elec_vs_temp_Denmark():
+
+    '''This makes a plot of the electricity demand (or heating demand or elec+heating demand) vs temperature
+    for Denmark'''
+    # x = temp
+    # y = elec
+   
+    #y = heat_to_elec()["DNK_demand"]
+    #y = get_electricity_data("weekly")[1]
+    y = get_heat_demand_data("weekly")[1]
+    x = get_temp_data("weekly")[1]
+
+    
+
+    fig, ax = plt.subplots()
+    
+    fig.subplots_adjust(left = 0.2)
+    ax.scatter(x, y)
+    ax.set_xlabel("Temperature (C)")
+    ax.set_ylabel("Heating demand (MWh)")
+    ax.set_title ("Weekly heating demand vs temperature in Denmark")
+
+    mod_x  = x[x<16]
+    mod_y = y[x<16]
+
+    
+    
+    corr = np.corrcoef(mod_x, mod_y).round(decimals = 3)[0, 1]
+
+    theta = np.polyfit(mod_x, mod_y, 1).round(decimals = 3)
+
+    #settings 
+    ax.annotate(f'{theta[0]}x + {theta[1]}', xy = (mod_x[8], mod_y[8]), xytext = (mod_x[8] , mod_y[8]* 1.01 ))
+    ax.annotate(f'correlation = {corr} ', xy = (mod_x[8], mod_y[8]), xytext = (mod_x[8] + 10, mod_y[8] * 1.05))
+
+
+    plt.plot(np.unique(mod_x), np.poly1d(np.polyfit(mod_x, mod_y, 1))(np.unique(mod_x)))
+
+    plt.savefig("images/DenmarkHDvsT")
+    plt.show()
+
+
+
+elec_vs_temp_Denmark()
+
 def plot_ED_and_CF_data():
     '''This function plots the electricity demand for one country on one axis and the capacity factors on other axes (sharing a y axis).
-    Modify it to change which country (make sure CA and CO use "Time in 2011")'''
-    elec = get_electricity_data("weekly")[0]
-    solar = get_solar_data("weekly")[0]
-    wind = get_wind_data("weekly")[0]
+    Modify it to change which country (make sure CA and CO use "Time in 2011")
+    
+    we can plot either just elec, or elec+heat, using temp_to_elec'''
+    elec = get_electricity_data("weekly")[3]
+
+    #elec = temp_to_elec()["DNK_demand"]
+    solar = get_solar_data("weekly")[3]
+    wind = get_wind_data("weekly")[3]
 
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
@@ -394,7 +438,7 @@ def plot_ED_and_CF_data():
     ax2.plot(solar, 'C1-', label = "Solar CF")
     ax3.plot(wind, 'C2-', label = "Wind CF")
 
-    ax1.set_xlabel("Time in 2015")
+    ax1.set_xlabel("Time in 2011")
     ax1.set_ylabel('Electricity demand (MWh)')
     ax2.set_xticks([])
     ax2.set_ylabel('Capacity factors')
@@ -405,7 +449,7 @@ def plot_ED_and_CF_data():
     ax3.set_xticks([])
     ax3.yaxis.set_visible(False)
 
-    ax1.set_title("Spain Electricity Demand and Capacity factors")
+    ax1.set_title("California Electricity Demand and Capacity factors")
 
 
     lines1, labels1 = ax1.get_legend_handles_labels()
@@ -414,12 +458,12 @@ def plot_ED_and_CF_data():
 
     ax2.legend(lines1 + lines2 + lines3, labels1 + labels2 + labels3)
     fig.set_size_inches(12, 10)
-    #plt.savefig("images/EDandCFSpain")
+    #plt.savefig("images/EDandCFCaliforniaf")
     plt.show()
 
 
 
-#The next step is to make a piece 
+#The next step is to make a graph with statistics
 
 
 #We now have temperature
@@ -448,4 +492,14 @@ def plot_ED_and_CF_data():
 # x_plot = np.linspace(0, 7, 100)
 # plt.plot(x_plot, x_plot*results.params[0] + results.params[1])
 # plt.show()
+
+def mod_dfs(elec, temp):
+    df = pd.DataFrame()
+    df['a'] = elec
+    print(temp.head())
+    df['b'] = temp
+    print(df.head())
+
+
+
 
