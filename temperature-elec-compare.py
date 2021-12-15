@@ -329,8 +329,8 @@ def heat_to_elec():
     #Here, we make a new dataframe and add elec and 1/3 heat to it
 
     new_elec = pd.DataFrame()
-    new_elec["ESP_demand"] = ESP_elec + 3 * ESP_heat 
-    new_elec["DNK_demand"] = DNK_elec + 3 * DNK_heat
+    new_elec["ESP_demand"] = ESP_elec + ESP_heat/3
+    new_elec["DNK_demand"] = DNK_elec + DNK_heat/3
 
     return new_elec
 
@@ -357,33 +357,46 @@ def elec_vs_temp_Spain():
     ax.set_ylabel("Electricity demand (MWh)")
     ax.set_title ("Weekly electricity (incl heating) demand vs temperature in Spain")
 
-    mod_x  = x[x<16]
-    mod_y = y[x<16]
+    mod_x  = x[x>22]
+    mod_y = y[x>22]
 
     corr = np.corrcoef(mod_x, mod_y).round(decimals = 3)[0, 1]
 
     theta = np.polyfit(mod_x, mod_y, 1).round(decimals = 3)
-
+    ax.axhline(y=30000, xmin = 0.5, xmax = 0.75, color = "C2")
     #settings 
-    ax.annotate(f'{theta[0]}x + {theta[1]}', xy = (mod_x[4], mod_y[4]), xytext = (mod_x[4] , mod_y[4]* 1.01 ))
-    ax.annotate(f'correlation = {corr} ', xy = (mod_x[4], mod_y[4]), xytext = (mod_x[4] + 12, mod_y[4] * 1.02))
-
+    ax.annotate(f'{theta[0]}x + {theta[1]}', xy = (mod_x[4], mod_y[4]), xytext = (mod_x[4]-5 , mod_y[4] +1000))
+    ax.annotate(f'correlation = {corr} ', xy = (mod_x[4], mod_y[4]), xytext = (mod_x[4]-5, mod_y[4]+ 3000))
 
     plt.plot(np.unique(mod_x), np.poly1d(np.polyfit(mod_x, mod_y, 1))(np.unique(mod_x)))
 
-    #plt.savefig("images/SpainED_plus_HDvsT")
+
+    new_x = x[x<16]
+    new_y = y[x<16]
+    corr2 = np.corrcoef(new_x, new_y).round(decimals = 3)[0, 1]
+
+    theta2 = np.polyfit(new_x, new_y, 1).round(decimals = 3)
+    ax.annotate(f'{theta2[0]}x + {theta2[1]}', xy = (new_x[4], new_y[4]), xytext = (new_x[4], new_y[4]))
+    ax.annotate(f'correlation = {corr2} ', xy = (new_x[4], new_y[4]), xytext = (new_x[4], new_y[4]+ 2000))
+
+    plt.plot(np.unique(new_x), np.poly1d(np.polyfit(new_x, new_y, 1))(np.unique(new_x)))
+
+
+    #plt.savefig("images/SpainED_plus_HDvsTw_eq")
     plt.show()
 
 def elec_vs_temp_Denmark():
 
     '''This makes a plot of the electricity demand (or heating demand or elec+heating demand) vs temperature
-    for Denmark'''
+    for Denmark
+    
+    NB: you need to change which one you want'''
     # x = temp
     # y = elec
    
-    #y = heat_to_elec()["DNK_demand"]
+    y = heat_to_elec()["DNK_demand"]
     #y = get_electricity_data("weekly")[1]
-    y = get_heat_demand_data("weekly")[1]
+    #y = get_heat_demand_data("weekly")[1]
     x = get_temp_data("weekly")[1]
 
     
@@ -393,8 +406,8 @@ def elec_vs_temp_Denmark():
     fig.subplots_adjust(left = 0.2)
     ax.scatter(x, y)
     ax.set_xlabel("Temperature (C)")
-    ax.set_ylabel("Heating demand (MWh)")
-    ax.set_title ("Weekly heating demand vs temperature in Denmark")
+    ax.set_ylabel("Electricity plus heating demand (MWh)")
+    ax.set_title ("Weekly electricity demand vs temperature in Denmark")
 
     mod_x  = x[x<16]
     mod_y = y[x<16]
@@ -412,12 +425,77 @@ def elec_vs_temp_Denmark():
 
     plt.plot(np.unique(mod_x), np.poly1d(np.polyfit(mod_x, mod_y, 1))(np.unique(mod_x)))
 
-    plt.savefig("images/DenmarkHDvsT")
+    plt.savefig("images/DenmarkHDvsTw_eq")
+    plt.show()
+
+def elec_vs_temp_Colorado():
+    x = get_temp_data("weekly")[2]
+    y = get_electricity_data("weekly")[2]
+
+    fig, ax = plt.subplots()
+    
+    fig.subplots_adjust(left = 0.2)
+    ax.scatter(x, y)
+    ax.set_xlabel("Temperature (C)")
+    ax.set_ylabel("Electricity (MWh)")
+    ax.set_title ("Weekly electricity demand vs temperature in Colorado")
+
+    mod_x  = x[x>16.5]
+    mod_y = y[x>16.5]
+
+    
+    
+    corr = np.corrcoef(mod_x, mod_y).round(decimals = 3)[0, 1]
+
+    theta = np.polyfit(mod_x, mod_y, 1).round(decimals = 3)
+    ax.axhline(y = 6600, xmin = 0.55, xmax = 0.75)
+    #settings 
+    ax.annotate(f'{theta[0]}x + {theta[1]}', xy = (mod_x[2], mod_y[2]), xytext = (mod_x[2]-10 , mod_y[2]* 1.2 ))
+    ax.annotate(f'correlation = {corr} ', xy = (mod_x[2], mod_y[2]), xytext = (mod_x[2] - 10, mod_y[2]*1.1 ))
+
+
+    plt.plot(np.unique(mod_x), np.poly1d(np.polyfit(mod_x, mod_y, 1))(np.unique(mod_x)))
+
+    #plt.savefig("images/ColEDvsTw_eqf")
+    plt.show()
+
+def elec_vs_temp_California():
+    x = get_temp_data("weekly")[3]
+    y = get_electricity_data("weekly")[3]
+
+    fig, ax = plt.subplots()
+    
+    fig.subplots_adjust(left = 0.2)
+    ax.scatter(x, y)
+    ax.set_xlabel("Temperature (C)")
+    ax.set_ylabel("Electricity (MWh)")
+    ax.set_title ("Weekly electricity demand vs temperature in California")
+
+    mod_x  = x[x>17]
+    mod_y = y[x>17]
+
+    
+    
+    corr = np.corrcoef(mod_x, mod_y).round(decimals = 3)[0, 1]
+
+    theta = np.polyfit(mod_x, mod_y, 1).round(decimals = 3)
+
+    #settings 
+    ax.axhline(y = 32500, xmin =.25, xmax = 0.45)
+    ax.annotate(f'{theta[0]}x + {theta[1]}', xy = (mod_x[2], mod_y[2]), xytext = (mod_x[2] , mod_y[2] ))
+    ax.annotate(f'correlation = {corr} ', xy = (mod_x[2], mod_y[2]), xytext = (mod_x[2] - 10, mod_y[2]))
+
+
+    plt.plot(np.unique(mod_x), np.poly1d(np.polyfit(mod_x, mod_y, 1))(np.unique(mod_x)))
+
+    #plt.savefig("images/CaliEDvsTw_eqf")
     plt.show()
 
 
-
-elec_vs_temp_Denmark()
+# elec_vs_temp_Denmark()
+#elec_vs_temp_Spain()
+# elec_vs_temp_Colorado()
+# elec_vs_temp_California()
 
 def plot_ED_and_CF_data():
     '''This function plots the electricity demand for one country on one axis and the capacity factors on other axes (sharing a y axis).
@@ -460,6 +538,79 @@ def plot_ED_and_CF_data():
     fig.set_size_inches(12, 10)
     #plt.savefig("images/EDandCFCaliforniaf")
     plt.show()
+
+def gw_elec_Spain(degree_change):
+    df = pd.DataFrame()
+    y = heat_to_elec()["ESP_demand"]
+    #y = get_electricity_data("weekly")[0]
+    x = get_temp_data("weekly")[0]
+    df["x"] = x
+    df["y"] = y
+    print(df)
+
+    fig, ax = plt.subplots()
+
+    ax.scatter(df["x"], df["y"], color = "C0", label = "original")
+
+    df["y"] = df.apply(lambda row: row["y"] + 865.2 * degree_change if row["x"] > 22.267 #Add according to positive slope if starts in cooling region
+    else row["y"] + 865.2 * (row["x"] - 22.267 + degree_change) if row["x"]+ degree_change  >22.267 and row["x"] > 16
+    else row["y"] if row["x"] > 16 
+    else row["y"] - 1356.544 * (16- row["x"]) + 865.2 * (row["x"] + degree_change - 22.267) if row["x"] + degree_change > 16 and row["x"] + degree_change  > 22.267 
+    else row["y"] - 1356.544 * (16- row["x"]) if row["x"] + degree_change > 16
+    else row["y"] - 1356.544 * degree_change, axis = 1)
+
+    #not quite right but close
+    df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
+    print(df)
+    ax.scatter(df["x"], df["y"], color = "C1", label = "with temp increase")
+    ax.legend()
+    ax.set_title(f"Electricity demand vs. temperature Spain with increase of {degree_change} degrees")
+    ax.set_xlabel("Temperature (˚C)")
+    ax.set_ylabel("Electricity demand (MWh)")
+
+    plt.show()
+
+gw_elec_Spain(2)
+
+
+def gw_elec_California(degree_change):
+    '''Here, I am trying to model what would happen to electricity demand in California if
+    the temperature increases uniformly by x degrees due to global warming
+    
+    For california, we assume that the electricity demand would be constant with change in 
+    temperature until it reaches a threshold temperature (15.79 degrees). Then, there is
+    a linear increase'''
+    df = pd.DataFrame()
+    
+    x = get_temp_data("weekly")[3]
+    y = get_electricity_data("weekly")[3]
+    df["x"] = x
+    df["y"] = y
+
+    print(df['y'].sum())
+    fig, ax = plt.subplots()
+    ax.scatter(df["x"], df["y"], color = "C0", label = "original")
+
+    df["y"] = df.apply(lambda row: row ["y"] + 1093.304 * degree_change if row["x"] > 15.79 
+    else row["y"] + 1093.304 * (row["x"] - 15.79 + degree_change) if row["x"]+ degree_change - 15.79 > 0 
+    else row["y"], axis = 1)
+    
+    df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
+    
+  
+    ax.scatter(df["x"], df["y"], color = "C1", label = "with temp increase")
+    ax.legend()
+    ax.set_title(f"Electricity demand vs. temperature California with increase of {degree_change} degrees")
+    ax.set_xlabel("Temperature (˚C)")
+    ax.set_ylabel("Electricity demand (MWh)")
+    print(df['y'].sum())
+    plt.show()
+    #if x+degree_change-15.79 is greater than 0, then add this value times 1093.394 to y
+
+    
+
+#gw_elec_California(5)
+
 
 
 
