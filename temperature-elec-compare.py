@@ -1,3 +1,4 @@
+from matplotlib import markers
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -395,7 +396,7 @@ def elec_vs_temp_Denmark():
     # y = elec
    
     y = heat_to_elec()["DNK_demand"]
-    #y = get_electricity_data("weekly")[1]
+    # y = get_electricity_data("weekly")[1]
     #y = get_heat_demand_data("weekly")[1]
     x = get_temp_data("weekly")[1]
 
@@ -412,7 +413,7 @@ def elec_vs_temp_Denmark():
     mod_x  = x[x<16]
     mod_y = y[x<16]
 
-    
+    ax.axhline(y = 3900, xmin = 0.82, xmax = 0.95, color = "C1")
     
     corr = np.corrcoef(mod_x, mod_y).round(decimals = 3)[0, 1]
 
@@ -440,22 +441,31 @@ def elec_vs_temp_Colorado():
     ax.set_ylabel("Electricity (MWh)")
     ax.set_title ("Weekly electricity demand vs temperature in Colorado")
 
-    mod_x  = x[x>16.5]
-    mod_y = y[x>16.5]
+    mod_x  = x[x>15.5]
+    mod_y = y[x>15.5]
 
     
     
     corr = np.corrcoef(mod_x, mod_y).round(decimals = 3)[0, 1]
 
     theta = np.polyfit(mod_x, mod_y, 1).round(decimals = 3)
-    ax.axhline(y = 6600, xmin = 0.55, xmax = 0.75)
+    ax.axhline(y = 6600, xmin = 0.5, xmax = 0.7, color = "C2")
     #settings 
-    ax.annotate(f'{theta[0]}x + {theta[1]}', xy = (mod_x[2], mod_y[2]), xytext = (mod_x[2]-10 , mod_y[2]* 1.2 ))
+    ax.annotate(f'{theta[0]}x + {theta[1]}', xy = (mod_x[2], mod_y[2]), xytext = (mod_x[2]-10 , mod_y[2]* 1.15 ))
     ax.annotate(f'correlation = {corr} ', xy = (mod_x[2], mod_y[2]), xytext = (mod_x[2] - 10, mod_y[2]*1.1 ))
 
 
     plt.plot(np.unique(mod_x), np.poly1d(np.polyfit(mod_x, mod_y, 1))(np.unique(mod_x)))
 
+    new_x = x[x<8]
+    new_y = y[x<8]
+    corr2 = np.corrcoef(new_x, new_y).round(decimals = 3)[0, 1]
+
+    theta2 = np.polyfit(new_x, new_y, 1).round(decimals = 3)
+    ax.annotate(f'{theta2[0]}x + {theta2[1]}', xy = (new_x[4], new_y[4]), xytext = (new_x[4], new_y[4]+100))
+    ax.annotate(f'correlation = {corr2} ', xy = (new_x[4], new_y[4]), xytext = (new_x[4], new_y[4]+ 400))
+
+    plt.plot(np.unique(new_x), np.poly1d(np.polyfit(new_x, new_y, 1))(np.unique(new_x)))
     #plt.savefig("images/ColEDvsTw_eqf")
     plt.show()
 
@@ -493,7 +503,7 @@ def elec_vs_temp_California():
 
 
 # elec_vs_temp_Denmark()
-#elec_vs_temp_Spain()
+# elec_vs_temp_Spain()
 # elec_vs_temp_Colorado()
 # elec_vs_temp_California()
 
@@ -538,8 +548,9 @@ def plot_ED_and_CF_data():
     fig.set_size_inches(12, 10)
     #plt.savefig("images/EDandCFCaliforniaf")
     plt.show()
-
+'''This section of equations considers what happens if you add degrees to all '''
 def gw_elec_Spain(degree_change):
+    '''This considers a universal degree change across all days. '''
     df = pd.DataFrame()
     y = heat_to_elec()["ESP_demand"]
     #y = get_electricity_data("weekly")[0]
@@ -559,7 +570,7 @@ def gw_elec_Spain(degree_change):
     else row["y"] - 1356.544 * (16- row["x"]) if row["x"] + degree_change > 16
     else row["y"] - 1356.544 * degree_change, axis = 1)
 
-    #not quite right but close
+
     df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
     print(df)
     ax.scatter(df["x"], df["y"], color = "C1", label = "with temp increase")
@@ -570,8 +581,35 @@ def gw_elec_Spain(degree_change):
 
     plt.show()
 
-gw_elec_Spain(2)
+def gw_elec_Colorado(degree_change):
+    df = pd.DataFrame()
+    y = get_electricity_data("weekly")[2]
+    x = get_temp_data("weekly")[2]
+    df["x"] = x
+    df["y"] = y
+    print(df)
 
+    fig, ax = plt.subplots()
+
+    ax.scatter(df["x"], df["y"], color = "C0", label = "original")
+
+    df["y"] = df.apply(lambda row: row["y"] + 232 * degree_change if row["x"] > 15.56 #Add according to positive slope if starts in cooling region
+    else row["y"] + 232 * (row["x"] - 15.56 + degree_change) if row["x"]+ degree_change  >15.56 and row["x"] > 7.32
+    else row["y"] if row["x"] > 7.32
+    else row["y"] - 97.281* (7.32- row["x"]) + 232 * (row["x"] + degree_change - 15.56) if row["x"] + degree_change > 7.32 and row["x"] + degree_change  > 15.56
+    else row["y"] - 97.281 * (7.32- row["x"]) if row["x"] + degree_change > 7.32
+    else row["y"] - 97.281 * degree_change, axis = 1)
+
+    #not quite right but close
+    df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
+    print(df)
+    ax.scatter(df["x"], df["y"], color = "C1", label = "with temp increase")
+    ax.legend()
+    ax.set_title(f"Electricity demand vs. temperature Colorado with increase of {degree_change} degrees")
+    ax.set_xlabel("Temperature (˚C)")
+    ax.set_ylabel("Electricity demand (MWh)")
+
+    plt.show()
 
 def gw_elec_California(degree_change):
     '''Here, I am trying to model what would happen to electricity demand in California if
@@ -594,30 +632,87 @@ def gw_elec_California(degree_change):
     df["y"] = df.apply(lambda row: row ["y"] + 1093.304 * degree_change if row["x"] > 15.79 
     else row["y"] + 1093.304 * (row["x"] - 15.79 + degree_change) if row["x"]+ degree_change - 15.79 > 0 
     else row["y"], axis = 1)
-    
+
     df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
     
   
-    ax.scatter(df["x"], df["y"], color = "C1", label = "with temp increase")
+    ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with temp increase")
     ax.legend()
     ax.set_title(f"Electricity demand vs. temperature California with increase of {degree_change} degrees")
     ax.set_xlabel("Temperature (˚C)")
     ax.set_ylabel("Electricity demand (MWh)")
     print(df['y'].sum())
+    plt.savefig("images/GWCali_incr")
     plt.show()
     #if x+degree_change-15.79 is greater than 0, then add this value times 1093.394 to y
 
+def gw_elec_Denmark(degree_change):
+    '''Here, I am trying to model what would happen to electricity demand in California if
+    the temperature increases uniformly by x degrees due to global warming
+    
+    For california, we assume that the electricity demand would be constant with change in 
+    temperature until it reaches a threshold temperature (15.79 degrees). Then, there is
+    a linear increase'''
+    df = pd.DataFrame()
+    
+    x = get_temp_data("weekly")[1]
+    y = heat_to_elec()["DNK_demand"]
+    df["x"] = x
+    df["y"] = y
+
+    #print(df['y'].sum())
+    fig, ax = plt.subplots()
+    ax.scatter(df["x"], df["y"], color = "C0", label = "original")
+
+    df["y"] = df.apply(lambda row: row ["y"] if row["x"] > 15.8
+    else row["y"] - 273.665 * (15.8-row["x"]) if row["x"]+ degree_change - 15.8 > 0 
+    else row["y"] - 273.665 * degree_change, axis = 1)
+    #Like California, there are only three cases. Unlike california, the three cases are a bit different
+    #flat to flat, heat to flat, heat to heat
+
+    df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
+    
+  
+    ax.scatter(df["x"], df["y"], color = "C1", label = "with temp increase")
+    ax.legend()
+    ax.set_title(f"Electricity demand vs. temperature Denmark with increase of {degree_change} degrees")
+    ax.set_xlabel("Temperature (˚C)")
+    ax.set_ylabel("Electricity demand (MWh)")
+    #print(df['y'].sum())
+    plt.show()
+
+
+def gw2_elec_California(slope_factor):
+    df = pd.DataFrame()
+    
+    x = get_temp_data("weekly")[3]
+    y = get_electricity_data("weekly")[3]
+    df["x"] = x
+    df["y"] = y
+
+    #print(df['y'].sum())
+    fig, ax = plt.subplots()
+    ax.scatter(df["x"], df["y"], color = "C0", label = "original")
+
+    df["y"] = df.apply(lambda row: row["y"] + (row ["y"] - 32500) * slope_factor if row["x"] > 15.79 and row["y"] > 32500
+     
+    else row["y"], axis = 1)
+
+
+    
+  
+    ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with temp increase")
+    ax.legend()
+    ax.set_title(f"Electricity demand vs. temperature California with slope factor of {slope_factor}")
+    ax.set_xlabel("Temperature (˚C)")
+    ax.set_ylabel("Electricity demand (MWh)")
     
 
-#gw_elec_California(5)
+    #plt.savefig("images/GWCali_slopef")
+    plt.show()
 
 
-
-
-#The next step is to make a graph with statistics
-
-
-#We now have temperature
+gw_elec_California(2)
 #In this section of code, I want to make a new data table of the averages of the csv files
 # plt.scatter([1,1,4,5,2,1],[2,3,6,7,2,0])
 # b, m = polyfit([1,1,4,5,2,1],[2,3,6,7,2,0],1)
