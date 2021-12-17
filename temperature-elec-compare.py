@@ -6,6 +6,7 @@ from numpy.polynomial.polynomial import polyfit
 import seaborn as sns
 import statsmodels.api as sm
 import matplotlib.dates as mdates
+from decimal import Decimal
 
 
 def get_temp_data(timeframe):
@@ -548,8 +549,18 @@ def plot_ED_and_CF_data():
     fig.set_size_inches(12, 10)
     #plt.savefig("images/EDandCFCaliforniaf")
     plt.show()
-'''This section of equations considers what happens if you add degrees to all '''
-def gw_elec_Spain(degree_change):
+'''This section of equations considers what happens if you take advantage of the relationship between electricity demand and temperature
+to see what happens if you are to increase the temperature by x degrees. In addition, one can '''
+
+
+degrees = [2, 4, 6]
+slopes = [1, 2, 3]
+
+
+degrees2 = [0]
+degrees3 = [8]
+
+def gw_elec_Spain(degree_change, slope_factor):
     '''This considers a universal degree change across all days. '''
     df = pd.DataFrame()
     y = heat_to_elec()["ESP_demand"]
@@ -557,12 +568,14 @@ def gw_elec_Spain(degree_change):
     x = get_temp_data("weekly")[0]
     df["x"] = x
     df["y"] = y
-    print(df)
+    #print(df)
+
+    total_elec_demand = round(df["y"].sum())
 
     fig, ax = plt.subplots()
 
     ax.scatter(df["x"], df["y"], color = "C0", label = "original")
-
+    
     df["y"] = df.apply(lambda row: row["y"] + 865.2 * degree_change if row["x"] > 22.267 #Add according to positive slope if starts in cooling region
     else row["y"] + 865.2 * (row["x"] - 22.267 + degree_change) if row["x"]+ degree_change  >22.267 and row["x"] > 16
     else row["y"] if row["x"] > 16 
@@ -570,24 +583,47 @@ def gw_elec_Spain(degree_change):
     else row["y"] - 1356.544 * (16- row["x"]) if row["x"] + degree_change > 16
     else row["y"] - 1356.544 * degree_change, axis = 1)
 
+    df["y"] = df.apply(lambda row: row["y"] + (row ["y"] - 30000) * (slope_factor-1) if row["x"] > 22.267 and row["y"] > 30000
+    else row["y"], axis = 1)
+
+    new_elec_demand = round(df["y"].sum())
+
+    change_demand = round((new_elec_demand-total_elec_demand)/total_elec_demand, 2) * 100
+
+    total_elec_demand = "{:.2e}".format(total_elec_demand)
+    new_elec_demand = "{:.2e}".format(new_elec_demand)
+    textstr = '\n'.join(('Demand unmodified =' + total_elec_demand ,
+    'Demand modified =' + new_elec_demand ,
+    f'Percent change = {change_demand}%'))
+    
+    ax.text (0.3, 0.8, textstr, transform = ax.transAxes, fontsize = 10, 
+    bbox = dict(boxstyle = "square", facecolor = "white", alpha = 0.5), verticalalignment = "top")
+
 
     df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
-    print(df)
-    ax.scatter(df["x"], df["y"], color = "C1", label = "with temp increase")
+    #print(df)
+    
+    ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with modification")
     ax.legend()
-    ax.set_title(f"Electricity demand vs. temperature Spain with increase of {degree_change} degrees")
+    ax.set_title(f"Spain increase of {degree_change} degrees and slope factor of {slope_factor}")
     ax.set_xlabel("Temperature (˚C)")
     ax.set_ylabel("Electricity demand (MWh)")
+    plt.savefig(f"images/GWESP_incr{degree_change}_slope{slope_factor}")
 
     plt.show()
 
-def gw_elec_Colorado(degree_change):
+
+# gw_elec_Spain(2,2)
+
+def gw_elec_Colorado(degree_change, slope_factor):
     df = pd.DataFrame()
     y = get_electricity_data("weekly")[2]
     x = get_temp_data("weekly")[2]
     df["x"] = x
     df["y"] = y
-    print(df)
+    #print(df)
+
+    total_elec_demand = round(df["y"].sum())
 
     fig, ax = plt.subplots()
 
@@ -600,18 +636,41 @@ def gw_elec_Colorado(degree_change):
     else row["y"] - 97.281 * (7.32- row["x"]) if row["x"] + degree_change > 7.32
     else row["y"] - 97.281 * degree_change, axis = 1)
 
-    #not quite right but close
+    df["y"] = df.apply(lambda row: row["y"] + (row ["y"] - 6600) * (slope_factor-1) if row["x"] > 15.56 and row["y"] > 6600
+    else row["y"], axis = 1)
+
+    new_elec_demand = round(df["y"].sum())
+
+    change_demand = round((new_elec_demand-total_elec_demand)/total_elec_demand, 2) * 100
+
+    total_elec_demand = "{:.2e}".format(total_elec_demand)
+    new_elec_demand = "{:.2e}".format(new_elec_demand)
+    textstr = '\n'.join(('Demand unmodified =' + total_elec_demand ,
+    'Demand modified =' + new_elec_demand ,
+    f'Percent change = {change_demand}%'))
+
+    ax.text (0.05, 0.8, textstr, transform = ax.transAxes, fontsize = 10, bbox = dict(boxstyle = "square", facecolor = "white", alpha = 0.5), verticalalignment = "top")
+
     df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
-    print(df)
-    ax.scatter(df["x"], df["y"], color = "C1", label = "with temp increase")
+    #print(df)
+    ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with modification")
     ax.legend()
-    ax.set_title(f"Electricity demand vs. temperature Colorado with increase of {degree_change} degrees")
+    ax.set_title(f"Colorado increase of {degree_change} degrees and slope factor of {slope_factor}")
     ax.set_xlabel("Temperature (˚C)")
     ax.set_ylabel("Electricity demand (MWh)")
-
+    plt.savefig(f"images/GWCO_incr{degree_change}_slope{slope_factor}")
     plt.show()
 
-def gw_elec_California(degree_change):
+for degree in degrees + degrees3:
+    gw_elec_Spain(degree, slopes[0])
+
+for degree in degrees + degrees2:
+    for slope in slopes[1:]:
+        gw_elec_Spain(degree, slope)
+
+
+
+def gw_elec_California(degree_change, slope_factor):
     '''Here, I am trying to model what would happen to electricity demand in California if
     the temperature increases uniformly by x degrees due to global warming
     
@@ -625,9 +684,11 @@ def gw_elec_California(degree_change):
     df["x"] = x
     df["y"] = y
 
-    print(df['y'].sum())
+    total_elec_demand = round(df["y"].sum())
+
     fig, ax = plt.subplots()
     ax.scatter(df["x"], df["y"], color = "C0", label = "original")
+
 
     df["y"] = df.apply(lambda row: row ["y"] + 1093.304 * degree_change if row["x"] > 15.79 
     else row["y"] + 1093.304 * (row["x"] - 15.79 + degree_change) if row["x"]+ degree_change - 15.79 > 0 
@@ -635,16 +696,34 @@ def gw_elec_California(degree_change):
 
     df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
     
-  
-    ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with temp increase")
+    #Use this line if you also want to include slope
+    df["y"] = df.apply(lambda row: row["y"] + (row ["y"] - 32500) * (slope_factor-1) if row["x"] > 15.79 and row["y"] > 32500
+    else row["y"], axis = 1)
+
+    new_elec_demand = round(df["y"].sum())
+
+    change_demand = round((new_elec_demand-total_elec_demand)/total_elec_demand, 3) * 100
+    print(change_demand)
+    total_elec_demand = "{:.2e}".format(total_elec_demand)
+    new_elec_demand = "{:.2e}".format(new_elec_demand)
+    textstr = '\n'.join(('Demand unmodified =' + total_elec_demand ,
+    'Demand modified =' + new_elec_demand ,
+    f'Percent change = {change_demand}%'))
+
+    ax.text (0.05, 0.6, textstr, transform = ax.transAxes, fontsize = 10, bbox = dict(boxstyle = "square", facecolor = "white", alpha = 0.5), verticalalignment = "top")
+
+    ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with modification")
     ax.legend()
-    ax.set_title(f"Electricity demand vs. temperature California with increase of {degree_change} degrees")
+    ax.set_title(f"California increase of {degree_change} degrees and slope factor of {slope_factor}")
     ax.set_xlabel("Temperature (˚C)")
     ax.set_ylabel("Electricity demand (MWh)")
-    print(df['y'].sum())
-    plt.savefig("images/GWCali_incr")
+    #print(df['y'].sum())
+    #plt.savefig(f"images/GWCali_incr{degree_change}_slope{slope_factor}")
     plt.show()
     #if x+degree_change-15.79 is greater than 0, then add this value times 1093.394 to y
+
+
+
 
 def gw_elec_Denmark(degree_change):
     '''Here, I am trying to model what would happen to electricity demand in California if
@@ -660,6 +739,7 @@ def gw_elec_Denmark(degree_change):
     df["x"] = x
     df["y"] = y
 
+    total_elec_demand = round(df["y"].sum())
     #print(df['y'].sum())
     fig, ax = plt.subplots()
     ax.scatter(df["x"], df["y"], color = "C0", label = "original")
@@ -673,46 +753,32 @@ def gw_elec_Denmark(degree_change):
     df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
     
   
+    new_elec_demand = round(df["y"].sum())
+    change_demand = round((new_elec_demand-total_elec_demand)/total_elec_demand, 2) * 100
+    print(change_demand)
+    total_elec_demand = "{:.2e}".format(total_elec_demand)
+    new_elec_demand = "{:.2e}".format(new_elec_demand)
+    textstr = '\n'.join(('Demand unmodified =' + total_elec_demand ,
+    'Demand modified =' + new_elec_demand ,
+    f'Percent change = {change_demand}%'))
+
+    ax.text (0.45, 0.6, textstr, transform = ax.transAxes, fontsize = 10, bbox = dict(boxstyle = "square", facecolor = "white", alpha = 0.5), verticalalignment = "top")
+
+
     ax.scatter(df["x"], df["y"], color = "C1", label = "with temp increase")
     ax.legend()
     ax.set_title(f"Electricity demand vs. temperature Denmark with increase of {degree_change} degrees")
     ax.set_xlabel("Temperature (˚C)")
     ax.set_ylabel("Electricity demand (MWh)")
+
+    #plt.savefig(f"images/GWDen_incr{degree_change}")
     #print(df['y'].sum())
+
     plt.show()
 
 
-def gw2_elec_California(slope_factor):
-    df = pd.DataFrame()
-    
-    x = get_temp_data("weekly")[3]
-    y = get_electricity_data("weekly")[3]
-    df["x"] = x
-    df["y"] = y
-
-    #print(df['y'].sum())
-    fig, ax = plt.subplots()
-    ax.scatter(df["x"], df["y"], color = "C0", label = "original")
-
-    df["y"] = df.apply(lambda row: row["y"] + (row ["y"] - 32500) * slope_factor if row["x"] > 15.79 and row["y"] > 32500
-     
-    else row["y"], axis = 1)
 
 
-    
-  
-    ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with temp increase")
-    ax.legend()
-    ax.set_title(f"Electricity demand vs. temperature California with slope factor of {slope_factor}")
-    ax.set_xlabel("Temperature (˚C)")
-    ax.set_ylabel("Electricity demand (MWh)")
-    
-
-    #plt.savefig("images/GWCali_slopef")
-    plt.show()
-
-
-gw_elec_California(2)
 #In this section of code, I want to make a new data table of the averages of the csv files
 # plt.scatter([1,1,4,5,2,1],[2,3,6,7,2,0])
 # b, m = polyfit([1,1,4,5,2,1],[2,3,6,7,2,0],1)

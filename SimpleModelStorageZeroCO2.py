@@ -351,12 +351,12 @@ for network in mynetworks:
     reset_stats(network)
 
 
+find_solar_data(Denmark, 30000)
 
-
-DNK_solar_data = list(map(find_solar_data, repeat(Denmark), np.linspace(50000, 600000, 10)))
-ESP_solar_data = list(map(find_solar_data, repeat(Spain), np.linspace(50000, 600000, 10)))
-CAL_solar_data = list(map(find_solar_data, repeat(CA), np.linspace(50000, 600000, 10)))
-CO_solar_data = list(map(find_solar_data, repeat(CO), np.linspace(50000, 600000, 10)))
+# DNK_solar_data = list(map(find_solar_data, repeat(Denmark), np.linspace(50000, 600000, 10)))
+# ESP_solar_data = list(map(find_solar_data, repeat(Spain), np.linspace(50000, 600000, 10)))
+# CAL_solar_data = list(map(find_solar_data, repeat(CA), np.linspace(50000, 600000, 10)))
+# CO_solar_data = list(map(find_solar_data, repeat(CO), np.linspace(50000, 600000, 10)))
 
 
 def penetration_chart():
