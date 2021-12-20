@@ -7,6 +7,8 @@ from itertools import repeat
 
 
 
+'''As it stands, this code does not work unforunately'''
+
 def annuity(n,r):
     """Calculate the annuity factor for an asset with lifetime n years and
     discount rate of r, e.g. annuity(20,0.05)*20 = 1.6"""
@@ -322,8 +324,77 @@ def find_solar_data(n, solar_cost):
             s_curtailment)
 
 
-find_solar_data(Denmark, 50000)
-#DNK_solar_data = list(map(find_solar_data, repeat(Denmark), np.linspace(50000, 600000, 2)))
+
+DNK_solar_data = list(map(find_solar_data, repeat(Denmark), np.logspace(10000, 1000000, 2)))
 # ESP_solar_data = list(map(find_solar_data, repeat(Spain), np.linspace(50000, 600000, 10)))
 # CAL_solar_data = list(map(find_solar_data, repeat(CA), np.linspace(50000, 600000, 10)))
 # CO_solar_data = list(map(find_solar_data, repeat(CO), np.linspace(50000, 600000, 10)))
+
+
+def penetration_chart():
+    #This is our x axis, solar_cost (s_cost)
+    s_cost = np.linspace(50000, 600000, 10)
+
+    #This is our y axis. sp = solar penetration, wp = wind penetration, gp = gas penetration
+    DNK_sp = [x[0][0] for x in DNK_solar_data]
+    ESP_sp = [x[0][0] for x in ESP_solar_data]
+    CAL_sp = [x[0][0]  for x in CAL_solar_data]
+    CO_sp = [x[0][0]  for x in CO_solar_data]
+
+    DNK_wp = [x[0][1] for x in DNK_solar_data]
+    ESP_wp = [x[0][1] for x in ESP_solar_data]
+    CAL_wp = [x[0][1] for x in CAL_solar_data]
+    CO_wp = [x[0][1] for x in CO_solar_data]
+
+    DNK_gp = [x[0][2] for x in DNK_solar_data]
+    ESP_gp = [x[0][2] for x in ESP_solar_data]
+    CAL_gp = [x[0][2] for x in CAL_solar_data]
+    CO_gp = [x[0][2] for x in CO_solar_data]
+
+    DNK_bp = [x[0][3] for x in DNK_solar_data]
+    ESP_bp = [x[0][3] for x in ESP_solar_data]
+    CAL_bp = [x[0][3] for x in CAL_solar_data]
+    CO_bp = [x[0][3] for x in CO_solar_data]
+
+    DNK_hp = [x[0][4] for x in DNK_solar_data]  
+    ESP_hp = [x[0][4] for x in ESP_solar_data]
+    CAL_hp = [x[0][4] for x in CAL_solar_data]
+    CO_hp = [x[0][4] for x in CO_solar_data]
+
+
+    fig, axs = plt.subplots(2,2)
+    axs[0, 0].stackplot(s_cost, DNK_sp, DNK_wp, DNK_gp, DNK_bp, DNK_hp, labels = ["solar", "wind", "gas"]
+                    , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
+    axs[0, 0].set_title("Denmark penetration")
+    axs[0, 1].stackplot(s_cost, ESP_sp, ESP_wp, ESP_gp, ESP_bp, ESP_hp, labels = ["solar", "wind", "gas"]
+                    , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
+    axs[0, 1].set_title("Spain penetration")
+    axs[1, 0].stackplot(s_cost, CO_sp, CO_wp, CO_gp, CO_bp, CO_hp, labels = ["solar", "wind", "gas"]
+                    , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
+    axs[1, 0].set_title("Colorado penetration")
+    axs[1, 1].stackplot(s_cost, CAL_sp, CAL_wp, CAL_gp, CAL_bp, CAL_hp, labels = ["solar", "wind", "gas"]
+                    , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
+    axs[1, 1].set_title("California penetration")
+
+
+
+    for ax in axs.flat:
+        ax.minorticks_on()
+        
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles[::-1], labels[::-1], title='Resource type', loc='upper right')
+        ax.grid(which = 'major', linestyle='-', linewidth='0.5', color='black')
+        ax.grid(which='minor', linestyle=':', linewidth='0.5', color='black')
+        ax.set(xlabel='solar cost (EUR/MW)', ylabel='penetration')
+    #Hide x labels and tick labels for top plots and y ticks for right plots.
+        ax.label_outer()
+        ax.axvline(529000, color='black',ls='--')
+        ax.text(529000,1.1, "Current cost = 529000 EUR", horizontalalignment = "center")
+
+
+    plt.suptitle("Penetration per technology by solar overnight investment cost", fontsize = 20)
+    fig = plt.gcf()
+    fig.patch.set_facecolor('white')
+    fig.set_size_inches(18.5, 10.5)
+    #plt.savefig("Images/PenPerTechbySolarCost", facecolor=fig.get_facecolor(), edgecolor='none')
+    plt.show()

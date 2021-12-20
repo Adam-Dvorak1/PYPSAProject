@@ -602,18 +602,26 @@ def gw_elec_Spain(degree_change, slope_factor):
 
     df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
     #print(df)
+
+
+    ax.axvline(16, color='black',ls='--', alpha = 0.5)
+    ax.text(16, ax.get_ybound()[1]-1500, "T_th", horizontalalignment = "center", color = "C3")
+
+    ax.axvline(22.267, color='black',ls='--', alpha = 0.5)
+    ax.text(22.267, ax.get_ybound()[1]-1500, "T_th", horizontalalignment = "center", color = "C2")
+
     
     ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with modification")
     ax.legend()
     ax.set_title(f"Spain increase of {degree_change} degrees and slope factor of {slope_factor}")
     ax.set_xlabel("Temperature (˚C)")
     ax.set_ylabel("Electricity demand (MWh)")
-    plt.savefig(f"images/GWESP_incr{degree_change}_slope{slope_factor}")
+    #plt.savefig(f"images/GWESP_incr{degree_change}_slope{slope_factor}")
 
     plt.show()
 
 
-# gw_elec_Spain(2,2)
+
 
 def gw_elec_Colorado(degree_change, slope_factor):
     df = pd.DataFrame()
@@ -654,19 +662,29 @@ def gw_elec_Colorado(degree_change, slope_factor):
     df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
     #print(df)
     ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with modification")
+
+    ax.axvline(7.32, color='black',ls='--', alpha = 0.5)
+    ax.text(7.32, ax.get_ybound()[1]-500, "T_th", horizontalalignment = "center", color = "C3")
+
+
+    ax.axvline(15.56, color='black',ls='--', alpha = 0.5)  
+    ax.text(15.56, ax.get_ybound()[1]-500, "T_th", horizontalalignment = "center", color = "C2")
+
     ax.legend()
     ax.set_title(f"Colorado increase of {degree_change} degrees and slope factor of {slope_factor}")
     ax.set_xlabel("Temperature (˚C)")
     ax.set_ylabel("Electricity demand (MWh)")
-    plt.savefig(f"images/GWCO_incr{degree_change}_slope{slope_factor}")
+    #plt.savefig(f"images/GWCO_incr{degree_change}_slope{slope_factor}")
     plt.show()
 
-for degree in degrees + degrees3:
-    gw_elec_Spain(degree, slopes[0])
 
-for degree in degrees + degrees2:
-    for slope in slopes[1:]:
-        gw_elec_Spain(degree, slope)
+#gw_elec_Colorado(2, 2)
+# for degree in degrees + degrees3:
+#     gw_elec_Spain(degree, slopes[0])
+
+# for degree in degrees + degrees2:
+#     for slope in slopes[1:]:
+#         gw_elec_Spain(degree, slope)
 
 
 
@@ -703,7 +721,7 @@ def gw_elec_California(degree_change, slope_factor):
     new_elec_demand = round(df["y"].sum())
 
     change_demand = round((new_elec_demand-total_elec_demand)/total_elec_demand, 3) * 100
-    print(change_demand)
+    #print(change_demand)
     total_elec_demand = "{:.2e}".format(total_elec_demand)
     new_elec_demand = "{:.2e}".format(new_elec_demand)
     textstr = '\n'.join(('Demand unmodified =' + total_elec_demand ,
@@ -713,15 +731,20 @@ def gw_elec_California(degree_change, slope_factor):
     ax.text (0.05, 0.6, textstr, transform = ax.transAxes, fontsize = 10, bbox = dict(boxstyle = "square", facecolor = "white", alpha = 0.5), verticalalignment = "top")
 
     ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with modification")
+
+    ax.axvline(15.79, color='black',ls='--', alpha = 0.5)
+    ax.text(15.79, ax.get_ybound()[1]-1500, "T_th", horizontalalignment = "center", color = "C2")
+
+
     ax.legend()
     ax.set_title(f"California increase of {degree_change} degrees and slope factor of {slope_factor}")
     ax.set_xlabel("Temperature (˚C)")
     ax.set_ylabel("Electricity demand (MWh)")
+    fig.subplots_adjust(bottom=0.2)
     #print(df['y'].sum())
     #plt.savefig(f"images/GWCali_incr{degree_change}_slope{slope_factor}")
     plt.show()
     #if x+degree_change-15.79 is greater than 0, then add this value times 1093.394 to y
-
 
 
 
@@ -764,6 +787,8 @@ def gw_elec_Denmark(degree_change):
 
     ax.text (0.45, 0.6, textstr, transform = ax.transAxes, fontsize = 10, bbox = dict(boxstyle = "square", facecolor = "white", alpha = 0.5), verticalalignment = "top")
 
+    ax.axvline(15.8, color='black',ls='--', alpha = 0.5)
+    ax.text(15.8, ax.get_ybound()[1]-500, "T_th", horizontalalignment = "center", color = "C3")
 
     ax.scatter(df["x"], df["y"], color = "C1", label = "with temp increase")
     ax.legend()

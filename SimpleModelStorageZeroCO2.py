@@ -2,6 +2,7 @@ import pypsa
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 import time
 from itertools import repeat
 
@@ -298,6 +299,8 @@ def find_solar_data(n, solar_cost):
     n.lopf(n.snapshots, 
              pyomo=False,
              solver_name='gurobi')
+
+    n.export_to_netcdf(f"NetCDF/{n}/{solar_cost}solar_cost")
     
     #commenting out the sum of generators--battery is so small, we need raw values
     solar_penetration = n.generators_t.p['solar'].sum()/sum(n.generators_t.p.sum())
@@ -343,7 +346,34 @@ def find_solar_data(n, solar_cost):
             (s_curtailment, w_curtailment))
 
 
+def find_wind_data(n, wind_cost):
+    #Takes annualized coefficient and multiplies by investment cost
+  
+    annualized_wind_cost = 0.08442684282600257 * wind_cost
+    n.generators.loc[['onshorewind'],['capital_cost']] = annualized_wind_cost
+    
+    #this substitutes the current solar cost in our generator for a new cost
 
+    
+    n.lopf(n.snapshots, 
+             pyomo=False,
+             solver_name='gurobi')
+
+    n.export_to_netcdf(f"NetCDF/{n}/wind_cost{wind_cost}")
+
+def find_C02lim_data(n, co2lim):
+    #Takes annualized coefficient and multiplies by investment cost
+    n.global_constraints.loc[['co2_limit'],['constant']] = co2lim
+    
+    
+    #this substitutes the current solar cost in our generator for a new cost
+
+    
+    n.lopf(n.snapshots, 
+             pyomo=False,
+             solver_name='gurobi')
+
+    n.export_to_netcdf(f"NetCDF/{n}/co2constraint{co2lim}")
 
 
 #These four below return 100 points of cost vs solar penetration. 
@@ -351,17 +381,31 @@ for network in mynetworks:
     reset_stats(network)
 
 
-find_solar_data(Denmark, 30000)
 
-# DNK_solar_data = list(map(find_solar_data, repeat(Denmark), np.linspace(50000, 600000, 10)))
-# ESP_solar_data = list(map(find_solar_data, repeat(Spain), np.linspace(50000, 600000, 10)))
-# CAL_solar_data = list(map(find_solar_data, repeat(CA), np.linspace(50000, 600000, 10)))
-# CO_solar_data = list(map(find_solar_data, repeat(CO), np.linspace(50000, 600000, 10)))
+DNK_solar_data = list(map(find_solar_data, repeat(Denmark), np.logspace(3, 6, 100)))
+ESP_solar_data = list(map(find_solar_data, repeat(Spain), np.logspace(3, 6, 100)))
+CA_solar_data = list(map(find_solar_data, repeat(CA), np.logspace(3, 6, 100)))
+CO_solar_data = list(map(find_solar_data, repeat(CO), np.logspace(3, 6, 100)))
 
+for network in mynetworks:
+    reset_stats(network)
+
+map(find_wind_data, repeat(Denmark), np.logspace(3, 6, 100))
+map(find_wind_data, repeat(Spain), np.logspace(3, 6, 100))
+map(find_wind_data, repeat(CA), np.logspace(3, 6, 100))
+map(find_wind_data, repeat(CO), np.logspace(3, 6, 100))
+
+for network in mynetworks:
+    reset_stats(network)
+    
+map(find_C02lim_data, repeat(Denmark), np.logspace(0, 7, 100))
+map(find_C02lim_data, repeat(Spain), np.logspace(0, 7.5, 100))
+map(find_C02lim_data, repeat(CA), np.logspace(0, 7.5, 100))
+map(find_C02lim_data, repeat(CO), np.logspace(0, 7, 100))
 
 def penetration_chart():
     #This is our x axis, solar_cost (s_cost)
-    s_cost = np.linspace(50000, 600000, 10)
+    s_cost = np.logspace(3, 6, 10)
 
     #This is our y axis. sp = solar penetration, wp = wind penetration, gp = gas penetration
     DNK_sp = [x[0][0] for x in DNK_solar_data]
@@ -391,16 +435,16 @@ def penetration_chart():
 
 
     fig, axs = plt.subplots(2,2)
-    axs[0, 0].stackplot(s_cost, DNK_sp, DNK_wp, DNK_gp, DNK_bp, DNK_hp, labels = ["solar", "wind", "gas"]
+    axs[0, 0].stackplot(s_cost/10**6, DNK_sp, DNK_wp, DNK_gp, labels = ["solar", "wind", "gas"]
                     , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
     axs[0, 0].set_title("Denmark penetration")
-    axs[0, 1].stackplot(s_cost, ESP_sp, ESP_wp, ESP_gp, ESP_bp, ESP_hp, labels = ["solar", "wind", "gas"]
+    axs[0, 1].stackplot(s_cost/10**6, ESP_sp, ESP_wp, ESP_gp, labels = ["solar", "wind", "gas"]
                     , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
     axs[0, 1].set_title("Spain penetration")
-    axs[1, 0].stackplot(s_cost, CO_sp, CO_wp, CO_gp, CO_bp, CO_hp, labels = ["solar", "wind", "gas"]
+    axs[1, 0].stackplot(s_cost/10**6, CO_sp, CO_wp, CO_gp, labels = ["solar", "wind", "gas"]
                     , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
     axs[1, 0].set_title("Colorado penetration")
-    axs[1, 1].stackplot(s_cost, CAL_sp, CAL_wp, CAL_gp, CAL_bp, CAL_hp, labels = ["solar", "wind", "gas"]
+    axs[1, 1].stackplot(s_cost/10**6, CAL_sp, CAL_wp, CAL_gp, labels = ["solar", "wind", "gas"]
                     , colors = ["#ffd966", "#2986cc", "#d5a6bd"])
     axs[1, 1].set_title("California penetration")
 
@@ -408,7 +452,7 @@ def penetration_chart():
 
     for ax in axs.flat:
         ax.minorticks_on()
-        
+        ax.set_xscale('log')
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles[::-1], labels[::-1], title='Resource type', loc='upper right')
         ax.grid(which = 'major', linestyle='-', linewidth='0.5', color='black')
@@ -416,8 +460,8 @@ def penetration_chart():
         ax.set(xlabel='solar cost (EUR/MW)', ylabel='penetration')
     #Hide x labels and tick labels for top plots and y ticks for right plots.
         ax.label_outer()
-        ax.axvline(529000, color='black',ls='--')
-        ax.text(529000,1.1, "Current cost = 529000 EUR", horizontalalignment = "center")
+        ax.axvline(0.529, color='black',ls='--')
+        ax.text(0.529,1.1, "Current cost = 0.529 EUR/Wh", horizontalalignment = "center")
 
 
     plt.suptitle("Penetration per technology by solar overnight investment cost", fontsize = 20)
@@ -470,7 +514,7 @@ def system_cost():
     plt.show()
 
 def showcurtailment():
-    s_cost = np.linspace(50000, 600000, 10)
+    s_cost = np.logspace(3, 6, 10)
 
     DNK_sc = list(map(abs, [x[2][0] for x in DNK_solar_data]))
     ESP_sc = list(map(abs, [x[2][0] for x in ESP_solar_data]))
@@ -490,20 +534,20 @@ def showcurtailment():
 
 
     fig, axs = plt.subplots(2,2)
-    axs[0, 0].plot(s_cost, DNK_sc, 'o', color = "orange", label = "Solar")
-    axs[0, 0].plot(s_cost, DNK_wc, 'bo', label = "Wind")
+    axs[0, 0].plot(s_cost/10**6, DNK_sc, 'o', color = "orange", label = "Solar")
+    #axs[0, 0].plot(s_cost, DNK_wc, 'bo', label = "Wind")
     #axs[0, 0].plot(w_cost, DNK_sc, 'ko', label = "Without storage")
     axs[0, 0].set_title("Denmark tech curtailed percent")
-    axs[0, 1].plot(s_cost, ESP_sc, 'o', color = "orange", label = "Solar")
-    axs[0, 1].plot(s_cost, ESP_wc, 'bo', label = "Wind")
+    axs[0, 1].plot(s_cost/10**6, ESP_sc, 'o', color = "orange", label = "Solar")
+    #axs[0, 1].plot(s_cost, ESP_wc, 'bo', label = "Wind")
     #axs[0, 1].plot(s_cost, ESP_sc_wo, 'ko', label = "Without storage")
     axs[0, 1].set_title("Spain tech curtailed percent")
-    axs[1, 0].plot(s_cost, CO_sc, 'o', color = "orange", label = "Solar")
-    axs[1, 0].plot(s_cost, CO_wc, 'bo', label = "Wind")
+    axs[1, 0].plot(s_cost/10**6, CO_sc, 'o', color = "orange", label = "Solar")
+    #axs[1, 0].plot(s_cost, CO_wc, 'bo', label = "Wind")
     #axs[1, 0].plot(s_cost, CO_sc_wo, 'ko', label = "Without storage")
     axs[1, 0].set_title("Colorado tech curtailed percent")
-    axs[1, 1].plot(s_cost, CAL_sc, 'o', color = "orange", label = "Solar")
-    axs[1, 1].plot(s_cost, CAL_wc, 'bo', label = "Wind")
+    axs[1, 1].plot(s_cost/10**6, CAL_sc, 'o', color = "orange", label = "Solar")
+    #axs[1, 1].plot(s_cost, CAL_wc, 'bo', label = "Wind")
     #axs[1, 1].plot(s_cost, CAL_sc_wo, 'ko', label = "Without storage")
     axs[1, 1].set_title("California tech curtailed percent")
 
@@ -511,15 +555,16 @@ def showcurtailment():
 
     for ax in axs.flat:
         ax.minorticks_on()
+        ax.set_xscale('log')
         ax.legend(title= "type of resource", loc='upper right')
         ax.grid(which = 'major', linestyle='-', linewidth='0.5', color='black')
         ax.grid(which='minor', linestyle=':', linewidth='0.5', color='black')
         ax.set(xlabel='solar cost (EUR/MW)', ylabel='solar curtailment fraction')
-        ax.set_ylim(-0.02, 0.7)
+        ax.set_ylim(-0.02, 1)
         # Hide x labels and tick labels for top plots and y ticks for right plots.
         ax.label_outer()
-        ax.axvline(529000, color='black',ls='--')
-        ax.text(529000,0.75, "Current cost = 529000 EUR", horizontalalignment = "center")
+        ax.axvline(0.529, color='black',ls='--')
+        ax.text(0.529,0.75, "Current cost = 529000 EUR", horizontalalignment = "center")
 
     plt.suptitle("Fraction of curtailment by solar overnight investment cost", fontsize = 20)
     fig = plt.gcf()
@@ -527,4 +572,269 @@ def showcurtailment():
     fig.set_size_inches(18.5, 10.5)
     plt.savefig("Images/FracSolarCurtailbySolarCostStore_w_and_wo", facecolor=fig.get_facecolor(), edgecolor='none')
     plt.show()
+
+
+
+def pen_plus_curtailDNK():
+    s_cost = np.logspace(3, 6, 100)
+
+    DNK_sp = [x[0][0] for x in DNK_solar_data]
+
+    DNK_sc = list(map(abs, [x[2][0] for x in DNK_solar_data]))
+
+    fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axs[0].plot(s_cost/10**6, DNK_sc, color = "C1") #Scatter or plot?
+    axs[0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axs[0].set_ylabel("Curtailment")
+    axs[0].set_facecolor("#eeeeee")
+    # labels = axs[0].get_yticklabels()
+    # labels[0] = ""
+    # axs[0].set_yticklabels(labels)
+    
+
+    axs[1].plot(s_cost/10**6, DNK_sp, color = "#f1c232")
+    axs[1].set_ylim(0, 1)
+    axs[1].fill_between(s_cost/10**6, DNK_sp, color = "#fff2cc")
+    axs[1].fill_between(s_cost/10**6, DNK_sp, y2 = 1, color = "#eeeeee")
+    axs[1].set_ylabel("Penetration")
+    axs[1].set_xlabel("Cost (€/Wp)")
+
+    axs[1].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    
+    axs[1].axvline(0.529, color='black',ls='--')
+    axs[1].text(0.7,0.05, "Today", horizontalalignment = "center", rotation = "vertical")
+    axs[1].axvline(0.019, color='black',ls='--')
+    axs[1].text(0.025,0.05, "2050--Optimistic", horizontalalignment = "center", rotation = "vertical")
+    axs[1].axvline(0.095, color='black',ls='--')
+    axs[1].text(0.13,0.05, "2050--Less Optimistic", horizontalalignment = "center", rotation = "vertical")
+    axs[0].spines[["top","right"]].set_visible(False)
+    axs[1].annotate("Solar", xy = (0.002, 0.2), fontsize = "18")
+    
+    # yticks = axs[0].yaxis.get_major_ticks() 
+    # yticks[-1].label1.set_visible(False)
+    
+    xticks = axs[1].yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    #Use this if you wish to have the 0 on the top graph be invisible
+
+    #axs[0].yaxis.get_major_ticks()[1].label1.set_visible(False)
+    for ax in axs.flat:
+        ax.minorticks_on()
+        ax.set_xscale('log')        
+        ax.label_outer()
+        ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+        ax.margins(x = 0)
+
+
+
+    plt.suptitle("Denmark solar penetration and curtailment by cost", fontsize = 12)
+    
+
+    plt.subplots_adjust(hspace = 0)
+    plt.savefig("Images/Pen_and_curtail_DNK")
+    plt.show()
+
+def pen_plus_curtailESP():
+    s_cost = np.logspace(3, 6, 100)
+
+    ESP_sp = [x[0][0] for x in ESP_solar_data]
+
+    ESP_sc = list(map(abs, [x[2][0] for x in ESP_solar_data]))
+
+    fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axs[0].plot(s_cost/10**6, ESP_sc, color = "C1") #Scatter or plot?
+    axs[0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axs[0].set_ylabel("Curtailment")
+    axs[0].set_facecolor("#eeeeee")
+    # labels = axs[0].get_yticklabels()
+    # labels[0] = ""
+    # axs[0].set_yticklabels(labels)
+    
+
+    axs[1].plot(s_cost/10**6, ESP_sp, color = "#f1c232")
+    axs[1].set_ylim(0, 1)
+    axs[1].fill_between(s_cost/10**6, ESP_sp, color = "#fff2cc")
+    axs[1].fill_between(s_cost/10**6, ESP_sp, y2 = 1, color = "#eeeeee")
+    axs[1].set_ylabel("Penetration")
+    axs[1].set_xlabel("Cost (€/Wp)")
+
+    axs[1].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    
+    axs[1].axvline(0.529, color='black',ls='--')
+    axs[1].text(0.7,0.05, "Today", horizontalalignment = "center", rotation = "vertical")
+    axs[1].axvline(0.019, color='black',ls='--')
+    axs[1].text(0.025,0.05, "2050--Optimistic", horizontalalignment = "center", rotation = "vertical")
+    axs[1].axvline(0.095, color='black',ls='--')
+    axs[1].text(0.13,0.05, "2050--Less Optimistic", horizontalalignment = "center", rotation = "vertical")
+    axs[0].spines[["top","right"]].set_visible(False)
+    axs[1].annotate("Solar", xy = (0.002, 0.2), fontsize = "18")
+    
+    # yticks = axs[0].yaxis.get_major_ticks() 
+    # yticks[-1].label1.set_visible(False)
+    
+    xticks = axs[1].yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    #Use this if you wish to have the 0 on the top graph be invisible
+
+    #axs[0].yaxis.get_major_ticks()[1].label1.set_visible(False)
+    for ax in axs.flat:
+        ax.minorticks_on()
+        ax.set_xscale('log')        
+        ax.label_outer()
+        ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+        ax.margins(x = 0)
+
+
+
+    plt.suptitle("Spain solar penetration and curtailment by cost", fontsize = 12)
+    
+
+    plt.subplots_adjust(hspace = 0)
+    plt.savefig("Images/Pen_and_curtail_ESP")
+    plt.show()
+
+def pen_plus_curtailCA():
+    s_cost = np.logspace(3, 6, 100)
+
+    CA_sp = [x[0][0] for x in CA_solar_data]
+
+    CA_sc = list(map(abs, [x[2][0] for x in CA_solar_data]))
+
+    fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axs[0].plot(s_cost/10**6, CA_sc, color = "C1") #Scatter or plot?
+    axs[0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axs[0].set_ylabel("Curtailment")
+    axs[0].set_facecolor("#eeeeee")
+    # labels = axs[0].get_yticklabels()
+    # labels[0] = ""
+    # axs[0].set_yticklabels(labels)
+    
+
+    axs[1].plot(s_cost/10**6, CA_sp, color = "#f1c232")
+    axs[1].set_ylim(0, 1)
+    axs[1].fill_between(s_cost/10**6, CA_sp, color = "#fff2cc")
+    axs[1].fill_between(s_cost/10**6, CA_sp, y2 = 1, color = "#eeeeee")
+    axs[1].set_ylabel("Penetration")
+    axs[1].set_xlabel("Cost (€/Wp)")
+
+    axs[1].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    
+    axs[1].axvline(0.529, color='black',ls='--')
+    axs[1].text(0.7,0.05, "Today", horizontalalignment = "center", rotation = "vertical")
+    axs[1].axvline(0.019, color='black',ls='--')
+    axs[1].text(0.025,0.05, "2050--Optimistic", horizontalalignment = "center", rotation = "vertical")
+    axs[1].axvline(0.095, color='black',ls='--')
+    axs[1].text(0.13,0.05, "2050--Less Optimistic", horizontalalignment = "center", rotation = "vertical")
+    axs[0].spines[["top","right"]].set_visible(False)
+    axs[1].annotate("Solar", xy = (0.002, 0.2), fontsize = "18")
+    
+    # yticks = axs[0].yaxis.get_major_ticks() 
+    # yticks[-1].label1.set_visible(False)
+    
+    xticks = axs[1].yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    #Use this if you wish to have the 0 on the top graph be invisible
+
+    #axs[0].yaxis.get_major_ticks()[1].label1.set_visible(False)
+    for ax in axs.flat:
+        ax.minorticks_on()
+        ax.set_xscale('log')        
+        ax.label_outer()
+        ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+        ax.margins(x = 0)
+
+
+
+    plt.suptitle("California solar penetration and curtailment by cost", fontsize = 12)
+    
+
+    plt.subplots_adjust(hspace = 0)
+    plt.savefig("Images/Pen_and_curtail_CA")
+    plt.show()
+
+def pen_plus_curtailCO():
+    s_cost = np.logspace(3, 6, 100)
+
+    CO_sp = [x[0][0] for x in CO_solar_data]
+
+    CO_sc = list(map(abs, [x[2][0] for x in CO_solar_data]))
+
+    fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axs[0].plot(s_cost/10**6, CO_sc, color = "C1") #Scatter or plot?
+    axs[0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axs[0].set_ylabel("Curtailment")
+    axs[0].set_facecolor("#eeeeee")
+    # labels = axs[0].get_yticklabels()
+    # labels[0] = ""
+    # axs[0].set_yticklabels(labels)
+    
+
+    axs[1].plot(s_cost/10**6, CO_sp, color = "#f1c232")
+    axs[1].set_ylim(0, 1)
+    axs[1].fill_between(s_cost/10**6, CO_sp, color = "#fff2cc")
+    axs[1].fill_between(s_cost/10**6, CO_sp, y2 = 1, color = "#eeeeee")
+    axs[1].set_ylabel("Penetration")
+    axs[1].set_xlabel("Cost (€/Wp)")
+
+    axs[1].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    
+    axs[1].axvline(0.529, color='black',ls='--')
+    axs[1].text(0.7,0.05, "Today", horizontalalignment = "center", rotation = "vertical")
+    axs[1].axvline(0.019, color='black',ls='--')
+    axs[1].text(0.025,0.05, "2050--Optimistic", horizontalalignment = "center", rotation = "vertical")
+    axs[1].axvline(0.095, color='black',ls='--')
+    axs[1].text(0.13,0.05, "2050--Less Optimistic", horizontalalignment = "center", rotation = "vertical")
+    axs[0].spines[["top","right"]].set_visible(False)
+    axs[1].annotate("Solar", xy = (0.002, 0.2), fontsize = "18")
+    
+    # yticks = axs[0].yaxis.get_major_ticks() 
+    # yticks[-1].label1.set_visible(False)
+    
+    xticks = axs[1].yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    #Use this if you wish to have the 0 on the top graph be invisible
+
+    #axs[0].yaxis.get_major_ticks()[1].label1.set_visible(False)
+    for ax in axs.flat:
+        ax.minorticks_on()
+        ax.set_xscale('log')        
+        ax.label_outer()
+        ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+        ax.margins(x = 0)
+
+
+
+    plt.suptitle("Colorado solar penetration and curtailment by cost", fontsize = 12)
+    
+
+    plt.subplots_adjust(hspace = 0)
+    plt.savefig("Images/Pen_and_curtail_CO")
+    plt.show()
+
+
+
+# pen_plus_curtailDNK()
+# pen_plus_curtailESP()
+# pen_plus_curtailCA()
+# pen_plus_curtailCO()
+
+
+
 #penetration_chart()
+#pen_plus_curtail()
