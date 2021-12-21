@@ -287,7 +287,7 @@ def reset_stats(n):
     n.generators.loc[['onshorewind'], ['capital_cost']] = annuity(27,0.07)*1118000*(1+0.012)
     n.generators.loc[['OCGT'], ['capital_cost']] = annuity(25,0.07)*453000*(1+0.018)
 
-def find_solar_data(n, solar_cost):
+def find_solar_data(n, name, solar_cost):
     #Takes annualized coefficient and multiplies by investment cost
   
     annualized_solar_cost =  0.07846970300338728* solar_cost
@@ -300,7 +300,7 @@ def find_solar_data(n, solar_cost):
              pyomo=False,
              solver_name='gurobi')
 
-    n.export_to_netcdf(f"NetCDF/{n}/{solar_cost}solar_cost")
+    n.export_to_netcdf("NetCDF/"+ name + f"/{solar_cost}solar_cost.nc")
     
     #commenting out the sum of generators--battery is so small, we need raw values
     solar_penetration = n.generators_t.p['solar'].sum()/sum(n.generators_t.p.sum())
@@ -346,7 +346,7 @@ def find_solar_data(n, solar_cost):
             (s_curtailment, w_curtailment))
 
 
-def find_wind_data(n, wind_cost):
+def find_wind_data(n, name, wind_cost):
     #Takes annualized coefficient and multiplies by investment cost
   
     annualized_wind_cost = 0.08442684282600257 * wind_cost
@@ -359,9 +359,9 @@ def find_wind_data(n, wind_cost):
              pyomo=False,
              solver_name='gurobi')
 
-    n.export_to_netcdf(f"NetCDF/{n}/wind_cost{wind_cost}")
+    n.export_to_netcdf("NetCDF/" + name + f"/wind_cost{wind_cost}.nc")
 
-def find_C02lim_data(n, co2lim):
+def find_C02lim_data(n, name, co2lim):
     #Takes annualized coefficient and multiplies by investment cost
     n.global_constraints.loc[['co2_limit'],['constant']] = co2lim
     
@@ -373,7 +373,7 @@ def find_C02lim_data(n, co2lim):
              pyomo=False,
              solver_name='gurobi')
 
-    n.export_to_netcdf(f"NetCDF/{n}/co2constraint{co2lim}")
+    n.export_to_netcdf("NetCDF/"+ name + f"/co2constraint{co2lim}.nc")
 
 
 #These four below return 100 points of cost vs solar penetration. 
@@ -382,26 +382,27 @@ for network in mynetworks:
 
 
 
-DNK_solar_data = list(map(find_solar_data, repeat(Denmark), np.logspace(3, 6, 100)))
-ESP_solar_data = list(map(find_solar_data, repeat(Spain), np.logspace(3, 6, 100)))
-CA_solar_data = list(map(find_solar_data, repeat(CA), np.logspace(3, 6, 100)))
-CO_solar_data = list(map(find_solar_data, repeat(CO), np.logspace(3, 6, 100)))
+DNK_solar_data = list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(3, 6, 100)))
+ESP_solar_data = list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(3, 6, 100)))
+CA_solar_data = list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(3, 6, 100)))
+CO_solar_data = list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(3, 6, 100)))
 
 for network in mynetworks:
     reset_stats(network)
 
-map(find_wind_data, repeat(Denmark), np.logspace(3, 6, 100))
-map(find_wind_data, repeat(Spain), np.logspace(3, 6, 100))
-map(find_wind_data, repeat(CA), np.logspace(3, 6, 100))
-map(find_wind_data, repeat(CO), np.logspace(3, 6, 100))
+map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(3, 6, 100))
+map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(3, 6, 100))
+map(find_wind_data, repeat(CA), repeat("CA"), np.logspace(3, 6, 100))
+map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(3, 6, 100))
 
 for network in mynetworks:
     reset_stats(network)
-    
-map(find_C02lim_data, repeat(Denmark), np.logspace(0, 7, 100))
-map(find_C02lim_data, repeat(Spain), np.logspace(0, 7.5, 100))
-map(find_C02lim_data, repeat(CA), np.logspace(0, 7.5, 100))
-map(find_C02lim_data, repeat(CO), np.logspace(0, 7, 100))
+
+map(find_C02lim_data, repeat(Denmark), repeat("Denmark"), np.logspace(0, 7, 100))
+map(find_C02lim_data, repeat(Spain), repeat("Spain"), np.logspace(0, 7.5, 100))
+map(find_C02lim_data, repeat(CA), repeat("CA"), np.logspace(0, 7.5, 100))
+map(find_C02lim_data, repeat(CO), repeat("CO"), np.logspace(0, 7, 100))
+
 
 def penetration_chart():
     #This is our x axis, solar_cost (s_cost)

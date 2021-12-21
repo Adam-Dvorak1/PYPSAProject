@@ -1,3 +1,7 @@
 
 data_extra/demand.csv
 data_extra/demand.jmp
+*.nc
+NetCDF/Denmark/.DS_Store
+NetCDF/.DS_Store
+NetCDF/.DS_Store
