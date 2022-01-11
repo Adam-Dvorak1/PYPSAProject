@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import time
 from itertools import repeat
+import os
 
 
 #network = Denmark, nspain, ncal, ncolorado
@@ -382,10 +383,10 @@ for network in mynetworks:
 
 
 
-DNK_solar_data = list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(3, 6, 100)))
-ESP_solar_data = list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(3, 6, 100)))
-CA_solar_data = list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(3, 6, 100)))
-CO_solar_data = list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(3, 6, 100)))
+# DNK_solar_data = list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(3, 6, 100)))
+# ESP_solar_data = list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(3, 6, 100)))
+# CA_solar_data = list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(3, 6, 100)))
+# CO_solar_data = list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(3, 6, 100)))
 
 for network in mynetworks:
     reset_stats(network)
@@ -398,10 +399,139 @@ map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(3, 6, 100))
 for network in mynetworks:
     reset_stats(network)
 
-map(find_C02lim_data, repeat(Denmark), repeat("Denmark"), np.logspace(0, 7, 100))
-map(find_C02lim_data, repeat(Spain), repeat("Spain"), np.logspace(0, 7.5, 100))
-map(find_C02lim_data, repeat(CA), repeat("CA"), np.logspace(0, 7.5, 100))
-map(find_C02lim_data, repeat(CO), repeat("CO"), np.logspace(0, 7, 100))
+#list(map(find_C02lim_data, repeat(Denmark), repeat("Denmark"), np.linspace(0, 3000000, 100)))
+map(find_C02lim_data, repeat(Spain), repeat("Spain"), np.logspace(0, 30000000, 100))
+map(find_C02lim_data, repeat(CA), repeat("CA"), np.logspace(0, 40000000, 100))
+map(find_C02lim_data, repeat(CO), repeat("CO"), np.logspace(0, 5000000, 100))
+
+
+def import_cdf_data(filepath):
+
+    n = pypsa.Network()
+    n.import_from_netcdf(filepath)
+
+    solar_penetration = n.generators_t.p['solar'].sum()/sum(n.generators_t.p.sum())
+    wind_penetration = n.generators_t.p['onshorewind'].sum()/sum(n.generators_t.p.sum())
+    gas_penetration = n.generators_t.p['OCGT'].sum()/sum(n.generators_t.p.sum())
+
+    s_curtailment = (n.generators_t.p-n.generators.p_nom_opt * n.generators_t.p_max_pu)['solar'].sum()
+    w_curtailment = (n.generators_t.p-n.generators.p_nom_opt * n.generators_t.p_max_pu)['onshorewind'].sum()
+
+    max_gen = (n.generators.p_nom_opt * n.generators_t.p_max_pu)['solar'].sum()
+
+
+    gas_percent = gas_penetration/ (solar_penetration+ wind_penetration + gas_penetration)
+    
+   
+    solar_cost = n.generators.loc[['solar'],['capital_cost']]
+    if max_gen == 0:
+        s_curtailment = 0
+        w_curtailment = 0
+    else:
+        s_curtailment = s_curtailment/max_gen
+        w_curtailment = w_curtailment/max_gen
+
+    
+
+    return solar_cost, solar_penetration, wind_penetration, s_curtailment, w_curtailment, gas_percent
+
+
+
+def iterate_netcdf_solar(country):
+    '''Takes country as a string'''
+    solution_list = []
+    mypath = "NetCDF/" + country 
+    for filename in os.listdir(mypath):
+        if "solar" in filename:
+            f = os.path.join(mypath, filename)
+            solution_list += [import_cdf_data(f)]
+    return solution_list
+
+def iterate_netcdf_co2(country):
+    '''Takes country as a string'''
+    solution_list = []
+    mypath = "NetCDF/" + country 
+    for filename in os.listdir(mypath):
+        #if "solar" in filename:
+        #if "wind" in filename:
+        if "constraint" in filename:
+            f = os.path.join(mypath, filename)
+            solution_list += [import_cdf_data(f)]
+    
+    return solution_list
+
+
+
+
+solardnk = iterate_netcdf_solar("Denmark")
+#co2dnk = iterate_netcdf_co2("Denmark")
+
+
+def flex_plus_curtailDNK(co2):
+
+    DNK_sp = [x[0] for x in co2]
+    DNK_sc = list(map(abs,[x[2] for x in co2]))
+    DNK_gas = [x[4] for x in co2]
+
+    fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axs[0].scatter(DNK_gas, DNK_sc, color = "C1") #Scatter or plot?
+    axs[0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axs[0].set_ylabel("Curtailment")
+    axs[0].set_facecolor("#eeeeee")
+    # labels = axs[0].get_yticklabels()
+    # labels[0] = ""
+    # axs[0].set_yticklabels(labels)
+    
+
+    axs[1].scatter(DNK_gas, DNK_sp, color = "#f1c232")
+    axs[1].set_ylim(0, 1)
+    #axs[1].fill_between(DNK_gas, DNK_sp, color = "#fff2cc")
+    #axs[1].fill_between(DNK_gas, DNK_sp, y2 = 1, color = "#eeeeee")
+    axs[1].set_ylabel("Penetration")
+    axs[1].set_xlabel("Percent flexible source")
+
+    axs[1].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    
+    # axs[1].axvline(0.529, color='black',ls='--')
+    # axs[1].text(0.7,0.05, "Today", horizontalalignment = "center", rotation = "vertical")
+    # axs[1].axvline(0.019, color='black',ls='--')
+    # axs[1].text(0.025,0.05, "2050--Optimistic", horizontalalignment = "center", rotation = "vertical")
+    # axs[1].axvline(0.095, color='black',ls='--')
+    # axs[1].text(0.13,0.05, "2050--Less Optimistic", horizontalalignment = "center", rotation = "vertical")
+    axs[0].spines[["top","right"]].set_visible(False)
+    axs[1].annotate("Solar", xy = (0.002, 0.6), fontsize = "18")
+    
+    # yticks = axs[0].yaxis.get_major_ticks() 
+    # yticks[-1].label1.set_visible(False)
+    
+    xticks = axs[1].yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    #Use this if you wish to have the 0 on the top graph be invisible
+
+    #axs[0].yaxis.get_major_ticks()[1].label1.set_visible(False)
+    for ax in axs.flat:
+        ax.minorticks_on()
+        #ax.set_xscale('log')        
+        ax.label_outer()
+        #ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
+        #ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        #ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+        ax.margins(x = 0)
+
+
+
+    plt.suptitle("Denmark solar penetration and curtailment by fraction flexible option", fontsize = 12)
+    
+
+    plt.subplots_adjust(hspace = 0)
+    plt.savefig("Images/Flex_pen_and_curtail_DNK")
+    plt.show()
+
+flex_plus_curtailDNK(co2dnk)
+
+
 
 
 def penetration_chart():
@@ -576,30 +706,36 @@ def showcurtailment():
 
 
 
-def pen_plus_curtailDNK():
-    s_cost = np.logspace(3, 6, 100)
+def pen_plus_curtailDNK(solar):
+    s_cost = [x[0] for x in solar]
+    s_cost = [x / 10**6 for x in s_cost]
 
-    DNK_sp = [x[0][0] for x in DNK_solar_data]
+    #s_cost = s_cost.sort()
 
-    DNK_sc = list(map(abs, [x[2][0] for x in DNK_solar_data]))
+    DNK_sp = [x[1]for x in solar]
+
+    DNK_sc = list(map(abs, [x[3] for x in solar]))
+
 
     fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
 
-    axs[0].plot(s_cost/10**6, DNK_sc, color = "C1") #Scatter or plot?
+    axs[0].scatter(s_cost, DNK_sc, color = "C1") #Scatter or plot?
     axs[0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
     axs[0].set_ylabel("Curtailment")
     axs[0].set_facecolor("#eeeeee")
+
     # labels = axs[0].get_yticklabels()
     # labels[0] = ""
     # axs[0].set_yticklabels(labels)
     
 
-    axs[1].plot(s_cost/10**6, DNK_sp, color = "#f1c232")
+    axs[1].scatter(s_cost, DNK_sp, color = "#f1c232")
     axs[1].set_ylim(0, 1)
-    axs[1].fill_between(s_cost/10**6, DNK_sp, color = "#fff2cc")
-    axs[1].fill_between(s_cost/10**6, DNK_sp, y2 = 1, color = "#eeeeee")
+    #axs[1].fill_between(s_cost, DNK_sp, color = "#fff2cc")
+    #axs[1].fill_between(s_cost, DNK_sp, y2 = 1, color = "#eeeeee")
     axs[1].set_ylabel("Penetration")
     axs[1].set_xlabel("Cost (€/Wp)")
+
 
     axs[1].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
     
@@ -626,8 +762,8 @@ def pen_plus_curtailDNK():
         ax.set_xscale('log')        
         ax.label_outer()
         ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
-        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
-        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+        #ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        #ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
         ax.margins(x = 0)
 
 
@@ -636,8 +772,10 @@ def pen_plus_curtailDNK():
     
 
     plt.subplots_adjust(hspace = 0)
-    plt.savefig("Images/Pen_and_curtail_DNK")
+    #plt.savefig("Images/Pen_and_curtail_DNK")
     plt.show()
+pen_plus_curtailDNK(solardnk)
+
 
 def pen_plus_curtailESP():
     s_cost = np.logspace(3, 6, 100)
@@ -830,7 +968,7 @@ def pen_plus_curtailCO():
 
 
 
-# pen_plus_curtailDNK()
+pen_plus_curtailDNK(solardnk)
 # pen_plus_curtailESP()
 # pen_plus_curtailCA()
 # pen_plus_curtailCO()
