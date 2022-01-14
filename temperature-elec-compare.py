@@ -7,7 +7,7 @@ import seaborn as sns
 import statsmodels.api as sm
 import matplotlib.dates as mdates
 from decimal import Decimal
-
+from matplotlib import gridspec
 
 def get_temp_data(timeframe):
     
@@ -516,6 +516,7 @@ def plot_ED_and_CF_data():
     
     This serves as figure 1 '''
     elec = get_electricity_data("weekly")[0]
+    print(elec)
 
     #elec = temp_to_elec()["DNK_demand"]
     solar = get_solar_data("weekly")[0]
@@ -554,11 +555,138 @@ def plot_ED_and_CF_data():
     fig.set_size_inches(6.4, 6)
     plt.savefig("images/EDandCFSpain")
     plt.show()
+
 '''This section of equations considers what happens if you take advantage of the relationship between electricity demand and temperature
 to see what happens if you are to increase the temperature by x degrees. In addition, one can '''
 
+def plot_ED_and_CF_data_all():
+    '''This function plots the electricity demand for one country on one axis and the capacity factors on other axes (sharing a y axis).
+    Modify it to change which country (make sure CA and CO use "Time in 2011")
+    
+    we can plot either just elec, or elec+heat, using temp_to_elec
+    
+    This serves as figure 1 '''
+    elecdnk = get_electricity_data("weekly")[1] #note: this returns a DATAFRAME so to to keep it as a dataframe do not use list comprehension
+    elecdnk = elecdnk/max(elecdnk)
+    solardnk = get_solar_data("weekly")[1]
+    winddnk = get_wind_data("weekly")[1]
+    #elec = temp_to_elec()["DNK_demand"]
+    
+    elecesp = get_electricity_data("weekly")[0]
+    elecesp = elecesp/max(elecesp)
+    solaresp = get_solar_data("weekly")[0]
+    windesp = get_wind_data("weekly")[0]
+
+    elecCo = get_electricity_data("weekly")[2]
+    elecCo = elecCo/max(elecCo)
+    #elecCo = [x/max(elecCo) for x in elecCo]
+    solarCo = get_solar_data("weekly")[2]
+    windCo = get_wind_data("weekly")[2]
+
+    elecCA = get_electricity_data("weekly")[3]
+    elecCA = elecCA/max(elecCA)
+
+    #elecCA = [x/max(elecCA) for x in elecCA]
+    solarCA = get_solar_data("weekly")[3]
+    windCA = get_wind_data("weekly")[3]
+
+    fig = plt.figure()
+    fig.set_figheight(5)
+
+    #gs = gridspec.GridSpec(2, 1)
+    axdnk1 = fig.add_subplot(411)
+    axdnk1.set_ylim(0.01, 1)
+    axdnk2=fig.add_subplot(411, frame_on=False)
+    axdnk2.set_ylim(0.01, 1)
+    axdnk3 = fig.add_subplot(411, sharey = axdnk2, frame_on=False)
+    axdnk1.plot(elecdnk, 'C0-', label = "Electricity demand")
+    axdnk2.plot(solardnk, 'C1-',  label = "Solar CF")
+    axdnk2.plot(winddnk, 'C2-',  label = "Wind CF")
+    axdnk1.set_ylabel("Denmark")
+    axdnk1.tick_params(direction = "in")
+
+    axesp1 = fig.add_subplot(412)
+    axesp1.set_ylim(0.01, 1)
+    axesp2= fig.add_subplot(412, frame_on=False)
+    axesp2.set_ylim(0.01, 1)
+    axesp3 = fig.add_subplot(412, sharey = axesp2, frame_on=False)
+    axesp1.plot(elecesp, 'C0-', label = "Electricity demand")
+    axesp2.plot(solaresp, 'C1-', label = "Solar CF")
+    axesp3.plot(windesp, 'C2-', label = "Wind CF")
+    axesp1.set_ylabel("Spain")
+    axesp1.tick_params(direction = "in")
 
 
+    axco1 = fig.add_subplot(413)
+    axco1.set_ylim(0.01, 1)
+    axco2= fig.add_subplot(413, frame_on=False)
+    axco2.set_ylim(0.01, 1)
+    axco3 = fig.add_subplot(413, sharey = axco2, frame_on=False)
+    axco1.plot(elecCo, 'C0-', label = "Electricity demand")
+    axco2.plot(solarCo, 'C1-', label = "Solar CF")
+    axco3.plot(windCo, 'C2-', label = "Wind CF")
+    axco1.set_ylabel("Colorado")
+    axco1.tick_params(direction = "in")
+
+    axca1 = fig.add_subplot(414)
+    axca1.set_ylim(0, 1)
+    axca2= fig.add_subplot(414, frame_on=False)
+    axca2.set_ylim(0, 1)
+    axca3 = fig.add_subplot(414, sharey = axca2, frame_on=False)
+    axca1.plot(elecCA, 'C0-', label = "Electricity demand")
+    axca2.plot(solarCA, 'C1-', label = "Solar CF")
+    axca3.plot(windCA, 'C2-', label = "Wind CF")
+    axca1.set_ylabel("California")
+    axca1.tick_params(direction = "in")
+
+
+
+    fmt = mdates.DateFormatter("%b")
+
+    plt.setp(axdnk1.get_xticklabels(), visible=False)
+    axdnk2.set_xticks([]) #We have two graphs sharing one axis, and without this we would be seeing double
+
+
+    plt.setp(axesp1.get_xticklabels(), visible=False)
+    axesp2.set_xticks([]) #We have two graphs sharing one axis, and without this we would be seeing double
+
+ 
+    plt.setp(axco1.get_xticklabels(), visible=False)
+    axco2.set_xticks([]) #We have two graphs sharing one axis, and without this we would be seeing double
+
+
+    axca1.xaxis.set_major_formatter(fmt)
+    axca2.set_xticks([]) #We have two graphs sharing one axis, and without this we would be seeing double
+
+    axdnk2.yaxis.set_visible(False)
+    axdnk3.set_xticks([])
+    axdnk3.yaxis.set_visible(False)
+
+    axesp2.yaxis.set_visible(False)
+    axesp3.set_xticks([])
+    axesp3.yaxis.set_visible(False)
+
+    axco2.yaxis.set_visible(False)
+    axco3.set_xticks([])
+    axco3.yaxis.set_visible(False)
+
+    axca2.yaxis.set_visible(False)
+    axca3.set_xticks([])
+    axca3.yaxis.set_visible(False)
+
+    #axdnk1.set_title("Denmark Electricity Demand and Capacity factors")
+
+
+    lines1, labels1 = axdnk1.get_legend_handles_labels()
+    lines2, labels2 = axdnk2.get_legend_handles_labels()
+    lines3, labels3 = axdnk3.get_legend_handles_labels()
+
+    fig.legend(lines1+lines2+lines3, labels1+labels2+labels3, bbox_to_anchor=(0.85, 0.06), ncol=3)
+    #fig.set_size_inches(6.4, 6)
+    plt.subplots_adjust(hspace=0)
+    plt.savefig("images/EDandCFALL2")
+    plt.show()
+#plot_ED_and_CF_data_all()
 
 #plot_ED_and_CF_data()
 
@@ -1066,7 +1194,7 @@ def gw_elec_all():
     
     plt.show()
 
-gw_elec_all()
+#gw_elec_all()
 #In this section of code, I want to make a new data table of the averages of the csv files
 # plt.scatter([1,1,4,5,2,1],[2,3,6,7,2,0])
 # b, m = polyfit([1,1,4,5,2,1],[2,3,6,7,2,0],1)

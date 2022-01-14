@@ -7,6 +7,7 @@ import time
 from itertools import repeat
 import os
 import re
+import matplotlib.image as mpimg
 
 #network = Denmark, nspain, ncal, ncolorado
 Denmark = pypsa.Network()
@@ -383,26 +384,26 @@ for network in mynetworks:
 
 
 
-# DNK_solar_data = list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(3, 6, 100)))
-# ESP_solar_data = list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(3, 6, 100)))
-# CA_solar_data = list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(3, 6, 100)))
-# CO_solar_data = list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(3, 6, 100)))
+# DNK_solar_data = list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.linspace(3, 6, 100)))
+# ESP_solar_data = list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.linspace(3, 6, 100)))
+# CA_solar_data = list(map(find_solar_data, repeat(CA), repeat("CA"), np.linspace(3, 6, 100)))
+# CO_solar_data = list(map(find_solar_data, repeat(CO), repeat("CO"), np.linspace(3, 6, 100)))
+
+# for network in mynetworks:
+#     reset_stats(network)
+
+# map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(3, 6, 100))
+# map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(3, 6, 100))
+# map(find_wind_data, repeat(CA), repeat("CA"), np.logspace(3, 6, 100))
+# map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(3, 6, 100))
 
 for network in mynetworks:
     reset_stats(network)
 
-map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(3, 6, 100))
-map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(3, 6, 100))
-map(find_wind_data, repeat(CA), repeat("CA"), np.logspace(3, 6, 100))
-map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(3, 6, 100))
-
-for network in mynetworks:
-    reset_stats(network)
-
-#list(map(find_C02lim_data, repeat(Denmark), repeat("Denmark"), np.linspace(0, 3000000, 100)))
-map(find_C02lim_data, repeat(Spain), repeat("Spain"), np.logspace(0, 30000000, 100))
-map(find_C02lim_data, repeat(CA), repeat("CA"), np.logspace(0, 40000000, 100))
-map(find_C02lim_data, repeat(CO), repeat("CO"), np.logspace(0, 5000000, 100))
+list(map(find_C02lim_data, repeat(Denmark), repeat("Denmark"), np.linspace(0, 3000000, 100)))
+list(map(find_C02lim_data, repeat(Spain), repeat("Spain"), np.logspace(0, 30000000, 100)))
+list(map(find_C02lim_data, repeat(CA), repeat("CA"), np.logspace(0, 40000000, 100)))
+list(map(find_C02lim_data, repeat(CO), repeat("CO"), np.logspace(0, 5000000, 100)))
 
 
 
@@ -423,12 +424,9 @@ def import_cdf_data(filepath):
 
     max_gen = (n.generators.p_nom_opt * n.generators_t.p_max_pu)['solar'].sum()
 
-
-    gas_percent = gas_penetration/ (solar_penetration+ wind_penetration + gas_penetration)
     
    
     solar_cost = n.generators.loc[['solar'],['capital_cost']].values[0]
-    print(solar_cost)
     if max_gen == 0:
         s_curtailment = 0
         w_curtailment = 0
@@ -438,14 +436,13 @@ def import_cdf_data(filepath):
 
     
 
-    return solar_cost, solar_penetration, wind_penetration, s_curtailment, w_curtailment, gas_percent
+    return solar_cost, solar_penetration, wind_penetration, s_curtailment, w_curtailment, gas_penetration
 
 
 def natural_sort(l): 
     convert = lambda text: int(text) if text.isdigit() else text.lower()
     alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
     return sorted(l, key=alphanum_key)
-
 
 
 
@@ -457,8 +454,6 @@ def iterate_netcdf_solar(country):
         if "solar" in filename:
             f = os.path.join(mypath, filename)
             solution_list += [import_cdf_data(f)]
-            print(filename)
-        
     return solution_list
 
 
@@ -468,7 +463,7 @@ def iterate_netcdf_co2(country):
     '''Takes country as a string'''
     solution_list = []
     mypath = "NetCDF/" + country 
-    for filename in os.listdir(mypath):
+    for filename in natural_sort(os.listdir(mypath)):
         #if "solar" in filename:
         #if "wind" in filename:
         if "constraint" in filename:
@@ -480,7 +475,7 @@ def iterate_netcdf_co2(country):
 
 
 
-#solardnk = iterate_netcdf_solar("Denmark")
+solardnk = iterate_netcdf_solar("Denmark")
 solaresp = iterate_netcdf_solar("Spain")
 solarcol = iterate_netcdf_solar("CO")
 solarcal = iterate_netcdf_solar("CA")
@@ -795,12 +790,14 @@ def pen_plus_curtailDNK(solar):
 
 
 
-    plt.suptitle("Denmark solar penetration and curtailment by cost", fontsize = 12)
+    plt.suptitle("Denmark")
     
 
     plt.subplots_adjust(hspace = 0)
-    plt.savefig("Images/Pen_and_curtail_DNK")
-    plt.show()
+    #plt.savefig("Images/Pen_and_curtail_DNK")
+    #plt.show()
+    plt.close(fig)
+    return axs
 #pen_plus_curtailDNK(solardnk)
 
 def pen_plus_curtailESP(solar):
@@ -872,13 +869,15 @@ def pen_plus_curtailESP(solar):
 
 
 
-    plt.suptitle("Spain solar penetration and curtailment by cost", fontsize = 12)
+    plt.suptitle("Spain")
     
 
     plt.subplots_adjust(hspace = 0)
-    plt.savefig("Images/Pen_and_curtail_ESP")
-    plt.show()
-pen_plus_curtailESP(solaresp)
+    #plt.savefig("Images/Pen_and_curtail_ESP")
+    #plt.show()
+    plt.close(fig)
+    return axs
+#pen_plus_curtailESP(solaresp)
 
 def pen_plus_curtailCO(solar):
     s_cost = [x[0] for x in solar]
@@ -949,13 +948,15 @@ def pen_plus_curtailCO(solar):
 
 
 
-    plt.suptitle("CO solar penetration and curtailment by cost", fontsize = 12)
+    plt.suptitle("Colorado")
     
 
     plt.subplots_adjust(hspace = 0)
-    plt.savefig("Images/Pen_and_curtail_CO")
-    plt.show()
-pen_plus_curtailCO(solarcol)
+    #plt.savefig("Images/Pen_and_curtail_CO")
+    #plt.show()
+    plt.close(fig)
+    return axs
+#pen_plus_curtailCO(solarcol)
 
 
 def pen_plus_curtailCA(solar):
@@ -1027,13 +1028,15 @@ def pen_plus_curtailCA(solar):
 
 
 
-    plt.suptitle("CA solar penetration and curtailment by cost", fontsize = 12)
+    plt.suptitle("California")
     
 
     plt.subplots_adjust(hspace = 0)
-    plt.savefig("Images/Pen_and_curtail_CA")
-    plt.show()
-pen_plus_curtailCA(solarcal)
+    #plt.savefig("Images/Pen_and_curtail_CA")
+    #plt.show()
+    plt.close(fig)
+    return axs
+#pen_plus_curtailCA(solarcal)
 
 
 
@@ -1042,10 +1045,10 @@ def pen_plus_curtailALL():
     
     fig2 = plt.figure()
 
-    ax1  = pen_plus_curtailDNK()
-    ax2 = pen_plus_curtailESP()
-    ax3 = pen_plus_curtailCO()
-    ax4 = pen_plus_curtailCA()
+    ax1  = pen_plus_curtailDNK(solardnk)
+    ax2 = pen_plus_curtailESP(solaresp)
+    ax3 = pen_plus_curtailCO(solarcol)
+    ax4 = pen_plus_curtailCA(solarcal)
  
     ax1.figure = fig2
     ax2.figure = fig2
@@ -1099,7 +1102,23 @@ def pen_plus_curtailALL():
     
     
     plt.show()
+#pen_plus_curtailALL()
 
+def plot_an_image():
+    '''What I am making here '''
+    fig, axs = plt.subplots(2,1)
+    img1 = mpimg.imread("Images/Figure4.png")
+    img2 = mpimg.imread("Images/Figure_1.png")
+    axs[0].imshow(img1)
+    axs[1].imshow(img2)
+    plt.subplots_adjust(hspace = 0)
+
+    for ax in axs.flat:
+        ax.axis("off")
+    plt.show()
+
+
+plot_an_image()
 #pen_plus_curtailDNK(solardnk)
 #pen_plus_curtailESP(solaresp)
 #pen_plus_curtailCA(solarcal)
