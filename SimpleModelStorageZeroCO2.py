@@ -6,7 +6,7 @@ import matplotlib.ticker as mtick
 import time
 from itertools import repeat
 import os
-
+import re
 
 #network = Denmark, nspain, ncal, ncolorado
 Denmark = pypsa.Network()
@@ -405,7 +405,11 @@ map(find_C02lim_data, repeat(CA), repeat("CA"), np.logspace(0, 40000000, 100))
 map(find_C02lim_data, repeat(CO), repeat("CO"), np.logspace(0, 5000000, 100))
 
 
+
+
+
 def import_cdf_data(filepath):
+    '''This is critical to getting the data that we previously stored'''
 
     n = pypsa.Network()
     n.import_from_netcdf(filepath)
@@ -423,7 +427,8 @@ def import_cdf_data(filepath):
     gas_percent = gas_penetration/ (solar_penetration+ wind_penetration + gas_penetration)
     
    
-    solar_cost = n.generators.loc[['solar'],['capital_cost']]
+    solar_cost = n.generators.loc[['solar'],['capital_cost']].values[0]
+    print(solar_cost)
     if max_gen == 0:
         s_curtailment = 0
         w_curtailment = 0
@@ -436,16 +441,28 @@ def import_cdf_data(filepath):
     return solar_cost, solar_penetration, wind_penetration, s_curtailment, w_curtailment, gas_percent
 
 
+def natural_sort(l): 
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
+    return sorted(l, key=alphanum_key)
+
+
+
 
 def iterate_netcdf_solar(country):
     '''Takes country as a string'''
     solution_list = []
     mypath = "NetCDF/" + country 
-    for filename in os.listdir(mypath):
+    for filename in natural_sort(os.listdir(mypath)):
         if "solar" in filename:
             f = os.path.join(mypath, filename)
             solution_list += [import_cdf_data(f)]
+            print(filename)
+        
     return solution_list
+
+
+
 
 def iterate_netcdf_co2(country):
     '''Takes country as a string'''
@@ -463,7 +480,10 @@ def iterate_netcdf_co2(country):
 
 
 
-solardnk = iterate_netcdf_solar("Denmark")
+#solardnk = iterate_netcdf_solar("Denmark")
+solaresp = iterate_netcdf_solar("Spain")
+solarcol = iterate_netcdf_solar("CO")
+solarcal = iterate_netcdf_solar("CA")
 #co2dnk = iterate_netcdf_co2("Denmark")
 
 
@@ -529,7 +549,7 @@ def flex_plus_curtailDNK(co2):
     plt.savefig("Images/Flex_pen_and_curtail_DNK")
     plt.show()
 
-flex_plus_curtailDNK(co2dnk)
+#flex_plus_curtailDNK(co2dnk)
 
 
 
@@ -708,11 +728,15 @@ def showcurtailment():
 
 def pen_plus_curtailDNK(solar):
     s_cost = [x[0] for x in solar]
-    s_cost = [x / 10**6 for x in s_cost]
+    s_cost = [item for sublist in s_cost for item in sublist]
+    s_cost = [x / 10**6 /0.07846970300338728 for x in s_cost] #we want to convert to Euro/Wp, not Eur/MW
+    #I did something really dumb--I had been plotting the annualized solar cost on the x axis, but this was not
+    #the value that I was interested in
 
     #s_cost = s_cost.sort()
 
     DNK_sp = [x[1]for x in solar]
+    DNK_wp = [x[2] for x in solar]
 
     DNK_sc = list(map(abs, [x[3] for x in solar]))
 
@@ -728,9 +752,11 @@ def pen_plus_curtailDNK(solar):
     # labels[0] = ""
     # axs[0].set_yticklabels(labels)
     
-
-    axs[1].scatter(s_cost, DNK_sp, color = "#f1c232")
+    axs[1].stackplot(s_cost, DNK_sp, DNK_wp, colors = ["#f1c232", "#2986cc"], labels = ["Solar", "Wind"])
+    #axs[1].stackplot(s_cost, DNK_sp, colors = ["#f1c232"])
     axs[1].set_ylim(0, 1)
+    axs[1].set_xlim(left = 0.001, right = 1)
+    axs[0].set_xlim(left = 0.001, right = 1)
     #axs[1].fill_between(s_cost, DNK_sp, color = "#fff2cc")
     #axs[1].fill_between(s_cost, DNK_sp, y2 = 1, color = "#eeeeee")
     axs[1].set_ylabel("Penetration")
@@ -745,7 +771,8 @@ def pen_plus_curtailDNK(solar):
     axs[1].text(0.025,0.05, "2050--Optimistic", horizontalalignment = "center", rotation = "vertical")
     axs[1].axvline(0.095, color='black',ls='--')
     axs[1].text(0.13,0.05, "2050--Less Optimistic", horizontalalignment = "center", rotation = "vertical")
-    axs[0].spines[["top","right"]].set_visible(False)
+    axs[0].spines["top"].set_visible(False)
+    axs[0].spines["right"].set_visible(False)
     axs[1].annotate("Solar", xy = (0.002, 0.2), fontsize = "18")
     
     # yticks = axs[0].yaxis.get_major_ticks() 
@@ -753,7 +780,7 @@ def pen_plus_curtailDNK(solar):
     
     xticks = axs[1].yaxis.get_major_ticks() 
     xticks[-1].label1.set_visible(False)
-
+    axs[1].legend()
     #Use this if you wish to have the 0 on the top graph be invisible
 
     #axs[0].yaxis.get_major_ticks()[1].label1.set_visible(False)
@@ -762,8 +789,8 @@ def pen_plus_curtailDNK(solar):
         ax.set_xscale('log')        
         ax.label_outer()
         ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
-        #ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
-        #ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
         ax.margins(x = 0)
 
 
@@ -772,35 +799,46 @@ def pen_plus_curtailDNK(solar):
     
 
     plt.subplots_adjust(hspace = 0)
-    #plt.savefig("Images/Pen_and_curtail_DNK")
+    plt.savefig("Images/Pen_and_curtail_DNK")
     plt.show()
-pen_plus_curtailDNK(solardnk)
+#pen_plus_curtailDNK(solardnk)
 
+def pen_plus_curtailESP(solar):
+    s_cost = [x[0] for x in solar]
+    s_cost = [item for sublist in s_cost for item in sublist]
+    s_cost = [x / 10**6 /0.07846970300338728 for x in s_cost] #we want to convert to Euro/Wp, not Eur/MW
+    #I did something really dumb--I had been plotting the annualized solar cost on the x axis, but this was not
+    #the value that I was interested in
 
-def pen_plus_curtailESP():
-    s_cost = np.logspace(3, 6, 100)
+    #s_cost = s_cost.sort()
 
-    ESP_sp = [x[0][0] for x in ESP_solar_data]
+    ESP_sp = [x[1]for x in solar]
+    ESP_wp = [x[2] for x in solar]
 
-    ESP_sc = list(map(abs, [x[2][0] for x in ESP_solar_data]))
+    ESP_sc = list(map(abs, [x[3] for x in solar]))
+
 
     fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
 
-    axs[0].plot(s_cost/10**6, ESP_sc, color = "C1") #Scatter or plot?
+    axs[0].scatter(s_cost, ESP_sc, color = "C1") #Scatter or plot?
     axs[0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
     axs[0].set_ylabel("Curtailment")
     axs[0].set_facecolor("#eeeeee")
+
     # labels = axs[0].get_yticklabels()
     # labels[0] = ""
     # axs[0].set_yticklabels(labels)
     
-
-    axs[1].plot(s_cost/10**6, ESP_sp, color = "#f1c232")
+    axs[1].stackplot(s_cost, ESP_sp, ESP_wp, colors = ["#f1c232", "#2986cc"], labels = ["Solar", "Wind"])
+    #axs[1].scatter(s_cost, ESP_sp, color = "#f1c232")
     axs[1].set_ylim(0, 1)
-    axs[1].fill_between(s_cost/10**6, ESP_sp, color = "#fff2cc")
-    axs[1].fill_between(s_cost/10**6, ESP_sp, y2 = 1, color = "#eeeeee")
+    axs[1].set_xlim(left = 0.001, right = 1)
+    axs[0].set_xlim(left = 0.001, right = 1)
+    #axs[1].fill_between(s_cost, DNK_sp, color = "#fff2cc")
+    #axs[1].fill_between(s_cost, DNK_sp, y2 = 1, color = "#eeeeee")
     axs[1].set_ylabel("Penetration")
     axs[1].set_xlabel("Cost (€/Wp)")
+
 
     axs[1].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
     
@@ -810,7 +848,8 @@ def pen_plus_curtailESP():
     axs[1].text(0.025,0.05, "2050--Optimistic", horizontalalignment = "center", rotation = "vertical")
     axs[1].axvline(0.095, color='black',ls='--')
     axs[1].text(0.13,0.05, "2050--Less Optimistic", horizontalalignment = "center", rotation = "vertical")
-    axs[0].spines[["top","right"]].set_visible(False)
+    axs[0].spines["top"].set_visible(False)
+    axs[0].spines["right"].set_visible(False)
     axs[1].annotate("Solar", xy = (0.002, 0.2), fontsize = "18")
     
     # yticks = axs[0].yaxis.get_major_ticks() 
@@ -839,31 +878,44 @@ def pen_plus_curtailESP():
     plt.subplots_adjust(hspace = 0)
     plt.savefig("Images/Pen_and_curtail_ESP")
     plt.show()
+pen_plus_curtailESP(solaresp)
 
-def pen_plus_curtailCA():
-    s_cost = np.logspace(3, 6, 100)
+def pen_plus_curtailCO(solar):
+    s_cost = [x[0] for x in solar]
+    s_cost = [item for sublist in s_cost for item in sublist]
+    s_cost = [x / 10**6 /0.07846970300338728 for x in s_cost] #we want to convert to Euro/Wp, not Eur/MW
+    #I did something really dumb--I had been plotting the annualized solar cost on the x axis, but this was not
+    #the value that I was interested in
 
-    CA_sp = [x[0][0] for x in CA_solar_data]
+    #s_cost = s_cost.sort()
 
-    CA_sc = list(map(abs, [x[2][0] for x in CA_solar_data]))
+    CO_sp = [x[1]for x in solar]
+    CO_wp = [x[2] for x in solar]
+
+    CO_sc = list(map(abs, [x[3] for x in solar]))
+
 
     fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
 
-    axs[0].plot(s_cost/10**6, CA_sc, color = "C1") #Scatter or plot?
+    axs[0].scatter(s_cost, CO_sc, color = "C1") #Scatter or plot?
     axs[0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
     axs[0].set_ylabel("Curtailment")
     axs[0].set_facecolor("#eeeeee")
+
     # labels = axs[0].get_yticklabels()
     # labels[0] = ""
     # axs[0].set_yticklabels(labels)
     
-
-    axs[1].plot(s_cost/10**6, CA_sp, color = "#f1c232")
+    axs[1].stackplot(s_cost, CO_sp, CO_wp, colors = ["#f1c232", "#2986cc"], labels = ["Solar", "Wind"])
+    #axs[1].scatter(s_cost, CO_sp, color = "#f1c232")
     axs[1].set_ylim(0, 1)
-    axs[1].fill_between(s_cost/10**6, CA_sp, color = "#fff2cc")
-    axs[1].fill_between(s_cost/10**6, CA_sp, y2 = 1, color = "#eeeeee")
+    axs[1].set_xlim(left = 0.001, right = 1)
+    axs[0].set_xlim(left = 0.001, right = 1)
+    #axs[1].fill_between(s_cost, DNK_sp, color = "#fff2cc")
+    #axs[1].fill_between(s_cost, DNK_sp, y2 = 1, color = "#eeeeee")
     axs[1].set_ylabel("Penetration")
     axs[1].set_xlabel("Cost (€/Wp)")
+
 
     axs[1].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
     
@@ -873,7 +925,8 @@ def pen_plus_curtailCA():
     axs[1].text(0.025,0.05, "2050--Optimistic", horizontalalignment = "center", rotation = "vertical")
     axs[1].axvline(0.095, color='black',ls='--')
     axs[1].text(0.13,0.05, "2050--Less Optimistic", horizontalalignment = "center", rotation = "vertical")
-    axs[0].spines[["top","right"]].set_visible(False)
+    axs[0].spines["top"].set_visible(False)
+    axs[0].spines["right"].set_visible(False)
     axs[1].annotate("Solar", xy = (0.002, 0.2), fontsize = "18")
     
     # yticks = axs[0].yaxis.get_major_ticks() 
@@ -896,82 +949,163 @@ def pen_plus_curtailCA():
 
 
 
-    plt.suptitle("California solar penetration and curtailment by cost", fontsize = 12)
-    
-
-    plt.subplots_adjust(hspace = 0)
-    plt.savefig("Images/Pen_and_curtail_CA")
-    plt.show()
-
-def pen_plus_curtailCO():
-    s_cost = np.logspace(3, 6, 100)
-
-    CO_sp = [x[0][0] for x in CO_solar_data]
-
-    CO_sc = list(map(abs, [x[2][0] for x in CO_solar_data]))
-
-    fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
-
-    axs[0].plot(s_cost/10**6, CO_sc, color = "C1") #Scatter or plot?
-    axs[0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    axs[0].set_ylabel("Curtailment")
-    axs[0].set_facecolor("#eeeeee")
-    # labels = axs[0].get_yticklabels()
-    # labels[0] = ""
-    # axs[0].set_yticklabels(labels)
-    
-
-    axs[1].plot(s_cost/10**6, CO_sp, color = "#f1c232")
-    axs[1].set_ylim(0, 1)
-    axs[1].fill_between(s_cost/10**6, CO_sp, color = "#fff2cc")
-    axs[1].fill_between(s_cost/10**6, CO_sp, y2 = 1, color = "#eeeeee")
-    axs[1].set_ylabel("Penetration")
-    axs[1].set_xlabel("Cost (€/Wp)")
-
-    axs[1].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    
-    axs[1].axvline(0.529, color='black',ls='--')
-    axs[1].text(0.7,0.05, "Today", horizontalalignment = "center", rotation = "vertical")
-    axs[1].axvline(0.019, color='black',ls='--')
-    axs[1].text(0.025,0.05, "2050--Optimistic", horizontalalignment = "center", rotation = "vertical")
-    axs[1].axvline(0.095, color='black',ls='--')
-    axs[1].text(0.13,0.05, "2050--Less Optimistic", horizontalalignment = "center", rotation = "vertical")
-    axs[0].spines[["top","right"]].set_visible(False)
-    axs[1].annotate("Solar", xy = (0.002, 0.2), fontsize = "18")
-    
-    # yticks = axs[0].yaxis.get_major_ticks() 
-    # yticks[-1].label1.set_visible(False)
-    
-    xticks = axs[1].yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
-
-    #Use this if you wish to have the 0 on the top graph be invisible
-
-    #axs[0].yaxis.get_major_ticks()[1].label1.set_visible(False)
-    for ax in axs.flat:
-        ax.minorticks_on()
-        ax.set_xscale('log')        
-        ax.label_outer()
-        ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
-        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
-        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
-        ax.margins(x = 0)
-
-
-
-    plt.suptitle("Colorado solar penetration and curtailment by cost", fontsize = 12)
+    plt.suptitle("CO solar penetration and curtailment by cost", fontsize = 12)
     
 
     plt.subplots_adjust(hspace = 0)
     plt.savefig("Images/Pen_and_curtail_CO")
     plt.show()
+pen_plus_curtailCO(solarcol)
+
+
+def pen_plus_curtailCA(solar):
+    s_cost = [x[0] for x in solar]
+    s_cost = [item for sublist in s_cost for item in sublist]
+    s_cost = [x / 10**6 /0.07846970300338728 for x in s_cost] #we want to convert to Euro/Wp, not Eur/MW
+    #I did something really dumb--I had been plotting the annualized solar cost on the x axis, but this was not
+    #the value that I was interested in
+
+    #s_cost = s_cost.sort()
+
+    CA_sp = [x[1]for x in solar]
+    CA_wp = [x[2] for x in solar]
+
+    CA_sc = list(map(abs, [x[3] for x in solar]))
+
+
+    fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axs[0].scatter(s_cost, CA_sc, color = "C1") #Scatter or plot?
+    axs[0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axs[0].set_ylabel("Curtailment")
+    axs[0].set_facecolor("#eeeeee")
+
+    # labels = axs[0].get_yticklabels()
+    # labels[0] = ""
+    # axs[0].set_yticklabels(labels)
+    
+    axs[1].stackplot(s_cost, CA_sp, CA_wp, colors = ["#f1c232", "#2986cc"], labels = ["Solar", "Wind"])
+    #axs[1].scatter(s_cost, CA_sp, color = "#f1c232")
+    axs[1].set_ylim(0, 1)
+    axs[1].set_xlim(left = 0.001, right = 1)
+    axs[0].set_xlim(left = 0.001, right = 1)
+    #axs[1].fill_between(s_cost, DNK_sp, color = "#fff2cc")
+    #axs[1].fill_between(s_cost, DNK_sp, y2 = 1, color = "#eeeeee")
+    axs[1].set_ylabel("Penetration")
+    axs[1].set_xlabel("Cost (€/Wp)")
+
+
+    axs[1].yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    
+    axs[1].axvline(0.529, color='black',ls='--')
+    axs[1].text(0.7,0.05, "Today", horizontalalignment = "center", rotation = "vertical")
+    axs[1].axvline(0.019, color='black',ls='--')
+    axs[1].text(0.025,0.05, "2050--Optimistic", horizontalalignment = "center", rotation = "vertical")
+    axs[1].axvline(0.095, color='black',ls='--')
+    axs[1].text(0.13,0.05, "2050--Less Optimistic", horizontalalignment = "center", rotation = "vertical")
+    axs[0].spines["top"].set_visible(False)
+    axs[0].spines["right"].set_visible(False)
+    axs[1].annotate("Solar", xy = (0.002, 0.2), fontsize = "18")
+    
+    # yticks = axs[0].yaxis.get_major_ticks() 
+    # yticks[-1].label1.set_visible(False)
+    
+    xticks = axs[1].yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    #Use this if you wish to have the 0 on the top graph be invisible
+
+    #axs[0].yaxis.get_major_ticks()[1].label1.set_visible(False)
+    for ax in axs.flat:
+        ax.minorticks_on()
+        ax.set_xscale('log')        
+        ax.label_outer()
+        ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+        ax.margins(x = 0)
 
 
 
-pen_plus_curtailDNK(solardnk)
-# pen_plus_curtailESP()
-# pen_plus_curtailCA()
-# pen_plus_curtailCO()
+    plt.suptitle("CA solar penetration and curtailment by cost", fontsize = 12)
+    
+
+    plt.subplots_adjust(hspace = 0)
+    plt.savefig("Images/Pen_and_curtail_CA")
+    plt.show()
+pen_plus_curtailCA(solarcal)
+
+
+
+
+def pen_plus_curtailALL():
+    
+    fig2 = plt.figure()
+
+    ax1  = pen_plus_curtailDNK()
+    ax2 = pen_plus_curtailESP()
+    ax3 = pen_plus_curtailCO()
+    ax4 = pen_plus_curtailCA()
+ 
+    ax1.figure = fig2
+    ax2.figure = fig2
+    ax3.figure = fig2
+    ax4.figure = fig2
+
+    fig2.axes.append(ax1)
+    fig2.add_axes(ax1)
+    fig2.axes.append(ax2)
+    fig2.add_axes(ax2)
+    fig2.axes.append(ax3)
+    fig2.add_axes(ax3)
+    fig2.axes.append(ax4)
+    fig2.add_axes(ax4)
+
+    dummy = fig2.add_subplot(221)
+    ax1.set_position(dummy.get_position())
+    dummy.remove()
+    axpos = ax1.get_position()
+    ax1.set_position([axpos.x0+0.1, axpos.y0+0.6, axpos.width*2, axpos.height*2])
+
+
+
+    dummy = fig2.add_subplot(222)
+    ax2.set_position(dummy.get_position())
+    dummy.remove()
+    axpos = ax2.get_position()
+    ax2.set_position([axpos.x0+0.7, axpos.y0+0.6, axpos.width*2, axpos.height*2])
+
+    dummy = fig2.add_subplot(223)
+    ax3.set_position(dummy.get_position())
+    dummy.remove()
+    axpos = ax3.get_position()
+    ax3.set_position([axpos.x0+0.1, axpos.y0+0.1, axpos.width*2, axpos.height*2])
+
+    dummy = fig2.add_subplot(224)
+    ax4.set_position(dummy.get_position())
+    dummy.remove()
+    axpos = ax4.get_position()
+    ax4.set_position([axpos.x0+0.7, axpos.y0+0.1, axpos.width*2, axpos.height*2])
+
+    #fig2.set_size_inches(12.5, 9)
+    fig2.patch.set_facecolor("white")
+    fig2.suptitle("Increase of 4 degrees")
+
+    lines1, labels1 = ax1.get_legend_handles_labels()
+
+    fig2.legend(lines1, labels1, bbox_to_anchor=(0.75, 0.075), ncol=2)
+
+    fig2.savefig("Images/elct_dmd_gw_change_all")
+    
+    
+    plt.show()
+
+#pen_plus_curtailDNK(solardnk)
+#pen_plus_curtailESP(solaresp)
+#pen_plus_curtailCA(solarcal)
+#pen_plus_curtailCO(solarcol)
+
+
 
 
 
