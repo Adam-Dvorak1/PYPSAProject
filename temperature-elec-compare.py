@@ -2,12 +2,12 @@ from matplotlib import markers
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.polynomial.polynomial import polyfit
-import seaborn as sns
+# from numpy.polynomial.polynomial import polyfit
+# import seaborn as sns
 import statsmodels.api as sm
 import matplotlib.dates as mdates
 from decimal import Decimal
-from matplotlib import gridspec
+#from matplotlib import gridspec
 
 def get_temp_data(timeframe):
     
@@ -864,6 +864,7 @@ def gw_elec_California(degree_change, slope_factor):
 
     ax.text (0.05, 0.6, textstr, transform = ax.transAxes, fontsize = 10, bbox = dict(boxstyle = "square", facecolor = "white", alpha = 0.5), verticalalignment = "top")
 
+    ax.text(0.9, 0.1, "˚C")
     ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with modification")
 
     ax.axvline(15.79, color='black',ls='--', alpha = 0.5)
@@ -953,7 +954,7 @@ def gw_elec_Spain_t(degree_change, slope_factor):
 
     fig, ax = plt.subplots()
 
-    ax.scatter(df["x"], df["y"], color = "C0", label = "original")
+    ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
     
     df["y"] = df.apply(lambda row: row["y"] + 865.2 * degree_change if row["x"] > 22.267 #Add according to positive slope if starts in cooling region
     else row["y"] + 865.2 * (row["x"] - 22.267 + degree_change) if row["x"]+ degree_change  >22.267 and row["x"] > 16
@@ -971,14 +972,15 @@ def gw_elec_Spain_t(degree_change, slope_factor):
 
     ax.axvline(16, color='black',ls='--', alpha = 0.5)
     ax.text(16, ax.get_ybound()[1]-1500, "T_th", horizontalalignment = "center", color = "C3")
-
+    
     ax.axvline(22.267, color='black',ls='--', alpha = 0.5)
     ax.text(22.267, ax.get_ybound()[1]-1500, "T_th", horizontalalignment = "center", color = "C2")
 
     
-    ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with modification")
+    ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with modification")
     ax.set_title("Spain")
-    ax.set_ylabel("Electricity demand (MWh)")
+    #ax.set_ylabel("Electricity demand (MWh)")
+
     #plt.savefig(f"images/GWESP_incr{degree_change}_slope{slope_factor}")
     plt.close(fig)
     return ax
@@ -996,7 +998,7 @@ def gw_elec_Colorado_t(degree_change, slope_factor):
 
     fig, ax = plt.subplots()
 
-    ax.scatter(df["x"], df["y"], color = "C0", label = "original")
+    ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
 
     df["y"] = df.apply(lambda row: row["y"] + 232 * degree_change if row["x"] > 15.56 #Add according to positive slope if starts in cooling region
     else row["y"] + 232 * (row["x"] - 15.56 + degree_change) if row["x"]+ degree_change  >15.56 and row["x"] > 7.32
@@ -1011,7 +1013,7 @@ def gw_elec_Colorado_t(degree_change, slope_factor):
 
     df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
     #print(df)
-    ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with modification")
+    ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with modification")
 
     ax.axvline(7.32, color='black',ls='--', alpha = 0.5)
     ax.text(7.32, ax.get_ybound()[1]-500, "T_th", horizontalalignment = "center", color = "C3")
@@ -1053,7 +1055,7 @@ def gw_elec_California_t(degree_change, slope_factor):
     total_elec_demand = round(df["y"].sum())
 
     fig, ax = plt.subplots()
-    ax.scatter(df["x"], df["y"], color = "C0", label = "original")
+    ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
 
 
     df["y"] = df.apply(lambda row: row ["y"] + 1093.304 * degree_change if row["x"] > 15.79 
@@ -1066,7 +1068,7 @@ def gw_elec_California_t(degree_change, slope_factor):
     df["y"] = df.apply(lambda row: row["y"] + (row ["y"] - 32500) * (slope_factor-1) if row["x"] > 15.79 and row["y"] > 32500
     else row["y"], axis = 1)
 
-    ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with modification")
+    ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with modification")
 
     ax.axvline(15.79, color='black',ls='--', alpha = 0.5)
     ax.text(15.79, ax.get_ybound()[1]-1500, "T_th", horizontalalignment = "center", color = "C2")
@@ -1074,7 +1076,7 @@ def gw_elec_California_t(degree_change, slope_factor):
 
     #ax.legend()
     ax.set_title("California")
-    ax.set_ylabel("Electricity demand (MWh)")
+    #ax.set_ylabel("Electricity demand (MWh)")
     fig.subplots_adjust(bottom=0.2)
     #print(df['y'].sum())
     #plt.savefig(f"images/GWCali_incr{degree_change}_slope{slope_factor}")
@@ -1099,7 +1101,7 @@ def gw_elec_Denmark_t(degree_change):
     total_elec_demand = round(df["y"].sum())
     #print(df['y'].sum())
     fig, ax = plt.subplots()
-    ax.scatter(df["x"], df["y"], color = "C0", label = "original")
+    ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
 
     df["y"] = df.apply(lambda row: row ["y"] if row["x"] > 15.8
     else row["y"] - 273.665 * (15.8-row["x"]) if row["x"]+ degree_change - 15.8 > 0 
@@ -1114,7 +1116,7 @@ def gw_elec_Denmark_t(degree_change):
     ax.axvline(15.8, color='black',ls='--', alpha = 0.5)
     ax.text(15.8, ax.get_ybound()[1]-500, "T_th", horizontalalignment = "center", color = "C3")
 
-    ax.scatter(df["x"], df["y"], marker = "^", color = "C1", label = "with modification")
+    ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "synthetic global warming (+4˚C)")
 
     ax.set_title("Denmark")
     ax.set_ylabel("Electricity demand (MWh)")
@@ -1126,7 +1128,6 @@ def gw_elec_Denmark_t(degree_change):
     #print(df['y'].sum())
 
     return ax
-
 
 
 
@@ -1158,43 +1159,46 @@ def gw_elec_all():
     dummy = fig2.add_subplot(221)
     ax1.set_position(dummy.get_position())
     dummy.remove()
-    axpos = ax1.get_position()
-    ax1.set_position([axpos.x0+0.1, axpos.y0+0.6, axpos.width*2, axpos.height*2])
+    axpos1 = ax1.get_position()
 
+    ax1.set_position([axpos1.x0, axpos1.y0+0.04, axpos1.width, axpos1.height])
 
 
     dummy = fig2.add_subplot(222)
     ax2.set_position(dummy.get_position())
     dummy.remove()
-    axpos = ax2.get_position()
-    ax2.set_position([axpos.x0+0.7, axpos.y0+0.6, axpos.width*2, axpos.height*2])
+    axpos2 = ax2.get_position()
+    ax2.set_position([axpos2.x0+0.05, axpos2.y0+0.04, axpos2.width, axpos2.height])
 
     dummy = fig2.add_subplot(223)
     ax3.set_position(dummy.get_position())
     dummy.remove()
-    axpos = ax3.get_position()
-    ax3.set_position([axpos.x0+0.1, axpos.y0+0.1, axpos.width*2, axpos.height*2])
+    axpos3 = ax3.get_position()
+    ax3.set_position([axpos3.x0, axpos3.y0+0.01, axpos3.width, axpos3.height])
 
     dummy = fig2.add_subplot(224)
     ax4.set_position(dummy.get_position())
     dummy.remove()
-    axpos = ax4.get_position()
-    ax4.set_position([axpos.x0+0.7, axpos.y0+0.1, axpos.width*2, axpos.height*2])
+    axpos4 = ax4.get_position()
+    ax4.set_position([axpos4.x0+0.05, axpos4.y0+0.01, axpos4.width, axpos4.height])
 
-    #fig2.set_size_inches(12.5, 9)
+    #fig2.set_size_inches(6.4, 5)
     fig2.patch.set_facecolor("white")
-    fig2.suptitle("Increase of 4 degrees")
+    #fig2.suptitle("Increase of 4 degrees")
 
     lines1, labels1 = ax1.get_legend_handles_labels()
 
-    fig2.legend(lines1, labels1, bbox_to_anchor=(0.75, 0.075), ncol=2)
+    fig2.legend(lines1, labels1, bbox_to_anchor=(0.85, 0.075), ncol=2)
 
-    fig2.savefig("Images/elct_dmd_gw_change_all")
+    fig2.text(0.93, 0.08, "˚C", fontsize = 12)
+    fig2.text(0.93, 0.53, "˚C", fontsize = 12)
+
+    fig2.savefig("Images/elct_dmd_gw_change_all_test")
     
     
     plt.show()
 
-#gw_elec_all()
+gw_elec_all()
 #In this section of code, I want to make a new data table of the averages of the csv files
 # plt.scatter([1,1,4,5,2,1],[2,3,6,7,2,0])
 # b, m = polyfit([1,1,4,5,2,1],[2,3,6,7,2,0],1)
