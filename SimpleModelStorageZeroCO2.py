@@ -9,6 +9,7 @@ import os
 import re
 import matplotlib.image as mpimg
 import matplotlib.gridspec as gridspec
+import pathlib
 
 #network = Denmark, nspain, ncal, ncolorado
 Denmark = pypsa.Network()
@@ -284,11 +285,12 @@ for network in mynetworks:
 
 
 
-
+#If I want to do other storage stuff I need to include it in reset_stats
 def reset_stats(n):
     n.generators.loc[['solar'], ['capital_cost']] = annuity(35,0.07)*529000*(1+0.016)
     n.generators.loc[['onshorewind'], ['capital_cost']] = annuity(27,0.07)*1118000*(1+0.012)
     n.generators.loc[['OCGT'], ['capital_cost']] = annuity(25,0.07)*453000*(1+0.018)
+    n.stores.loc[['battery'], ['capital_cost']] =  annuity(20, 0.07) * 232000
 
 def find_solar_data(n, name, solar_cost):
     #Takes annualized coefficient and multiplies by investment cost
@@ -303,7 +305,8 @@ def find_solar_data(n, name, solar_cost):
              pyomo=False,
              solver_name='gurobi')
 
-    n.export_to_netcdf("NetCDF/"+ name + f"/{solar_cost}solar_cost.nc")
+
+    n.export_to_netcdf("NetCDF/"+ name + f"/costLOGJan24/{solar_cost}solar_cost.nc")
     
     #commenting out the sum of generators--battery is so small, we need raw values
     solar_penetration = n.generators_t.p['solar'].sum()/sum(n.generators_t.p.sum())
@@ -348,6 +351,17 @@ def find_solar_data(n, name, solar_cost):
     return ((solar_penetration, wind_penetration, gas_penetration, battery_pen, hydrogen_pen), systemcost, 
             (s_curtailment, w_curtailment))
 
+def make_dir(foldername):
+    dir = pathlib.Path().resolve() #This is the current path
+    mypath = str(dir) + "/NetCDF" #Going into the NetCDF folder
+
+    for item in os.listdir(mypath):
+        if os.path.isdir(os.path.join(mypath, item)): #searching for directories in my path
+            newpath = os.path.join(mypath, item) #Make the path to be our previous path + directory 
+            os.mkdir(newpath + f"/{foldername}") #Make new folder in the directory
+
+
+    
 
 def find_wind_data(n, name, wind_cost):
     #Takes annualized coefficient and multiplies by investment cost
@@ -362,7 +376,30 @@ def find_wind_data(n, name, wind_cost):
              pyomo=False,
              solver_name='gurobi')
 
-    n.export_to_netcdf("NetCDF/" + name + f"/wind_cost{wind_cost}.nc")
+    n.export_to_netcdf("NetCDF/"+ name + f"/windcostLOGJan31/{wind_cost}wind_cost.nc")
+
+
+def find_batt_data(n, name, batt_cost):
+
+    annualized_batt_cost = 0.09439292574325567 * batt_cost
+    n.stores.loc[['battery'],['capital_cost']] = annualized_batt_cost
+    
+    #this substitutes the current solar cost in our generator for a new cost
+
+    
+    n.lopf(n.snapshots, 
+             pyomo=False,
+             solver_name='gurobi')
+
+    n.export_to_netcdf("NetCDF/"+ name + f"/batterycostLOGJan31/{batt_cost}batt_cost.nc")
+
+
+
+# def find_batt_invert_data(n, name, batt_invert_multiplier):
+
+
+# def find_storage_data(n, name, storage_multiplier):
+    
 
 def find_C02lim_data(n, name, co2lim):
     #Takes annualized coefficient and multiplies by investment cost
@@ -384,27 +421,40 @@ for network in mynetworks:
     reset_stats(network)
 
 
+# make_dir("batterycostLOGJan31")
 
-# DNK_solar_data = list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.linspace(3, 6, 100)))
-# ESP_solar_data = list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.linspace(3, 6, 100)))
-# CA_solar_data = list(map(find_solar_data, repeat(CA), repeat("CA"), np.linspace(3, 6, 100)))
-# CO_solar_data = list(map(find_solar_data, repeat(CO), repeat("CO"), np.linspace(3, 6, 100)))
+# DNK_solar_data = list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 100)))
+# ESP_solar_data = list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(4, 6.31, 100)))
+# CA_solar_data = list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(4, 6.31, 100)))
+# CO_solar_data = list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(4, 6.31, 100)))
 
+#find_wind_data()
 # for network in mynetworks:
 #     reset_stats(network)
 
-# map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(3, 6, 100))
-# map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(3, 6, 100))
-# map(find_wind_data, repeat(CA), repeat("CA"), np.logspace(3, 6, 100))
-# map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(3, 6, 100))
+
+
+###Jan 31 currently running wind and battery data
+# list(map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(5, 6.5, 100)))
+# list(map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(5, 6.5, 100)))
+# list(map(find_wind_data, repeat(CA), repeat("CA"), np.logspace(5, 6.5, 100)))
+# list(map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(5, 6.5, 100)))
+
+# list(map(find_batt_data, repeat(Denmark), repeat("Denmark"), np.logspace(4.5, 6, 100)))
+# list(map(find_batt_data, repeat(Spain), repeat("Spain"), np.logspace(4.5, 6, 100)))
+# list(map(find_batt_data, repeat(CA), repeat("CA"), np.logspace(4.5, 6, 100)))
+# list(map(find_batt_data, repeat(CO), repeat("CO"), np.logspace(4.5, 6, 100)))
+
+
 
 for network in mynetworks:
     reset_stats(network)
 
+
 # list(map(find_C02lim_data, repeat(Denmark), repeat("Denmark"), np.linspace(0, 3000000, 100)))
-list(map(find_C02lim_data, repeat(Spain), repeat("Spain"), np.linspace(0, 30000000, 100)))
-list(map(find_C02lim_data, repeat(CA), repeat("CA"), np.linspace(0, 40000000, 100)))
-list(map(find_C02lim_data, repeat(CO), repeat("CO"), np.linspace(0, 5000000, 100)))
+# list(map(find_C02lim_data, repeat(Spain), repeat("Spain"), np.linspace(0, 30000000, 100)))
+# list(map(find_C02lim_data, repeat(CA), repeat("CA"), np.linspace(0, 40000000, 100)))
+# list(map(find_C02lim_data, repeat(CO), repeat("CO"), np.linspace(0, 5000000, 100)))
 
 
 
@@ -423,21 +473,26 @@ def import_cdf_data(filepath):
     s_curtailment = (n.generators_t.p-n.generators.p_nom_opt * n.generators_t.p_max_pu)['solar'].sum()
     w_curtailment = (n.generators_t.p-n.generators.p_nom_opt * n.generators_t.p_max_pu)['onshorewind'].sum()
 
-    max_gen = (n.generators.p_nom_opt * n.generators_t.p_max_pu)['solar'].sum()
+    max_gen_solar = (n.generators.p_nom_opt * n.generators_t.p_max_pu)['solar'].sum()
+    max_gen_wind = (n.generators.p_nom_opt * n.generators_t.p_max_pu)['onshorewind'].sum()
 
     
    
     solar_cost = n.generators.loc[['solar'],['capital_cost']].values[0]
-    if max_gen == 0:
+    wind_cost = n.generators.loc[['onshorewind'],['capital_cost']].values[0]
+    if max_gen_solar == 0:
         s_curtailment = 0
+    else:
+        s_curtailment = s_curtailment/max_gen_solar
+
+    if max_gen_wind == 0:
         w_curtailment = 0
     else:
-        s_curtailment = s_curtailment/max_gen
-        w_curtailment = w_curtailment/max_gen
-
+        w_curtailment = w_curtailment/max_gen_wind
+ 
     
 
-    return solar_cost, solar_penetration, wind_penetration, s_curtailment, w_curtailment, gas_penetration
+    return solar_cost, solar_penetration, wind_penetration, s_curtailment, w_curtailment, gas_penetration, wind_cost
 
 
 def natural_sort(l): 
@@ -450,14 +505,23 @@ def natural_sort(l):
 def iterate_netcdf_solar(country):
     '''Takes country as a string'''
     solution_list = []
-    mypath = "NetCDF/" + country 
+    mypath = "NetCDF/" + country + "/costLOGJan24"
     for filename in natural_sort(os.listdir(mypath)):
-        if "solar" in filename:
-            f = os.path.join(mypath, filename)
-            solution_list += [import_cdf_data(f)]
+        f = os.path.join(mypath, filename)
+        solution_list += [import_cdf_data(f)]
     return solution_list
 
 
+def iterate_netcdf(country, dataset):
+    '''Takes the folders of the country and the particular 
+    set of gurobi solutions as strings'''
+    solution_list = []
+    mypath = "NetCDF/" + country + f"/{dataset}"
+    for filename in natural_sort(os.listdir(mypath)):
+        f = os.path.join(mypath, filename)
+        solution_list += [import_cdf_data(f)]
+    
+    return solution_list
 
 
 def iterate_netcdf_co2(country):
@@ -480,10 +544,656 @@ def iterate_netcdf_co2(country):
 # solaresp = iterate_netcdf_solar("Spain")
 # solarcol = iterate_netcdf_solar("CO")
 # solarcal = iterate_netcdf_solar("CA")
+
+winddnk = iterate_netcdf("Denmark", "windcostLOGJan31")
+windesp = iterate_netcdf("Spain", "windcostLOGJan31")
+windcol = iterate_netcdf("CO", "windcostLOGJan31")
+windcal = iterate_netcdf("CA", "windcostLOGJan31")
+
+
+# battdnk = iterate_netcdf("Denmark", "batterycostLOGJan31")
+# battesp = iterate_netcdf("Spain", "batterycostLOGJan31")
+# battcol = iterate_netcdf("CO", "batterycostLOGJan31")
+# battcal = iterate_netcdf("CA", "batterycostLOGJan31")
+
+
+
+
 # co2dnk = iterate_netcdf_co2("Denmark")
-# co2esp = iterate_netcdf_co2("Spain")
+# co2esp = iterate_netcdf_co2("Spain") 
 # co2col = iterate_netcdf_co2("CO")
 # co2cal = iterate_netcdf_co2("CA")
+
+
+
+
+def flex_plus_curtailALL():
+    '''This is one of the functions we use to make an abstract figure'''
+    plt.rcParams.update({'font.size': 14})
+    fig = plt.figure(figsize=(10, 8))
+    outer = gridspec.GridSpec(2, 2, wspace=0.2, hspace=0.2)
+    inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_esp = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[1], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_col = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[2], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_cal = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[3], wspace=0.1, hspace=0, height_ratios = [1, 2])
+
+    axden0 = plt.Subplot(fig, inner_dnk[0])
+    axden1 = plt.Subplot(fig, inner_dnk[1])
+    fig.add_subplot(axden0)
+    fig.add_subplot(axden1)
+
+    axesp0 = plt.Subplot(fig, inner_esp[0])
+    axesp1 = plt.Subplot(fig, inner_esp[1])
+    fig.add_subplot(axesp0)
+    fig.add_subplot(axesp1)
+
+    axcol0 = plt.Subplot(fig, inner_col[0])
+    axcol1 = plt.Subplot(fig, inner_col[1])
+    fig.add_subplot(axcol0)
+    fig.add_subplot(axcol1)
+
+    axcal0 = plt.Subplot(fig, inner_cal[0])
+    axcal1 = plt.Subplot(fig, inner_cal[1])
+    fig.add_subplot(axcal0)
+    fig.add_subplot(axcal1)       
+
+    ####DENMARK###
+    DNK_sp = [x[1] for x in co2dnk]
+    DNK_sc = list(map(abs,[x[3] for x in co2dnk]))
+    DNK_wp = [x[2] for x in co2dnk]
+    DNK_gas = [x[5] for x in co2dnk]
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axden0.scatter(DNK_gas, DNK_sc, color = "C1") #Scatter or plot?
+    axden0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1, decimals = 0))
+    axden0.set_ylabel("Curtailment")
+    axden0.set_facecolor("#eeeeee")
+    axden0.set_ylim(0, 0.32)
+
+
+    axden1.stackplot(DNK_gas, DNK_sp, DNK_wp, DNK_gas, colors = ["#f1c232","#2986cc", "#cbbcf4"], labels = ["Solar", "Wind", "Gas"])
+    axden1.set_ylim(0, 1)
+
+    axden1.set_ylabel("Penetration")
+    #axden1.set_xlabel("Percent flexible source")
+
+    axden1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+    axden0.spines["top"].set_visible(False)
+    axden1.spines["right"].set_visible(False)
+    axden0.set_title("Denmark")
+
+    xticks = axden1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+
+    ####SPAIN####
+
+    ESP_sp = [x[1] for x in co2esp]
+    ESP_sc = list(map(abs,[x[3] for x in co2esp]))
+    ESP_wp = [x[2] for x in co2esp]
+    ESP_gas = [x[5] for x in co2esp]
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axesp0.scatter(ESP_gas, ESP_sc, color = "C1") #Scatter or plot?
+    axesp0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1, decimals = 0))
+    #axesp0.set_ylabel("Curtailment")
+    axesp0.set_facecolor("#eeeeee")
+    axesp0.set_title("Spain")
+    axesp0.set_ylim(0, 0.32)
+
+
+    axesp1.stackplot(ESP_gas, ESP_sp, ESP_wp, ESP_gas, colors = ["#f1c232","#2986cc", "#cbbcf4"])
+    axesp1.set_ylim(0, 1)
+
+    #axesp1.set_ylabel("Penetration")
+    #axesp1.set_xlabel("Percent flexible source")
+
+    axesp1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axesp0.spines["top"].set_visible(False)
+    axesp1.spines["right"].set_visible(False)
+
+    xticks = axesp1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+    axesp0.yaxis.set_ticklabels([])
+    axesp1.yaxis.set_ticklabels([])
+    ####Colorado#####
+
+    COL_sp = [x[1] for x in co2col]
+    COL_sc = list(map(abs,[x[3] for x in co2col]))
+    COL_wp = [x[2] for x in co2col]
+    COL_gas = [x[5] for x in co2col]
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axcol0.scatter(COL_gas, COL_sc, color = "C1") #Scatter or plot?
+    axcol0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1, decimals = 0))
+    axcol0.set_ylabel("Curtailment")
+    axcol0.set_facecolor("#eeeeee")
+    axcol0.set_title("Colorado")
+    axcol0.set_ylim(0, 0.32)
+
+
+    axcol1.stackplot(COL_gas, COL_sp, COL_wp, COL_gas, colors = ["#f1c232","#2986cc", "#cbbcf4"])
+    axcol1.set_ylim(0, 1)
+
+    axcol1.set_ylabel("Penetration")
+    axcol1.set_xlabel("Fraction flexible source")
+
+    axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axcol0.spines["top"].set_visible(False)
+    axcol1.spines["right"].set_visible(False)
+
+    xticks = axcol1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+
+    ###California####
+
+    CAL_sp = [x[1] for x in co2cal]
+    CAL_sc = list(map(abs,[x[3] for x in co2cal]))
+    CAL_wp = [x[2] for x in co2cal]
+    CAL_gas = [x[5] for x in co2cal]
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axcal0.scatter(CAL_gas, CAL_sc, color = "C1") #Scatter or plot?
+    axcal0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1, decimals = 0))
+    #axcal0.set_ylabel("Curtailment")
+    axcal0.set_facecolor("#eeeeee")
+    axcal0.set_title("California")
+    axcal0.set_ylim(0, 0.32)
+
+
+    axcal1.stackplot(CAL_gas, CAL_sp, CAL_wp, CAL_gas, colors = ["#f1c232","#2986cc", "#cbbcf4"])
+    axcal1.set_ylim(0, 1)
+
+    #axcal1.set_ylabel("Penetration")
+    axcal1.set_xlabel("Fraction flexible source")
+
+    axcal1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axcal0.spines["top"].set_visible(False)
+    axcal1.spines["right"].set_visible(False)
+    
+    xticks = axcal1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    axcal0.yaxis.set_ticklabels([])
+    axcal1.yaxis.set_ticklabels([])
+
+
+    for ax in plt.gcf().get_axes():
+        ax.minorticks_on()
+      
+        ax.label_outer()
+
+        ax.margins(x = 0)
+
+
+    lines1, labels1 = axden1.get_legend_handles_labels()
+
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.7, 0.055), ncol=3)
+    plt.savefig("Images/Figure3_flexible_Var3.png")
+    plt.show()
+
+#flex_plus_curtailALL()
+def pen_plus_curtailALL():
+    '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
+    a scaling log of solar. It is very long. It uses gridspec to order the axes, and other than that
+    it is about the same as the other pen_plus_curtail() functions. 17/1'''
+    plt.rcParams.update({'font.size': 14})
+    fig = plt.figure(figsize=(10, 8))
+    outer = gridspec.GridSpec(2, 2, wspace=0.2, hspace=0.2)
+    inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_esp = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[1], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_col = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[2], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_cal = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[3], wspace=0.1, hspace=0, height_ratios = [1, 2])
+
+    axden0 = plt.Subplot(fig, inner_dnk[0])
+    axden1 = plt.Subplot(fig, inner_dnk[1])
+    fig.add_subplot(axden0)
+    fig.add_subplot(axden1)
+
+    axesp0 = plt.Subplot(fig, inner_esp[0])
+    axesp1 = plt.Subplot(fig, inner_esp[1])
+    fig.add_subplot(axesp0)
+    fig.add_subplot(axesp1)
+
+    axcol0 = plt.Subplot(fig, inner_col[0])
+    axcol1 = plt.Subplot(fig, inner_col[1])
+    fig.add_subplot(axcol0)
+    fig.add_subplot(axcol1)
+
+    axcal0 = plt.Subplot(fig, inner_cal[0])
+    axcal1 = plt.Subplot(fig, inner_cal[1])
+    fig.add_subplot(axcal0)
+    fig.add_subplot(axcal1)       
+
+    ####DENMARK###
+    s_cost = [x[0] for x in solardnk]
+    s_cost = [item for sublist in s_cost for item in sublist]
+    s_cost = [x / 10**6 /0.07846970300338728 for x in s_cost] 
+    DNK_sp = [x[1] for x in solardnk]
+    DNK_wp = [x[2] for x in solardnk]
+    DNK_sc = list(map(abs,[x[3] for x in solardnk]))
+
+
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axden0.scatter(s_cost, DNK_sc, s = 15, color = "C1") #Scatter or plot?
+    axden0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axden0.set_ylabel("Curtailment")
+    axden0.set_facecolor("#eeeeee")
+
+
+
+    axden1.stackplot(s_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar", "Wind"])
+    axden1.set_ylim(0, 1)
+    axden0.set_ylim(0, 1)
+
+    axden1.set_ylabel("Penetration")
+    #axden1.set_xlabel("Percent flexible source")
+
+    axden1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axden0.set_title("Denmark")
+
+    xticks = axden1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+
+
+    axden1.axvline(0.529, color='black',ls='--')
+    axden1.axvline(1.3, color='black',ls='--')
+    #We want to make a range for today's prices. the upper range is 
+    axden1.text(0.85,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    axden1.axvline(0.019, color='black',ls='--')
+    axden1.text(0.025,0.05, "2050--Optimistic",  fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    axden1.axvline(0.095, color='black',ls='--')
+    axden1.text(0.13,0.05,  "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+
+    axden0.spines["top"].set_visible(False)
+    axden0.spines["right"].set_visible(False)
+    plt.rcParams['hatch.linewidth'] = 1
+    axden1.fill_between([0.529, 1.3], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
+    
+
+
+    ####SPAIN####
+
+    ESP_sp = [x[1] for x in solaresp]
+    ESP_wp = [x[2] for x in solaresp]
+    ESP_sc = list(map(abs,[x[3] for x in solaresp]))
+
+
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axesp0.scatter(s_cost, ESP_sc, s = 15, color = "C1") #Scatter or plot?
+    axesp0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    #axesp0.set_ylabel("Curtailment")
+    axesp0.set_facecolor("#eeeeee")
+    axesp0.set_title("Spain")
+ 
+
+
+    axesp1.stackplot(s_cost, ESP_sp, ESP_wp, colors = ["#f1c232","#2986cc"])
+    axesp1.set_ylim(0, 1)
+    axesp0.set_ylim(0, 1)
+
+
+    #axesp1.set_ylabel("Penetration")
+    #axesp1.set_xlabel("Percent flexible source")
+
+    axesp1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+
+
+    xticks = axesp1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+
+    axesp1.axvline(0.529, color='black',ls='--')
+    
+    axesp1.axvline(0.019, color='black',ls='--')
+    axesp1.text(0.025,0.05, "2050--Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    axesp1.axvline(0.095, color='black',ls='--')
+    axesp1.text(0.13,0.05, "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    axesp0.spines["top"].set_visible(False)
+    axesp0.spines["right"].set_visible(False)
+    axesp0.yaxis.set_ticklabels([])
+    axesp1.yaxis.set_ticklabels([])
+    axesp1.fill_between([0.529, 1.3], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
+    axesp1.axvline(1.3, color='black',ls='--')
+    axesp1.text(0.85,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+
+    ####Colorado#####
+
+    COL_sp = [x[1] for x in solarcol]
+    COL_wp = [x[2] for x in solarcol]
+    COL_sc = list(map(abs,[x[3] for x in solarcol]))
+
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axcol0.scatter(s_cost, COL_sc, s = 15, color = "C1") #Scatter or plot?
+    axcol0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axcol0.set_ylabel("Curtailment")
+    axcol0.set_facecolor("#eeeeee")
+    axcol0.set_title("Colorado")
+
+
+
+    axcol1.stackplot(s_cost, COL_sp, COL_wp, colors = ["#f1c232","#2986cc"])
+    axcol1.set_ylim(0, 1)
+    axcol0.set_ylim(0, 1)
+
+    axcol1.set_ylabel("Penetration")
+    axcol1.set_xlabel("Cost of Solar")
+
+    axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+
+    xticks = axcol1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    axcol1.axvline(0.529, color='black',ls='--')
+    
+    axcol1.axvline(0.019, color='black',ls='--')
+    axcol1.text(0.025,0.05, "2050--Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    axcol1.axvline(0.095, color='black',ls='--')
+    axcol1.text(0.13,0.05, "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    axcol0.spines["top"].set_visible(False)
+    axcol0.spines["right"].set_visible(False)
+    axcol1.fill_between([0.529, 1.3], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
+    axcol1.axvline(1.3, color='black',ls='--')
+    axcol1.text(0.85,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    ###California####
+
+    CAL_sp = [x[1] for x in solarcal]
+    CAL_wp = [x[2] for x in solarcal]
+    CAL_sc = list(map(abs,[x[3] for x in solarcal]))
+
+
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axcal0.scatter(s_cost, CAL_sc, s = 15, color = "C1") #Scatter or plot?
+    axcal0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    #axcal0.set_ylabel("Curtailment")
+    axcal0.set_facecolor("#eeeeee")
+    axcal0.set_title("California")
+
+
+
+    axcal1.stackplot(s_cost, CAL_sp, CAL_wp, colors = ["#f1c232","#2986cc"])
+    axcal1.set_ylim(0, 1)
+    axcal0.set_ylim(0, 1)
+
+
+    #axcal1.set_ylabel("Penetration")
+    axcal1.set_xlabel("Cost of Solar")
+
+    axcal1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+    xticks = axcal1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    axcal1.axvline(0.529, color='black',ls='--')
+  
+    axcal1.axvline(0.019, color='black',ls='--')
+    axcal1.text(0.025,0.05, "2050--Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    axcal1.axvline(0.095, color='black',ls='--')
+    axcal1.text(0.13,0.05, "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    axcal0.spines["top"].set_visible(False)
+    axcal0.spines["right"].set_visible(False)
+    axcal0.yaxis.set_ticklabels([])
+    axcal1.yaxis.set_ticklabels([])
+    axcal1.fill_between([0.529, 1.3], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
+    axcal1.axvline(1.3, color='black',ls='--')
+    axcal1.text(0.85,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+ 
+    for ax in plt.gcf().get_axes():
+        ax.minorticks_on()
+      
+        ax.label_outer()
+
+        ax.margins(x = 0)
+        ax.set_xscale('log')        
+        ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+    
+
+
+    axesp1.xaxis.set_ticklabels([])
+    axden1.xaxis.set_ticklabels([])
+
+    lines1, labels1 = axden1.get_legend_handles_labels()
+
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.65, 0.055), ncol=3)
+    plt.savefig("Images/Figure2_solar_var5.png")
+    plt.show()
+    
+#pen_plus_curtailALL()
+
+def pen_plus_wind_curtailALL():
+    '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
+    a scaling log of solar. It is very long. It uses gridspec to order the axes, and other than that
+    it is about the same as the other pen_plus_curtail() functions. 17/1'''
+    plt.rcParams.update({'font.size': 14})
+    plt.rcParams['hatch.linewidth'] = 1
+    fig = plt.figure(figsize=(10, 8))
+    outer = gridspec.GridSpec(2, 2, wspace=0.2, hspace=0.2)
+    inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_esp = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[1], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_col = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[2], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_cal = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[3], wspace=0.1, hspace=0, height_ratios = [1, 2])
+
+    axden0 = plt.Subplot(fig, inner_dnk[0])
+    axden1 = plt.Subplot(fig, inner_dnk[1])
+    fig.add_subplot(axden0)
+    fig.add_subplot(axden1)
+
+    axesp0 = plt.Subplot(fig, inner_esp[0])
+    axesp1 = plt.Subplot(fig, inner_esp[1])
+    fig.add_subplot(axesp0)
+    fig.add_subplot(axesp1)
+
+    axcol0 = plt.Subplot(fig, inner_col[0])
+    axcol1 = plt.Subplot(fig, inner_col[1])
+    fig.add_subplot(axcol0)
+    fig.add_subplot(axcol1)
+
+    axcal0 = plt.Subplot(fig, inner_cal[0])
+    axcal1 = plt.Subplot(fig, inner_cal[1])
+    fig.add_subplot(axcal0)
+    fig.add_subplot(axcal1)       
+
+    ####DENMARK###
+    w_cost = [x[6] for x in winddnk]
+    w_cost = [item for sublist in w_cost for item in sublist]
+    w_cost = [x / 10**6 /0.07846970300338728 for x in w_cost] 
+    DNK_sp = [x[1] for x in winddnk]
+    DNK_wp = [x[2] for x in winddnk]
+    DNK_wc = list(map(abs,[x[4] for x in winddnk]))
+
+
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axden0.scatter(w_cost, DNK_wc, s = 15, color = "C1") #Scatter or plot?
+    axden0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axden0.set_ylabel("Curtailment")
+    axden0.set_facecolor("#eeeeee")
+
+
+
+    axden1.stackplot(w_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar", "Wind"])
+
+
+    axden1.set_ylabel("Penetration")
+    #axden1.set_xlabel("Percent flexible source")
+
+    axden1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axden0.set_title("Denmark")
+
+    xticks = axden1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+
+    #The 2.7 is the offshore wind price
+
+
+    #We want to make a range for today's prices. the upper range is 
+    axden0.spines["top"].set_visible(False)
+    axden0.spines["right"].set_visible(False)
+   
+
+
+    ####SPAIN####
+
+    ESP_sp = [x[1] for x in windesp]
+    ESP_wp = [x[2] for x in windesp]
+    ESP_wc = list(map(abs,[x[4] for x in windesp]))
+
+
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axesp0.scatter(w_cost, ESP_wc, s = 15, color = "C1") #Scatter or plot?
+    axesp0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+    axesp0.set_facecolor("#eeeeee")
+    axesp0.set_title("Spain")
+ 
+
+
+    axesp1.stackplot(w_cost, ESP_sp, ESP_wp, colors = ["#f1c232","#2986cc"])
+
+
+    axesp1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+
+    xticks = axesp1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    axesp0.spines["top"].set_visible(False)
+    axesp0.spines["right"].set_visible(False)
+    axesp0.yaxis.set_ticklabels([])
+    axesp1.yaxis.set_ticklabels([])
+
+    ####Colorado#####
+
+    COL_sp = [x[1] for x in windcol]
+    COL_wp = [x[2] for x in windcol]
+    COL_wc = list(map(abs,[x[4] for x in windcol]))
+
+    axcol0.scatter(w_cost, COL_wc, s = 15, color = "C1") #Scatter or plot?
+    axcol0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axcol0.set_ylabel("Curtailment")
+    axcol0.set_facecolor("#eeeeee")
+    axcol0.set_title("Colorado")
+
+
+
+    axcol1.stackplot(w_cost, COL_sp, COL_wp, colors = ["#f1c232","#2986cc"])
+
+
+    axcol1.set_ylabel("Penetration")
+    axcol1.set_xlabel("Cost of Solar")
+
+    axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+
+    xticks = axcol1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    axcol0.spines["top"].set_visible(False)
+    axcol0.spines["right"].set_visible(False)
+
+    
+    
+    ###California####
+
+    CAL_sp = [x[1] for x in windcal]
+    CAL_wp = [x[2] for x in windcal]
+    CAL_wc = list(map(abs,[x[4] for x in windcal]))
+
+
+
+
+    axcal0.scatter(w_cost, CAL_wc, s = 15, color = "C1") #Scatter or plot?
+    axcal0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+    axcal0.set_facecolor("#eeeeee")
+    axcal0.set_title("California")
+
+
+
+    axcal1.stackplot(w_cost, CAL_sp, CAL_wp, colors = ["#f1c232","#2986cc"])
+
+
+
+    axcal1.set_xlabel("Cost of Wind")
+
+    axcal1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+    xticks = axcal1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+
+  
+    axcal0.spines["top"].set_visible(False)
+    axcal0.spines["right"].set_visible(False)
+    axcal0.yaxis.set_ticklabels([])
+    axcal1.yaxis.set_ticklabels([])
+
+ 
+    #This applies things for all axes
+    for ax in plt.gcf().get_axes():
+        ax.set_ylim(0, 1)
+        ax.minorticks_on()
+      
+        ax.label_outer()
+
+        ax.margins(x = 0)
+        ax.set_xscale('log')        
+        ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+
+
+    #This applies things for only the axes of penetration.
+    for ax in plt.gcf().get_axes()[1::2]:
+        ax.set_ylim(0, 1)
+        ax.fill_between([1.1, 2.7], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
+        ax.axvline(1.1, color='black',ls='--')
+        ax.axvline(2.7, color='black',ls='--')
+        ax.text(0.95,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    
+    for ax in plt.gcf().get_axes()[::2]:
+        ax.set_ylim(0,1)
+
+
+    axesp1.xaxis.set_ticklabels([])
+    axden1.xaxis.set_ticklabels([])
+
+    lines1, labels1 = axden1.get_legend_handles_labels()
+
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.65, 0.055), ncol=3)
+
+    #print(fig.axes[1::2])
+
+    plt.savefig("Images/Figure_wind_var4.png")
+    plt.show()
+    
+pen_plus_wind_curtailALL()
+
+
+######OLD FUNCTIONS######
 
 
 def flex_plus_curtailDNK(co2):
@@ -529,186 +1239,26 @@ def flex_plus_curtailDNK(co2):
     
     plt.show()
     #return axs
-flex_plus_curtailDNK(co2dnk)
-
-def flex_plus_curtailALL():
-    fig = plt.figure(figsize=(10, 8))
-    outer = gridspec.GridSpec(2, 2, wspace=0.2, hspace=0.2)
-    inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.1, hspace=0, height_ratios = [1, 2])
-    inner_esp = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[1], wspace=0.1, hspace=0, height_ratios = [1, 2])
-    inner_col = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[2], wspace=0.1, hspace=0, height_ratios = [1, 2])
-    inner_cal = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[3], wspace=0.1, hspace=0, height_ratios = [1, 2])
-
-    axden0 = plt.Subplot(fig, inner_dnk[0])
-    axden1 = plt.Subplot(fig, inner_dnk[1])
-    fig.add_subplot(axden0)
-    fig.add_subplot(axden1)
-
-    axesp0 = plt.Subplot(fig, inner_esp[0])
-    axesp1 = plt.Subplot(fig, inner_esp[1])
-    fig.add_subplot(axesp0)
-    fig.add_subplot(axesp1)
-
-    axcol0 = plt.Subplot(fig, inner_col[0])
-    axcol1 = plt.Subplot(fig, inner_col[1])
-    fig.add_subplot(axcol0)
-    fig.add_subplot(axcol1)
-
-    axcal0 = plt.Subplot(fig, inner_cal[0])
-    axcal1 = plt.Subplot(fig, inner_cal[1])
-    fig.add_subplot(axcal0)
-    fig.add_subplot(axcal1)       
-
-    ####DENMARK###
-    DNK_sp = [x[1] for x in co2dnk]
-    DNK_sc = list(map(abs,[x[3] for x in co2dnk]))
-    DNK_wp = [x[2] for x in co2dnk]
-    DNK_gas = [x[5] for x in co2dnk]
-
-    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
-
-    axden0.scatter(DNK_gas, DNK_sc, color = "C1") #Scatter or plot?
-    axden0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    axden0.set_ylabel("Curtailment")
-    axden0.set_facecolor("#eeeeee")
-    axden0.set_ylim(0, 0.3)
-
-
-    axden1.stackplot(DNK_gas, DNK_sp, DNK_wp, DNK_gas, colors = ["#f1c232","#2986cc", "#cbbcf4"], labels = ["Solar", "Wind", "Gas"])
-    axden1.set_ylim(0, 1)
-
-    axden1.set_ylabel("Penetration")
-    #axden1.set_xlabel("Percent flexible source")
-
-    axden1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    axden0.spines[["top","right"]].set_visible(False)
-    axden0.set_title("Denmark")
-
-    xticks = axden1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
-
-
-    ####SPAIN####
-
-    ESP_sp = [x[1] for x in co2esp]
-    ESP_sc = list(map(abs,[x[3] for x in co2esp]))
-    ESP_wp = [x[2] for x in co2esp]
-    ESP_gas = [x[5] for x in co2esp]
-
-    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
-
-    axesp0.scatter(ESP_gas, ESP_sc, color = "C1") #Scatter or plot?
-    axesp0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    #axesp0.set_ylabel("Curtailment")
-    axesp0.set_facecolor("#eeeeee")
-    axesp0.set_title("Spain")
-    axesp0.set_ylim(0, 0.3)
-
-
-    axesp1.stackplot(ESP_gas, ESP_sp, ESP_wp, ESP_gas, colors = ["#f1c232","#2986cc", "#cbbcf4"])
-    axesp1.set_ylim(0, 1)
-
-    #axesp1.set_ylabel("Penetration")
-    #axesp1.set_xlabel("Percent flexible source")
-
-    axesp1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    axesp0.spines[["top","right"]].set_visible(False)
-
-    xticks = axesp1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
-
-    ####Colorado#####
-
-    COL_sp = [x[1] for x in co2col]
-    COL_sc = list(map(abs,[x[3] for x in co2col]))
-    COL_wp = [x[2] for x in co2col]
-    COL_gas = [x[5] for x in co2col]
-
-    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
-
-    axcol0.scatter(COL_gas, COL_sc, color = "C1") #Scatter or plot?
-    axcol0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    axcol0.set_ylabel("Curtailment")
-    axcol0.set_facecolor("#eeeeee")
-    axcol0.set_title("Colorado")
-    axcol0.set_ylim(0, 0.3)
-
-
-    axcol1.stackplot(COL_gas, COL_sp, COL_wp, COL_gas, colors = ["#f1c232","#2986cc", "#cbbcf4"])
-    axcol1.set_ylim(0, 1)
-
-    axcol1.set_ylabel("Penetration")
-    axcol1.set_xlabel("Percent flexible source")
-
-    axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    axcol0.spines[["top","right"]].set_visible(False)
-
-    xticks = axcol1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
-
-
-    ###California####
-
-    CAL_sp = [x[1] for x in co2cal]
-    CAL_sc = list(map(abs,[x[3] for x in co2cal]))
-    CAL_wp = [x[2] for x in co2cal]
-    CAL_gas = [x[5] for x in co2cal]
-
-    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
-
-    axcal0.scatter(CAL_gas, CAL_sc, color = "C1") #Scatter or plot?
-    axcal0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    #axcal0.set_ylabel("Curtailment")
-    axcal0.set_facecolor("#eeeeee")
-    axcal0.set_title("California")
-    axcal0.set_ylim(0, 0.3)
-
-
-    axcal1.stackplot(CAL_gas, CAL_sp, CAL_wp, CAL_gas, colors = ["#f1c232","#2986cc", "#cbbcf4"])
-    axcal1.set_ylim(0, 1)
-
-    #axcal1.set_ylabel("Penetration")
-    axcal1.set_xlabel("Percent flexible source")
-
-    axcal1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    axcal0.spines[["top","right"]].set_visible(False)
-
-    xticks = axcal1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
+#flex_plus_curtailDNK(co2dnk)
 
 
 
-    for ax in plt.gcf().get_axes():
-        ax.minorticks_on()
-      
-        ax.label_outer()
+def plot_an_image():
+    '''What I am making here '''
+    fig, axs = plt.subplots(2,1)
+    img1 = mpimg.imread("Images/Figure4.png")
+    img2 = mpimg.imread("Images/Figure_1.png")
+    axs[0].imshow(img1)
+    axs[1].imshow(img2)
+    plt.subplots_adjust(hspace = 0)
 
-        ax.margins(x = 0)
-
-
-    lines1, labels1 = axden1.get_legend_handles_labels()
-
-    fig.legend(lines1, labels1, bbox_to_anchor=(0.6, 0.055), ncol=3)
-    plt.savefig("Images/Figure3_flexible.png")
+    for ax in axs.flat:
+        ax.axis("off")
     plt.show()
-
-flex_plus_curtailALL()
-    
-
-    
-
-
-
-
-flex_plus_curtailDNK(co2col)
-flex_plus_curtailDNK(co2esp)
-flex_plus_curtailDNK(co2dnk)
-flex_plus_curtailDNK(co2cal)
-
-
 
 
 def penetration_chart():
+    '''This is an old function'''
     #This is our x axis, solar_cost (s_cost)
     s_cost = np.logspace(3, 6, 10)
 
@@ -776,8 +1326,8 @@ def penetration_chart():
     #plt.savefig("Images/PenPerTechbySolarCost", facecolor=fig.get_facecolor(), edgecolor='none')
     plt.show()
 
-
 def system_cost():
+    '''This is an old function'''
     s_cost = np.linspace(50000, 600000, 10)
 
     DNK_cst = [x[1] for x in DNK_solar_data]
@@ -819,6 +1369,7 @@ def system_cost():
     plt.show()
 
 def showcurtailment():
+    '''This is an old function'''
     s_cost = np.logspace(3, 6, 10)
 
     DNK_sc = list(map(abs, [x[2][0] for x in DNK_solar_data]))
@@ -877,8 +1428,6 @@ def showcurtailment():
     fig.set_size_inches(18.5, 10.5)
     plt.savefig("Images/FracSolarCurtailbySolarCostStore_w_and_wo", facecolor=fig.get_facecolor(), edgecolor='none')
     plt.show()
-
-
 
 def pen_plus_curtailDNK(solar):
     s_cost = [x[0] for x in solar]
@@ -1149,8 +1698,7 @@ def pen_plus_curtailCA(solar):
     axs[1].set_ylim(0, 1)
     axs[1].set_xlim(left = 0.001, right = 1)
     axs[0].set_xlim(left = 0.001, right = 1)
-    #axs[1].fill_between(s_cost, DNK_sp, color = "#fff2cc")
-    #axs[1].fill_between(s_cost, DNK_sp, y2 = 1, color = "#eeeeee")
+
     axs[1].set_ylabel("Penetration")
     axs[1].set_xlabel("Cost (€/Wp)")
 
@@ -1196,96 +1744,3 @@ def pen_plus_curtailCA(solar):
     plt.close(fig)
     return axs
 #pen_plus_curtailCA(solarcal)
-
-
-
-
-def pen_plus_curtailALL():
-    
-    fig2 = plt.figure()
-
-    ax1  = pen_plus_curtailDNK(solardnk)
-    ax2 = pen_plus_curtailESP(solaresp)
-    ax3 = pen_plus_curtailCO(solarcol)
-    ax4 = pen_plus_curtailCA(solarcal)
- 
-    ax1.figure = fig2
-    ax2.figure = fig2
-    ax3.figure = fig2
-    ax4.figure = fig2
-
-    fig2.axes.append(ax1)
-    fig2.add_axes(ax1)
-    fig2.axes.append(ax2)
-    fig2.add_axes(ax2)
-    fig2.axes.append(ax3)
-    fig2.add_axes(ax3)
-    fig2.axes.append(ax4)
-    fig2.add_axes(ax4)
-
-    dummy = fig2.add_subplot(221)
-    ax1.set_position(dummy.get_position())
-    dummy.remove()
-    axpos = ax1.get_position()
-    ax1.set_position([axpos.x0+0.1, axpos.y0+0.6, axpos.width*2, axpos.height*2])
-
-
-
-    dummy = fig2.add_subplot(222)
-    ax2.set_position(dummy.get_position())
-    dummy.remove()
-    axpos = ax2.get_position()
-    ax2.set_position([axpos.x0+0.7, axpos.y0+0.6, axpos.width*2, axpos.height*2])
-
-    dummy = fig2.add_subplot(223)
-    ax3.set_position(dummy.get_position())
-    dummy.remove()
-    axpos = ax3.get_position()
-    ax3.set_position([axpos.x0+0.1, axpos.y0+0.1, axpos.width*2, axpos.height*2])
-
-    dummy = fig2.add_subplot(224)
-    ax4.set_position(dummy.get_position())
-    dummy.remove()
-    axpos = ax4.get_position()
-    ax4.set_position([axpos.x0+0.7, axpos.y0+0.1, axpos.width*2, axpos.height*2])
-
-    #fig2.set_size_inches(12.5, 9)
-    fig2.patch.set_facecolor("white")
-    fig2.suptitle("Increase of 4 degrees")
-
-    lines1, labels1 = ax1.get_legend_handles_labels()
-
-    fig2.legend(lines1, labels1, bbox_to_anchor=(0.75, 0.075), ncol=2)
-
-    fig2.savefig("Images/elct_dmd_gw_change_all")
-    
-    
-    plt.show()
-#pen_plus_curtailALL()
-
-def plot_an_image():
-    '''What I am making here '''
-    fig, axs = plt.subplots(2,1)
-    img1 = mpimg.imread("Images/Figure4.png")
-    img2 = mpimg.imread("Images/Figure_1.png")
-    axs[0].imshow(img1)
-    axs[1].imshow(img2)
-    plt.subplots_adjust(hspace = 0)
-
-    for ax in axs.flat:
-        ax.axis("off")
-    plt.show()
-
-
-#plot_an_image()
-#pen_plus_curtailDNK(solardnk)
-#pen_plus_curtailESP(solaresp)
-#pen_plus_curtailCA(solarcal)
-#pen_plus_curtailCO(solarcol)
-
-
-
-
-
-#penetration_chart()
-#pen_plus_curtail()
