@@ -1032,7 +1032,8 @@ def pen_plus_wind_curtailALL():
 
 
     axden1.stackplot(w_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar", "Wind"])
-
+    axden1.set_ylim(0, 1)
+    axden0.set_ylim(0, 1)
 
     axden1.set_ylabel("Penetration")
     #axden1.set_xlabel("Percent flexible source")
@@ -1072,7 +1073,8 @@ def pen_plus_wind_curtailALL():
 
 
     axesp1.stackplot(w_cost, ESP_sp, ESP_wp, colors = ["#f1c232","#2986cc"])
-
+    axesp1.set_ylim(0, 1)
+    axesp0.set_ylim(0, 1)
 
     axesp1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
 
@@ -1101,6 +1103,8 @@ def pen_plus_wind_curtailALL():
 
     axcol1.stackplot(w_cost, COL_sp, COL_wp, colors = ["#f1c232","#2986cc"])
 
+    axcol1.set_ylim(0, 1)
+    axcol0.set_ylim(0, 1)
 
     axcol1.set_ylabel("Penetration")
     axcol1.set_xlabel("Cost of Solar")
@@ -1135,6 +1139,8 @@ def pen_plus_wind_curtailALL():
 
     axcal1.stackplot(w_cost, CAL_sp, CAL_wp, colors = ["#f1c232","#2986cc"])
 
+    axcal1.set_ylim(0, 1)
+    axcal0.set_ylim(0, 1)
 
 
     axcal1.set_xlabel("Cost of Wind")
@@ -1154,7 +1160,6 @@ def pen_plus_wind_curtailALL():
  
     #This applies things for all axes
     for ax in plt.gcf().get_axes():
-        ax.set_ylim(0, 1)
         ax.minorticks_on()
       
         ax.label_outer()
@@ -1168,14 +1173,13 @@ def pen_plus_wind_curtailALL():
 
     #This applies things for only the axes of penetration.
     for ax in plt.gcf().get_axes()[1::2]:
-        ax.set_ylim(0, 1)
         ax.fill_between([1.1, 2.7], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
         ax.axvline(1.1, color='black',ls='--')
         ax.axvline(2.7, color='black',ls='--')
         ax.text(0.95,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
     
-    for ax in plt.gcf().get_axes()[::2]:
-        ax.set_ylim(0,1)
+    # for ax in plt.gcf().get_axes()[::2]:
+    #     ax.set_ylim(0,1)
 
 
     axesp1.xaxis.set_ticklabels([])
