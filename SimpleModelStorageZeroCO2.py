@@ -547,10 +547,10 @@ def iterate_netcdf_co2(country):
 # solarcol = iterate_netcdf_solar("CO")
 # solarcal = iterate_netcdf_solar("CA")
 
-# winddnk = iterate_netcdf("Denmark", "windcostLOGJan31")
-# windesp = iterate_netcdf("Spain", "windcostLOGJan31")
-# windcol = iterate_netcdf("CO", "windcostLOGJan31")
-# windcal = iterate_netcdf("CA", "windcostLOGJan31")
+winddnk = iterate_netcdf("Denmark", "windcostLOGJan31")
+windesp = iterate_netcdf("Spain", "windcostLOGJan31")
+windcol = iterate_netcdf("CO", "windcostLOGJan31")
+windcal = iterate_netcdf("CA", "windcostLOGJan31")
 
 
 battdnk = iterate_netcdf("Denmark", "batterycostLOGJan31")
@@ -1201,10 +1201,10 @@ def pen_plus_wind_curtailALL():
 
     #print(fig.axes[1::2])
 
-    plt.savefig("Images/Figure_wind_var5(Wiser_etal).png")
+    plt.savefig("Images/Figure_wind_var6(Wiser_etal).png")
     plt.show()
     
-#pen_plus_wind_curtailALL()
+pen_plus_wind_curtailALL()
 
 def pen_plus_batt_curtailALL():
     '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
@@ -1213,13 +1213,15 @@ def pen_plus_batt_curtailALL():
     
     This uses the github (Danish energy agency) value of onshore wind for the lower bound,
     and the NREL annual technology baseline for the upper bound.'''
+    plt.rcdefaults()
+
     plt.rcParams.update({'font.size': 14})
     plt.rcParams['hatch.linewidth'] = 1
-    fig = plt.figure(figsize=(10, 8))
-    outer = gridspec.GridSpec(2, 2, wspace=0.2, hspace=0.2)
+    fig = plt.figure(figsize=(10, 9))
+    outer = gridspec.GridSpec(3, 2, wspace=0.2, hspace=0.3, height_ratios = [1, 1, 0.01])
     inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.1, hspace=0, height_ratios = [1, 2])
     inner_esp = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[1], wspace=0.1, hspace=0, height_ratios = [1, 2])
-    inner_col = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[2], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_col = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[2], wspace=0.1, hspace=0, height_ratios = [1, 2]) #(gridspec(3,1)) to add some extra space
     inner_cal = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[3], wspace=0.1, hspace=0, height_ratios = [1, 2])
 
     axden0 = plt.Subplot(fig, inner_dnk[0])
@@ -1232,15 +1234,19 @@ def pen_plus_batt_curtailALL():
     fig.add_subplot(axesp0)
     fig.add_subplot(axesp1)
 
+
     axcol0 = plt.Subplot(fig, inner_col[0])
     axcol1 = plt.Subplot(fig, inner_col[1])
     fig.add_subplot(axcol0)
     fig.add_subplot(axcol1)
 
+
+
+
     axcal0 = plt.Subplot(fig, inner_cal[0])
     axcal1 = plt.Subplot(fig, inner_cal[1])
     fig.add_subplot(axcal0)
-    fig.add_subplot(axcal1)       
+    fig.add_subplot(axcal1)     
 
     ####DENMARK###
     b_cost = [x[7] for x in battdnk]
@@ -1251,13 +1257,15 @@ def pen_plus_batt_curtailALL():
     DNK_wp = [x[2] for x in battdnk]
     DNK_sc = list(map(abs,[x[3] for x in battdnk]))
     DNK_wc = list(map(abs,[x[4] for x in battdnk]))
+    DNK_bp = list(map(abs,[x[8] for x in battdnk]))
 
 
 
     #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
 
-    axden0.scatter(b_cost, DNK_sc, s = 15, color = "C1")
-    axden0.scatter(b_cost, DNK_wc, s = 15, color = "C0")    
+    axden0.scatter(b_cost, DNK_sc, s = 15, color = "C1", label = "solar curtailment")
+    axden0.scatter(b_cost, DNK_wc, s = 15, color = "C0", label = "wind curtailment")
+       
     axden0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
     axden0.set_ylabel("Curtailment")
     axden0.set_facecolor("#eeeeee")
@@ -1290,7 +1298,7 @@ def pen_plus_batt_curtailALL():
     ESP_wp = [x[2] for x in battesp]
     ESP_wc = list(map(abs,[x[4] for x in battesp]))
     ESP_sc = list(map(abs,[x[3] for x in battesp]))
-
+    ESP_bp = list(map(abs,[x[8] for x in battesp]))
 
     axesp0.scatter(b_cost, ESP_wc, s = 15, color = "C0") 
     axesp0.scatter(b_cost, ESP_sc, s = 15, color = "C1") 
@@ -1298,7 +1306,8 @@ def pen_plus_batt_curtailALL():
 
     axesp0.set_facecolor("#eeeeee")
     axesp0.set_title("Spain")
- 
+
+
 
 
     axesp1.stackplot(b_cost, ESP_sp, ESP_wp, colors = ["#f1c232","#2986cc"])
@@ -1322,6 +1331,7 @@ def pen_plus_batt_curtailALL():
     COL_wp = [x[2] for x in battcol]
     COL_wc = list(map(abs,[x[4] for x in battcol]))
     COL_sc = list(map(abs,[x[3] for x in battcol]))    
+    COL_bp = list(map(abs,[x[8] for x in battcol]))
 
     axcol0.scatter(b_cost, COL_wc, s = 15, color = "C0") 
     axcol0.scatter(b_cost, COL_sc, s = 15, color = "C1")     
@@ -1357,6 +1367,7 @@ def pen_plus_batt_curtailALL():
     CAL_wp = [x[2] for x in battcal]
     CAL_wc = list(map(abs,[x[4] for x in battcal]))
     CAL_sc = list(map(abs,[x[3] for x in battcal]))
+    CAL_bp = list(map(abs,[x[8] for x in battcal]))    
 
 
 
@@ -1392,6 +1403,31 @@ def pen_plus_batt_curtailALL():
 
  
     #This applies things for all axes
+
+    #This applies things for only the axes of penetration.
+    for ax in plt.gcf().get_axes()[1::2]:
+        ax.fill_between([0.232, 0.311], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
+        ax.axvline(0.232, color='black',ls='--')
+        ax.axvline(0.311, color='black',ls='--')
+        ax.text(0.27 ,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+
+        ax.fill_between([0.075, 0.22], y1 = 1, alpha = 0.2, edgecolor = "k", hatch = "XX", facecolor = "purple")
+        ax.axvline(0.075, color='black',ls='--')
+        ax.axvline(0.22, color='black',ls='--')
+        ax.text(0.135, 0.05, "Future range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    
+    # for ax in plt.gcf().get_axes()[::2]:
+    #     ax.set_ylim(0,1)
+
+
+    axesp1.xaxis.set_ticklabels([])
+    axden1.xaxis.set_ticklabels([])
+
+
+
+
+
+
     for ax in plt.gcf().get_axes():
         ax.minorticks_on()
       
@@ -1403,33 +1439,36 @@ def pen_plus_batt_curtailALL():
         ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
         ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
 
-
-    #This applies things for only the axes of penetration.
-    for ax in plt.gcf().get_axes()[1::2]:
-        ax.fill_between([0.232, 0.311], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
-        ax.axvline(0.232, color='black',ls='--')
-        ax.axvline(0.311, color='black',ls='--')
-        ax.text(0.25 ,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
-
-        ax.fill_between([0.075, 0.22], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "purple")
-        ax.axvline(0.075, color='black',ls='--')
-        ax.axvline(0.22, color='black',ls='--')
-        ax.text(0.1, 0.05, "Future range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
     
-    # for ax in plt.gcf().get_axes()[::2]:
-    #     ax.set_ylim(0,1)
+#    plt.rcParams["font.weight"] = "bold"
+    axden0b = axden0.twinx()
+    axden0b.scatter(b_cost, DNK_bp, s = 15, color = "C2", label = "Battery") 
+    axden0b.tick_params(axis = "y", labelcolor = "C2")
 
+    axesp0b = axesp0.twinx()
+    axesp0b.scatter(b_cost, ESP_bp, s = 15, color = "C2", label = "battery penetration")
+    axesp0b.tick_params(axis = "y", labelcolor = "C2") 
+    axesp0b.set_ylabel("Battery\nfraction")
+ 
+    axcol0b = axcol0.twinx()
+    axcol0b.scatter(b_cost, COL_bp, s = 15, color = "C2", label = "battery penetration") 
+    axcol0b.tick_params(axis = "y", labelcolor = "C2") 
 
-    axesp1.xaxis.set_ticklabels([])
-    axden1.xaxis.set_ticklabels([])
+    axcal0b = axcal0.twinx()
+    axcal0b.scatter(b_cost, CAL_bp, s = 15, color = "C2", label = "battery penetration") 
+    axcal0b.tick_params(axis = "y", labelcolor = "C2")
+    axcal0b.set_ylabel("Battery\nfraction")
+
 
     lines1, labels1 = axden1.get_legend_handles_labels()
+    #lines2, labels2 = axden0.get_legend_handles_labels()
+    lines3, labels3 = axden0b.get_legend_handles_labels()
 
-    fig.legend(lines1, labels1, bbox_to_anchor=(0.65, 0.055), ncol=3)
+    fig.legend(lines1 +lines3, labels1+labels3, bbox_to_anchor=(0.75, 0.1), ncol = 3)
 
     #print(fig.axes[1::2])
 
-    plt.savefig("Images/Figure_batt_var1.png")
+    plt.savefig("Images/Figure_batt_var3.png")
     plt.show()
  
 
