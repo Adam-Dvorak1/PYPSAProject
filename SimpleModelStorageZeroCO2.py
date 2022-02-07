@@ -47,6 +47,18 @@ df_cal_elec.index = pd.to_datetime(df_cal_elec.index)
 df_co_elec = pd.read_csv('data_extra/ColoradoTimeSeries.csv', index_col=0)
 df_co_elec.index = pd.to_datetime(df_co_elec.index)
 
+#We want to simulate electrification of heating. We can then add to Denmark and Spain
+df_heat = pd.read_csv('data/heat_demand.csv', sep=';', index_col=0)# in MWh
+df_heat.index = pd.to_datetime(df_heat.index) #change index to datatime
+
+
+
+df_elec["DNKheat"] = df_heat["DNK"]
+df_elec["ESPheat"] = df_heat["ESP"]
+
+df_elec["DNKcombine"] = df_elec.apply(lambda row: row["DNK"] + row["DNKheat"]/3, axis = 1)
+df_elec["ESPcombine"] = df_elec.apply(lambda row: row["ESP"] + row["ESPheat"]/3, axis = 1)
+
 Denmark.add("Load",
             "load", 
             bus="electricity bus", 
@@ -292,7 +304,7 @@ def reset_stats(n):
     n.generators.loc[['OCGT'], ['capital_cost']] = annuity(25,0.07)*453000*(1+0.018)
     n.stores.loc[['battery'], ['capital_cost']] =  annuity(20, 0.07) * 232000
 
-def find_solar_data(n, name, solar_cost):
+def find_solar_data(n, name, solar_cost, dirname):
     #Takes annualized coefficient and multiplies by investment cost
   
     annualized_solar_cost =  0.07846970300338728* solar_cost
@@ -306,51 +318,9 @@ def find_solar_data(n, name, solar_cost):
              solver_name='gurobi')
 
 
-    n.export_to_netcdf("NetCDF/"+ name + f"/costLOGJan24/{solar_cost}solar_cost.nc")
-    
-    #commenting out the sum of generators--battery is so small, we need raw values
-    solar_penetration = n.generators_t.p['solar'].sum()/sum(n.generators_t.p.sum())
-    wind_penetration = n.generators_t.p['onshorewind'].sum()/sum(n.generators_t.p.sum())
-    gas_penetration = n.generators_t.p['OCGT'].sum()/sum(n.generators_t.p.sum())
+    n.export_to_netcdf("NetCDF/"+ name + f"/{dirname}/{solar_cost}solar_cost.nc")
     
     
-    systemcost = n.objective/n.loads_t.p.sum()
-    
-    
-    #This now expresses solar in terms of a percent of its capacity
-    s_curtailment = (n.generators_t.p-n.generators.p_nom_opt * n.generators_t.p_max_pu)['solar'].sum()
-    
-    w_curtailment = (n.generators_t.p-n.generators.p_nom_opt * n.generators_t.p_max_pu)['onshorewind'].sum()
-    ###If you want to get a plot of curtailment alone, then delete the following lines 
-    #of code until the return statement###
-    max_gen = (n.generators.p_nom_opt * n.generators_t.p_max_pu)['solar'].sum()
-    max_gen_w = (n.generators.p_nom_opt * n.generators_t.p_max_pu)['onshorewind'].sum()
-    
-
-    #We want to get the percent of energy curtailed. However, if max_gen is 0, then
-    #we get a number that is undefined. We must use loc 
-    if max_gen == 0:
-        s_curtailment = 0
-    else:
-        s_curtailment = s_curtailment/max_gen
-
-    if max_gen_w == 0:
-        w_curtailment = 0
-    else:
-        w_curtailment = w_curtailment/max_gen
-    
-    ###You can delete the code above if you wish###
-    
-    
-    ##We also want to  find out the amount of power used by battery
-    battery_pen = n.links_t.p1["battery discharger"].sum()/sum(n.generators_t.p.sum())
-    
-    hydrogen_pen = n.links_t.p1["H2 Fuel Cell"].sum()/sum(n.generators_t.p.sum())
-    
-    
-    return ((solar_penetration, wind_penetration, gas_penetration, battery_pen, hydrogen_pen), systemcost, 
-            (s_curtailment, w_curtailment))
-
 def make_dir(foldername):
     dir = pathlib.Path().resolve() #This is the current path
     mypath = str(dir) + "/NetCDF" #Going into the NetCDF folder
@@ -363,7 +333,7 @@ def make_dir(foldername):
 
     
 
-def find_wind_data(n, name, wind_cost):
+def find_wind_data(n, name, wind_cost, dirname):
     #Takes annualized coefficient and multiplies by investment cost
   
     annualized_wind_cost = 0.08442684282600257 * wind_cost
@@ -376,10 +346,10 @@ def find_wind_data(n, name, wind_cost):
              pyomo=False,
              solver_name='gurobi')
 
-    n.export_to_netcdf("NetCDF/"+ name + f"/windcostLOGJan31/{wind_cost}wind_cost.nc")
+    n.export_to_netcdf("NetCDF/"+ name + f"/{dirname}/{wind_cost}wind_cost.nc")
 
 
-def find_batt_data(n, name, batt_cost):
+def find_batt_data(n, name, batt_cost, dirname):
 
     annualized_batt_cost = 0.09439292574325567 * batt_cost
     n.stores.loc[['battery'],['capital_cost']] = annualized_batt_cost
@@ -391,7 +361,7 @@ def find_batt_data(n, name, batt_cost):
              pyomo=False,
              solver_name='gurobi')
 
-    n.export_to_netcdf("NetCDF/"+ name + f"/batterycostLOGJan31/{batt_cost}batt_cost.nc")
+    n.export_to_netcdf("NetCDF/"+ name + f"/{dirname}/{batt_cost}batt_cost.nc")
 
 
 
@@ -424,10 +394,10 @@ for network in mynetworks:
 
 # make_dir("batterycostLOGJan31")
 
-# DNK_solar_data = list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 100)))
-# ESP_solar_data = list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(4, 6.31, 100)))
-# CA_solar_data = list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(4, 6.31, 100)))
-# CO_solar_data = list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(4, 6.31, 100)))
+# DNK_solar_data = list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 100), repeat("dirname here")))
+# ESP_solar_data = list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(4, 6.31, 100), repeat("dirname here")))
+# CA_solar_data = list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(4, 6.31, 100), repeat("dirname here")))
+# CO_solar_data = list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(4, 6.31, 100), repeat("dirname here")))
 
 #find_wind_data()
 # for network in mynetworks:
@@ -436,15 +406,15 @@ for network in mynetworks:
 
 
 ###Jan 31 currently running wind and battery data
-# list(map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(5, 6.5, 100)))
-# list(map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(5, 6.5, 100)))
-# list(map(find_wind_data, repeat(CA), repeat("CA"), np.logspace(5, 6.5, 100)))
-# list(map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(5, 6.5, 100)))
+# list(map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(5, 6.5, 100), repeat("dirname here")))
+# list(map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(5, 6.5, 100), repeat("dirname here")))
+# list(map(find_wind_data, repeat(CA), repeat("CA"), np.logspace(5, 6.5, 100), repeat("dirname here")))
+# list(map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(5, 6.5, 100), repeat("dirname here")))
 
-list(map(find_batt_data, repeat(Denmark), repeat("Denmark"), np.logspace(4.5, 6, 100)))
-list(map(find_batt_data, repeat(Spain), repeat("Spain"), np.logspace(4.5, 6, 100)))
-list(map(find_batt_data, repeat(CA), repeat("CA"), np.logspace(4.5, 6, 100)))
-list(map(find_batt_data, repeat(CO), repeat("CO"), np.logspace(4.5, 6, 100)))
+# list(map(find_batt_data, repeat(Denmark), repeat("Denmark"), np.logspace(4.5, 6, 100), repeat("dirname here")))
+# list(map(find_batt_data, repeat(Spain), repeat("Spain"), np.logspace(4.5, 6, 100), repeat("dirname here")))
+# list(map(find_batt_data, repeat(CA), repeat("CA"), np.logspace(4.5, 6, 100), repeat("dirname here")))
+# list(map(find_batt_data, repeat(CO), repeat("CO"), np.logspace(4.5, 6, 100), repeat("dirname here")))
 
 
 
@@ -504,10 +474,10 @@ def natural_sort(l):
 
 
 
-def iterate_netcdf_solar(country):
+def iterate_netcdf_solar(country, dataset):
     '''Takes country as a string'''
     solution_list = []
-    mypath = "NetCDF/" + country + "/costLOGJan24"
+    mypath = "NetCDF/" + country + f"/{dataset}"
     for filename in natural_sort(os.listdir(mypath)):
         f = os.path.join(mypath, filename)
         solution_list += [import_cdf_data(f)]
@@ -542,21 +512,21 @@ def iterate_netcdf_co2(country):
 
 
 
-# solardnk = iterate_netcdf_solar("Denmark")
-# solaresp = iterate_netcdf_solar("Spain")
-# solarcol = iterate_netcdf_solar("CO")
-# solarcal = iterate_netcdf_solar("CA")
+# solardnk = iterate_netcdf_solar("Denmark", "solarcostLOGFeb7")
+# solaresp = iterate_netcdf_solar("Spain", "solarcostLOGFeb7")
+# solarcol = iterate_netcdf_solar("CO", "costLOGJan24")
+# solarcal = iterate_netcdf_solar("CA", "costLOGJan24")
 
-winddnk = iterate_netcdf("Denmark", "windcostLOGJan31")
-windesp = iterate_netcdf("Spain", "windcostLOGJan31")
-windcol = iterate_netcdf("CO", "windcostLOGJan31")
-windcal = iterate_netcdf("CA", "windcostLOGJan31")
+# winddnk = iterate_netcdf("Denmark", "windcostLOGJan31")
+# windesp = iterate_netcdf("Spain", "windcostLOGJan31")
+# windcol = iterate_netcdf("CO", "windcostLOGJan31")
+# windcal = iterate_netcdf("CA", "windcostLOGJan31")
 
 
-battdnk = iterate_netcdf("Denmark", "batterycostLOGJan31")
-battesp = iterate_netcdf("Spain", "batterycostLOGJan31")
-battcol = iterate_netcdf("CO", "batterycostLOGJan31")
-battcal = iterate_netcdf("CA", "batterycostLOGJan31")
+# battdnk = iterate_netcdf("Denmark", "batterycostLOGJan31")
+# battesp = iterate_netcdf("Spain", "batterycostLOGJan31")
+# battcol = iterate_netcdf("CO", "batterycostLOGJan31")
+# battcal = iterate_netcdf("CA", "batterycostLOGJan31")
 
 
 
@@ -976,7 +946,7 @@ def pen_plus_curtailALL():
     lines1, labels1 = axden1.get_legend_handles_labels()
 
     fig.legend(lines1, labels1, bbox_to_anchor=(0.65, 0.055), ncol=3)
-    plt.savefig("Images/Figure2_solar_var5.png")
+    plt.savefig("Images/Figure2_solar_compare1.png")
     plt.show()
     
 #pen_plus_curtailALL()
@@ -1204,7 +1174,7 @@ def pen_plus_wind_curtailALL():
     plt.savefig("Images/Figure_wind_var6(Wiser_etal).png")
     plt.show()
     
-pen_plus_wind_curtailALL()
+#pen_plus_wind_curtailALL()
 
 def pen_plus_batt_curtailALL():
     '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
@@ -1471,6 +1441,44 @@ def pen_plus_batt_curtailALL():
     plt.savefig("Images/Figure_batt_var3.png")
     plt.show()
  
+
+###Here we want to modify the demand data to include the electrification of heating###
+
+Denmark.remove("Load", "load")
+Denmark.add("Load",
+            "load", 
+            bus="electricity bus", 
+            p_set=df_elec['DNKcombine'])
+Spain.remove("Load", "load")
+Spain.add("Load",
+            "load", 
+            bus="electricity bus", 
+            p_set=df_elec['ESPcombine'])
+
+
+#make_dir("solarcostLOGFeb7")
+
+# list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
+# list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
+
+make_dir("windcostLOGFeb7")
+make_dir("battcostLOGFeb7")
+list(map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
+list(map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
+
+list(map(find_batt_data, repeat(Denmark), repeat("Denmark"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb7")))
+list(map(find_batt_data, repeat(Spain), repeat("Spain"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb7")))
+
+
+
+winddnk = iterate_netcdf("Denmark", "windcostLOGFeb7")
+windesp = iterate_netcdf("Spain", "windcostLOGFeb7")
+
+
+
+#So, two will be Jan31, two will be Feb7(DNK/ESP)
+battdnk = iterate_netcdf("Denmark", "batterycostLOGFeb7")
+battesp = iterate_netcdf("Spain", "batterycostLOGFeb7")
 
 
 ######OLD FUNCTIONS######
@@ -2024,3 +2032,65 @@ def pen_plus_curtailCA(solar):
     plt.close(fig)
     return axs
 #pen_plus_curtailCA(solarcal)
+
+
+def find_solar_data_old(n, name, solar_cost):
+    #This is an outdated function, which returns useful things. Instead, we just care
+    #about exporting to the netCDF
+    # Takes annualized coefficient and multiplies by investment cost
+  
+    annualized_solar_cost =  0.07846970300338728* solar_cost
+    n.generators.loc[['solar'],['capital_cost']] = annualized_solar_cost
+    
+    #this substitutes the current solar cost in our generator for a new cost
+
+    
+    n.lopf(n.snapshots, 
+             pyomo=False,
+             solver_name='gurobi')
+
+
+    n.export_to_netcdf("NetCDF/"+ name + f"/costLOGJan24/{solar_cost}solar_cost.nc")
+    
+    #commenting out the sum of generators--battery is so small, we need raw values
+    solar_penetration = n.generators_t.p['solar'].sum()/sum(n.generators_t.p.sum())
+    wind_penetration = n.generators_t.p['onshorewind'].sum()/sum(n.generators_t.p.sum())
+    gas_penetration = n.generators_t.p['OCGT'].sum()/sum(n.generators_t.p.sum())
+    
+    
+    systemcost = n.objective/n.loads_t.p.sum()
+    
+    
+    #This now expresses solar in terms of a percent of its capacity
+    s_curtailment = (n.generators_t.p-n.generators.p_nom_opt * n.generators_t.p_max_pu)['solar'].sum()
+    
+    w_curtailment = (n.generators_t.p-n.generators.p_nom_opt * n.generators_t.p_max_pu)['onshorewind'].sum()
+    ###If you want to get a plot of curtailment alone, then delete the following lines 
+    #of code until the return statement###
+    max_gen = (n.generators.p_nom_opt * n.generators_t.p_max_pu)['solar'].sum()
+    max_gen_w = (n.generators.p_nom_opt * n.generators_t.p_max_pu)['onshorewind'].sum()
+    
+
+    #We want to get the percent of energy curtailed. However, if max_gen is 0, then
+    #we get a number that is undefined. We must use loc 
+    if max_gen == 0:
+        s_curtailment = 0
+    else:
+        s_curtailment = s_curtailment/max_gen
+
+    if max_gen_w == 0:
+        w_curtailment = 0
+    else:
+        w_curtailment = w_curtailment/max_gen
+    
+    ###You can delete the code above if you wish###
+    
+    
+    ##We also want to  find out the amount of power used by battery
+    battery_pen = n.links_t.p1["battery discharger"].sum()/sum(n.generators_t.p.sum())
+    
+    hydrogen_pen = n.links_t.p1["H2 Fuel Cell"].sum()/sum(n.generators_t.p.sum())
+    
+    
+    return ((solar_penetration, wind_penetration, gas_penetration, battery_pen, hydrogen_pen), systemcost, 
+            (s_curtailment, w_curtailment))

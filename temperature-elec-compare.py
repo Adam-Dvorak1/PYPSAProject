@@ -333,8 +333,9 @@ def heat_to_elec():
     new_elec = pd.DataFrame()
     new_elec["ESP_demand"] = ESP_elec + ESP_heat/3
     new_elec["DNK_demand"] = DNK_elec + DNK_heat/3
+    print(new_elec.head())
 
-    return new_elec
+    #return new_elec
 
     #Here, we return the new dataframe
 
@@ -1214,7 +1215,7 @@ def gw_elec_all():
     
     plt.show()
 
-gw_elec_all()
+#gw_elec_all()
 #In this section of code, I want to make a new data table of the averages of the csv files
 # plt.scatter([1,1,4,5,2,1],[2,3,6,7,2,0])
 # b, m = polyfit([1,1,4,5,2,1],[2,3,6,7,2,0],1)
