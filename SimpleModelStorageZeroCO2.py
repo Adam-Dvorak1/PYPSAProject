@@ -50,6 +50,10 @@ df_co_elec.index = pd.to_datetime(df_co_elec.index)
 #We want to simulate electrification of heating. We can then add to Denmark and Spain
 df_heat = pd.read_csv('data/heat_demand.csv', sep=';', index_col=0)# in MWh
 df_heat.index = pd.to_datetime(df_heat.index) #change index to datatime
+heatCA = pd.read_csv("data/TemperatureData/ninja_2011_weather_country_US.CA_merra-2_population_weighted.csv",  header = 2, index_col=0)
+heatCA.index = pd.to_datetime(heatCA.index)
+heatCO = pd.read_csv("data/TemperatureData/ninja_2011_weather_country_US.CO_merra-2_population_weighted.csv",  header = 2, index_col=0)
+heatCO.index = pd.to_datetime(heatCO.index)
 
 
 
@@ -58,6 +62,18 @@ df_elec["ESPheat"] = df_heat["ESP"]
 
 df_elec["DNKcombine"] = df_elec.apply(lambda row: row["DNK"] + row["DNKheat"]/3, axis = 1)
 df_elec["ESPcombine"] = df_elec.apply(lambda row: row["ESP"] + row["ESPheat"]/3, axis = 1)
+
+heatCA["HDD"] = heatCA.apply(lambda row: 17 - row["temperature"] if row["temperature"] < 17 else 0, axis = 1)
+heatCO["HDD"] = heatCO.apply(lambda row: 17 - row["temperature"] if row["temperature"] < 17 else 0, axis = 1)
+
+df_cal_elec["HDD"] = heatCA["HDD"]
+df_cal_elec["heating_demand"] = df_cal_elec.apply(lambda row: 1715 * row["HDD"] + 6356, axis = 1)# 1715 is California's G factor, MWh/HDD. 6356 is the constant, that we get from water heating
+df_cal_elec["adjust_elec_demand"] =  df_cal_elec["demand_mwh"] + 1/3 * df_cal_elec["heating_demand"]
+
+df_co_elec["HDD"] = heatCO["HDD"]
+df_co_elec["heating_demand"]= df_co_elec.apply(lambda row: 1782 * row["HDD"] + 6472, axis = 1)
+df_co_elec["adjust_elec_demand"] =  df_co_elec["demand_mwh"] + 1/3 * df_co_elec["heating_demand"]
+
 
 Denmark.add("Load",
             "load", 
@@ -387,8 +403,8 @@ def find_C02lim_data(n, name, co2lim):
 
 
 #These four below return 100 points of cost vs solar penetration. 
-for network in mynetworks:
-    reset_stats(network)
+# for network in mynetworks:
+#     reset_stats(network)
 
 
 
@@ -411,8 +427,8 @@ for network in mynetworks:
 # list(map(find_wind_data, repeat(CA), repeat("CA"), np.logspace(5, 6.5, 100), repeat("dirname here")))
 # list(map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(5, 6.5, 100), repeat("dirname here")))
 
-for network in mynetworks:
-    reset_stats(network)
+# for network in mynetworks:
+#     reset_stats(network)
 # list(map(find_batt_data, repeat(Denmark), repeat("Denmark"), np.logspace(4.5, 6, 100), repeat("dirname here")))
 # list(map(find_batt_data, repeat(Spain), repeat("Spain"), np.logspace(4.5, 6, 100), repeat("dirname here")))
 # list(map(find_batt_data, repeat(CA), repeat("CA"), np.logspace(4.5, 6, 100), repeat("dirname here")))
@@ -420,8 +436,8 @@ for network in mynetworks:
 
 
 
-for network in mynetworks:
-    reset_stats(network)
+# for network in mynetworks:
+#     reset_stats(network)
 
 
 # list(map(find_C02lim_data, repeat(Denmark), repeat("Denmark"), np.linspace(0, 3000000, 100)))
@@ -514,21 +530,7 @@ def iterate_netcdf_co2(country):
 
 
 
-# solardnk2 = iterate_netcdf_solar("Denmark", "costLOGJan24")
-# solaresp2 = iterate_netcdf_solar("Spain", "costLOGJan24")
-# solarcol = iterate_netcdf_solar("CO", "costLOGJan24")
-# solarcal = iterate_netcdf_solar("CA", "costLOGJan24")
 
-# winddnk2 = iterate_netcdf("Denmark", "windcostLOGJan31")
-# windesp2 = iterate_netcdf("Spain", "windcostLOGJan31")
-# windcol = iterate_netcdf("CO", "windcostLOGJan31")
-# windcal = iterate_netcdf("CA", "windcostLOGJan31")
-
-
-# battdnk = iterate_netcdf("Denmark", "batterycostLOGJan31")
-# battesp = iterate_netcdf("Spain", "batterycostLOGJan31")
-# battcol = iterate_netcdf("CO", "batterycostLOGJan31")
-# battcal = iterate_netcdf("CA", "batterycostLOGJan31")
 
 
 
@@ -1456,13 +1458,28 @@ Spain.add("Load",
             "load", 
             bus="electricity bus", 
             p_set=df_elec['ESPcombine'])
+CA.remove("Load", "load")
+CA.add("Load",
+            "load", 
+            bus="electricity bus", 
+            p_set=df_cal_elec["adjust_elec_demand"])
+CO.remove("Load", "load")
+CO.add("Load",
+            "load", 
+            bus="electricity bus", 
+            p_set=df_co_elec["adjust_elec_demand"])
+
 
 
 #make_dir("solarcostLOGFeb7")
 for network in mynetworks:
     reset_stats(network)
+
 # list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
 # list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
+
+list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
+list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
 
 # make_dir("windcostLOGFeb7")
 
@@ -1470,29 +1487,64 @@ for network in mynetworks:
 for network in mynetworks:
     reset_stats(network)
 
-list(map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
-list(map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
+# list(map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
+# list(map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
+
+list(map(find_wind_data, repeat(CA), repeat("CA"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
+list(map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
+
+#11 Feb--we want to 
 
 
 for network in mynetworks:
     reset_stats(network)
 
-make_dir("battcostLOGFeb8")
-list(map(find_batt_data, repeat(Denmark), repeat("Denmark"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
-list(map(find_batt_data, repeat(Spain), repeat("Spain"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
+#make_dir("battcostLOGFeb8")
+# list(map(find_batt_data, repeat(Denmark), repeat("Denmark"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
+# list(map(find_batt_data, repeat(Spain), repeat("Spain"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
+
+list(map(find_batt_data, repeat(CA), repeat("CA"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
+list(map(find_batt_data, repeat(CO), repeat("CO"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
 
 
+#As we plot the overlap, we need two to compare--old and new.
+#This is so we can make the three plots of overlap, for solar, wind, and battery
+
+solardnk2 = iterate_netcdf_solar("Denmark", "costLOGJan24")
+solaresp2 = iterate_netcdf_solar("Spain", "costLOGJan24")
+solarcol2 = iterate_netcdf_solar("CO", "costLOGJan24")
+solarcal2 = iterate_netcdf_solar("CA", "costLOGJan24")
+
+winddnk2 = iterate_netcdf("Denmark", "windcostLOGJan31")
+windesp2 = iterate_netcdf("Spain", "windcostLOGJan31")
+windcol2 = iterate_netcdf("CO", "windcostLOGJan31")
+windcal2 = iterate_netcdf("CA", "windcostLOGJan31")
 
 
-
-
-
-#So, two will be Jan31, two will be Feb7(DNK/ESP)
 battdnk2 = iterate_netcdf("Denmark", "batterycostLOGJan31")
 battesp2 = iterate_netcdf("Spain", "batterycostLOGJan31")
+battcol2 = iterate_netcdf("CO", "batterycostLOGJan31")
+battcal2 = iterate_netcdf("CA", "batterycostLOGJan31")
+
+
+solardnk = iterate_netcdf_solar("Denmark", "solarcostLOGFeb7")
+solaresp = iterate_netcdf_solar("Spain", "solarcostLOGFeb7")
+solarcol = iterate_netcdf_solar("CO", "solarcostLOGFeb7")
+solarcal = iterate_netcdf_solar("CA", "solarcostLOGFeb7")
+
+winddnk = iterate_netcdf("Denmark", "windcostLOGFeb7")
+windesp = iterate_netcdf("Spain", "windcostLOGFeb7")
+windcol = iterate_netcdf("CO", "windcostLOGFeb7")
+windcal = iterate_netcdf("CA", "windcostLOGFeb7")
+
 
 battdnk = iterate_netcdf("Denmark", "battcostLOGFeb8")
 battesp = iterate_netcdf("Spain", "battcostLOGFeb8")
+battcol = iterate_netcdf("CO", "battcostLOGFeb8")
+battcal = iterate_netcdf("CA", "battcostLOGFeb8")
+
+
+
 
 
 def pen_plus_solar_curtailoverlap():
@@ -1543,6 +1595,14 @@ def pen_plus_solar_curtailoverlap():
     ESP_sp2 = [x[1] for x in solaresp2]
     ESP_wp2 = [x[2] for x in solaresp2]
     ESP_sc2 = list(map(abs,[x[3] for x in solaresp2]))
+
+    CAL_sp2 = [x[1] for x in solarcal2]
+    CAL_wp2 = [x[2] for x in solarcal2]
+    CAL_sc2 = list(map(abs,[x[3] for x in solarcal2]))
+
+    COL_sp2 = [x[1] for x in solarcol2]
+    COL_wp2 = [x[2] for x in solarcol2]
+    COL_sc2 = list(map(abs,[x[3] for x in solarcol2]))    
 
     
     #The one with the lower alpha also has the one with the "x" marker.
@@ -1651,15 +1711,16 @@ def pen_plus_solar_curtailoverlap():
 
     #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
 
-    axcol0.scatter(s_cost, COL_sc, s = 15, color = "C1") #Scatter or plot?
+    axcol0.scatter(s_cost, COL_sc2, s = 15, color = "C1")
+    axcol0.scatter(s_cost, COL_sc, marker = "x", s = 15, color = "C1", alpha = 0.5)
     axcol0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
     axcol0.set_ylabel("Curtailment")
     axcol0.set_facecolor("#eeeeee")
     axcol0.set_title("Colorado")
 
 
-
     axcol1.stackplot(s_cost, COL_sp, COL_wp, colors = ["#f1c232","#2986cc"])
+    axcol1.stackplot(s_cost, COL_sp2, COL_wp2, colors = ["#f1c232","#2986cc"], alpha = 0.5)
     axcol1.set_ylim(0, 1)
     axcol0.set_ylim(0, 1)
 
@@ -1692,8 +1753,8 @@ def pen_plus_solar_curtailoverlap():
 
 
     #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
-
-    axcal0.scatter(s_cost, CAL_sc, s = 15, color = "C1") #Scatter or plot?
+    axcal0.scatter(s_cost, CAL_sc2, s = 15, color = "C1")
+    axcal0.scatter(s_cost, CAL_sc, marker = "x", s = 15, color = "C1", alpha = 0.5)
     axcal0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
     #axcal0.set_ylabel("Curtailment")
     axcal0.set_facecolor("#eeeeee")
@@ -1702,6 +1763,7 @@ def pen_plus_solar_curtailoverlap():
 
 
     axcal1.stackplot(s_cost, CAL_sp, CAL_wp, colors = ["#f1c232","#2986cc"])
+    axcal1.stackplot(s_cost, CAL_sp2, CAL_wp2, colors = ["#f1c232","#2986cc"], alpha = 0.5)
     axcal1.set_ylim(0, 1)
     axcal0.set_ylim(0, 1)
 
@@ -1747,10 +1809,11 @@ def pen_plus_solar_curtailoverlap():
     lines1, labels1 = axden1.get_legend_handles_labels()
 
     fig.legend(lines1, labels1, bbox_to_anchor=(0.85, 0.055), ncol=4)
-    plt.savefig("Images/Figure2_solar_compare_heat.png")
+    plt.savefig("Images/solar_compare_heat_var2.png")
     plt.show()
     
-pen_plus_solar_curtailoverlap()
+#pen_plus_solar_curtailoverlap()
+
 
 
 
@@ -1807,6 +1870,14 @@ def pen_plus_wind_curtailoverlap():
     ESP_wp2 = [x[2] for x in windesp2]
     ESP_wc2 = list(map(abs,[x[4] for x in windesp2]))
 
+    COL_sp2 = [x[1] for x in windcol2]
+    COL_wp2 = [x[2] for x in windcol2]
+    COL_wc2 = list(map(abs,[x[4] for x in windcol2]))
+
+    CAL_sp2 = [x[1] for x in windcal2]
+    CAL_wp2 = [x[2] for x in windcal2]
+    CAL_wc2 = list(map(abs,[x[4] for x in windcal2]))    
+
 
     #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
 
@@ -1847,6 +1918,555 @@ def pen_plus_wind_curtailoverlap():
     ESP_sp = [x[1] for x in windesp]
     ESP_wp = [x[2] for x in windesp]
     ESP_wc = list(map(abs,[x[4] for x in windesp]))
+
+
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axesp0.scatter(w_cost, ESP_wc, marker = "x", s = 15, color = "C1", alpha = 0.5) 
+    axesp0.scatter(w_cost, ESP_wc2, s = 15, color = "C1") 
+    axesp0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+    axesp0.set_facecolor("#eeeeee")
+    axesp0.set_title("Spain")
+ 
+
+    #This still plots the right thing, although the order of plotting is actually different than DNK
+    axesp1.stackplot(w_cost, ESP_sp, ESP_wp, colors = ["#f1c232","#2986cc"])
+    axesp1.stackplot(w_cost, ESP_sp2, ESP_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar_heat", "Wind_heat"], alpha = 0.5)
+    axesp1.set_ylim(0, 1)
+    axesp0.set_ylim(0, 1)
+
+    axesp1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+
+    xticks = axesp1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    axesp0.spines["top"].set_visible(False)
+    axesp0.spines["right"].set_visible(False)
+    axesp0.yaxis.set_ticklabels([])
+    axesp1.yaxis.set_ticklabels([])
+
+    ####Colorado#####
+
+    COL_sp = [x[1] for x in windcol]
+    COL_wp = [x[2] for x in windcol]
+    COL_wc = list(map(abs,[x[4] for x in windcol]))
+
+    axcol0.scatter(w_cost, COL_wc, marker = "x", s = 15, color = "C1", alpha = 0.5) 
+    axcol0.scatter(w_cost, COL_wc2, s = 15, color = "C1") 
+
+    axcol0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axcol0.set_ylabel("Curtailment")
+    axcol0.set_facecolor("#eeeeee")
+    axcol0.set_title("Colorado")
+
+
+
+
+    axcol1.stackplot(w_cost, COL_sp, COL_wp, colors = ["#f1c232","#2986cc"])
+    axcol1.stackplot(w_cost, COL_sp2, COL_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar_heat", "Wind_heat"], alpha = 0.5)
+
+    axcol1.set_ylim(0, 1)
+    axcol0.set_ylim(0, 1)
+
+    axcol1.set_ylabel("Penetration")
+    axcol1.set_xlabel("Cost of Wind")
+
+    axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+
+    xticks = axcol1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    axcol0.spines["top"].set_visible(False)
+    axcol0.spines["right"].set_visible(False)
+
+    
+    
+    ###California####
+
+    CAL_sp = [x[1] for x in windcal]
+    CAL_wp = [x[2] for x in windcal]
+    CAL_wc = list(map(abs,[x[4] for x in windcal]))
+
+
+
+    axcal0.scatter(w_cost, CAL_wc, marker = "x", s = 15, color = "C1", alpha = 0.5) 
+    axcal0.scatter(w_cost, CAL_wc2, s = 15, color = "C1") 
+
+
+    axcal0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+    axcal0.set_facecolor("#eeeeee")
+    axcal0.set_title("California")
+
+
+    axcal1.stackplot(w_cost, CAL_sp, CAL_wp, colors = ["#f1c232","#2986cc"])
+    axcal1.stackplot(w_cost, CAL_sp2, CAL_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar_heat", "Wind_heat"], alpha = 0.5)
+
+
+    axcal1.set_ylim(0, 1)
+    axcal0.set_ylim(0, 1)
+
+
+    axcal1.set_xlabel("Cost of Wind")
+
+    axcal1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+    xticks = axcal1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+
+  
+    axcal0.spines["top"].set_visible(False)
+    axcal0.spines["right"].set_visible(False)
+    axcal0.yaxis.set_ticklabels([])
+    axcal1.yaxis.set_ticklabels([])
+
+ 
+    #This applies things for all axes
+    for ax in plt.gcf().get_axes():
+        ax.minorticks_on()
+      
+        ax.label_outer()
+
+        ax.margins(x = 0)
+        ax.set_xscale('log')        
+        ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+
+
+    #This applies things for only the axes of penetration.
+    for ax in plt.gcf().get_axes()[1::2]:
+        ax.fill_between([1.12, 1.22], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
+        ax.axvline(1.12, color='black',ls='--')
+        ax.axvline(1.22, color='black',ls='--')
+        ax.text(1.4 ,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+
+        ax.fill_between([0.57, 0.77], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "purple")
+        ax.axvline(0.57, color='black',ls='--')
+        ax.axvline(0.77, color='black',ls='--')
+        ax.text(0.65, 0.05, "Future range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    
+    # for ax in plt.gcf().get_axes()[::2]:
+    #     ax.set_ylim(0,1)
+
+
+    axesp1.xaxis.set_ticklabels([])
+    axden1.xaxis.set_ticklabels([])
+
+    lines1, labels1 = axden1.get_legend_handles_labels()
+
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.85, 0.055), ncol=4)
+
+    #print(fig.axes[1::2])
+
+    plt.savefig("Images/Figure_wind_compare_heat_var4.png")
+    plt.show()
+    
+#pen_plus_wind_curtailoverlap()
+
+
+def pen_plus_batt_curtailoverlap():
+    '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
+    a scaling log of solar. It is very long. It uses gridspec to order the axes, and other than that
+    it is about the same as the other pen_plus_curtail() functions. 17/1
+    
+    This uses the github (Danish energy agency) value of onshore wind for the lower bound,
+    and the NREL annual technology baseline for the upper bound.'''
+    plt.rcdefaults()
+
+    plt.rcParams.update({'font.size': 14})
+    plt.rcParams['hatch.linewidth'] = 1
+    fig = plt.figure(figsize=(10, 9))
+    outer = gridspec.GridSpec(3, 2, wspace=0.2, hspace=0.3, height_ratios = [1, 1, 0.01])
+    inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_esp = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[1], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_col = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[2], wspace=0.1, hspace=0, height_ratios = [1, 2]) #(gridspec(3,1)) to add some extra space
+    inner_cal = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[3], wspace=0.1, hspace=0, height_ratios = [1, 2])
+
+    axden0 = plt.Subplot(fig, inner_dnk[0])
+    axden1 = plt.Subplot(fig, inner_dnk[1])
+    fig.add_subplot(axden0)
+    fig.add_subplot(axden1)
+
+    axesp0 = plt.Subplot(fig, inner_esp[0])
+    axesp1 = plt.Subplot(fig, inner_esp[1])
+    fig.add_subplot(axesp0)
+    fig.add_subplot(axesp1)
+
+
+    axcol0 = plt.Subplot(fig, inner_col[0])
+    axcol1 = plt.Subplot(fig, inner_col[1])
+    fig.add_subplot(axcol0)
+    fig.add_subplot(axcol1)
+
+
+
+
+    axcal0 = plt.Subplot(fig, inner_cal[0])
+    axcal1 = plt.Subplot(fig, inner_cal[1])
+    fig.add_subplot(axcal0)
+    fig.add_subplot(axcal1)     
+
+    ####DENMARK###
+    b_cost = [x[7] for x in battdnk]
+    b_cost = [item for sublist in b_cost for item in sublist]
+    b_cost = [x / 10**6 /0.09439292574325567  for x in b_cost] 
+
+    DNK_sp = [x[1] for x in battdnk]
+    DNK_wp = [x[2] for x in battdnk]
+    DNK_sc = list(map(abs,[x[3] for x in battdnk]))
+    DNK_wc = list(map(abs,[x[4] for x in battdnk]))
+    DNK_bp = list(map(abs,[x[8] for x in battdnk]))
+
+
+    ##NEW###
+    DNK_sp2 = [x[1] for x in battdnk2]
+    DNK_wp2 = [x[2] for x in battdnk2]
+    DNK_bp2 = list(map(abs,[x[8] for x in battdnk2]))
+
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axden0.scatter(b_cost, DNK_sc, s = 15, color = "C1", label = "solar curtailment")
+    axden0.scatter(b_cost, DNK_wc, s = 15, color = "C0", label = "wind curtailment")
+       
+    axden0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axden0.set_ylabel("Curtailment")
+    axden0.set_facecolor("#eeeeee")
+
+
+
+
+    axden1.stackplot(b_cost, DNK_sp2, DNK_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar_heat", "Wind_heat"]) 
+    axden1.stackplot(b_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar_og", "Wind_og"], alpha = 0.5)
+     
+    axden1.set_ylim(0, 1)
+    axden0.set_ylim(0, 1)
+
+    axden1.set_ylabel("Penetration")
+
+
+    axden1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axden0.set_title("Denmark")
+
+    xticks = axden1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+
+    #We want to make a range for today's prices. the upper range is 
+    axden0.spines["top"].set_visible(False)
+    axden0.spines["right"].set_visible(False)
+   
+
+
+    ####SPAIN####
+
+    ESP_sp = [x[1] for x in battesp]
+    ESP_wp = [x[2] for x in battesp]
+    ESP_wc = list(map(abs,[x[4] for x in battesp]))
+    ESP_sc = list(map(abs,[x[3] for x in battesp]))
+    ESP_bp = list(map(abs,[x[8] for x in battesp]))
+
+
+    ##NEW###
+    ESP_sp2 = [x[1] for x in battesp2]
+    ESP_wp2 = [x[2] for x in battesp2]
+    ESP_bp2 = list(map(abs,[x[8] for x in battesp2]))
+
+    axesp0.scatter(b_cost, ESP_wc, s = 15, color = "C0") 
+    axesp0.scatter(b_cost, ESP_sc, s = 15, color = "C1") 
+    axesp0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+    axesp0.set_facecolor("#eeeeee")
+    axesp0.set_title("Spain")
+
+
+
+
+
+    axesp1.stackplot(b_cost, ESP_sp, ESP_wp, colors = ["#f1c232","#2986cc"])
+    axesp1.stackplot(b_cost, ESP_sp2, ESP_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar_heat", "Wind_heat"], alpha = 0.5)
+    
+    axesp1.set_ylim(0, 1)
+    axesp0.set_ylim(0, 1)
+
+    axesp1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+
+    xticks = axesp1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    axesp0.spines["top"].set_visible(False)
+    axesp0.spines["right"].set_visible(False)
+    axesp0.yaxis.set_ticklabels([])
+    axesp1.yaxis.set_ticklabels([])
+
+    ####Colorado#####
+
+    COL_sp = [x[1] for x in battcol]
+    COL_wp = [x[2] for x in battcol]
+    COL_wc = list(map(abs,[x[4] for x in battcol]))
+    COL_sc = list(map(abs,[x[3] for x in battcol]))    
+    COL_bp = list(map(abs,[x[8] for x in battcol]))
+
+
+    COL_sp2 = [x[1] for x in battcol2]
+    COL_wp2 = [x[2] for x in battcol2]
+    COL_bp2 = list(map(abs,[x[8] for x in battcol2]))
+
+    axcol0.scatter(b_cost, COL_wc, s = 15, color = "C0") 
+    axcol0.scatter(b_cost, COL_sc, s = 15, color = "C1")     
+    axcol0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axcol0.set_ylabel("Curtailment")
+    axcol0.set_facecolor("#eeeeee")
+    axcol0.set_title("Colorado")
+
+
+    axcol1.stackplot(b_cost, COL_sp, COL_wp, colors = ["#f1c232","#2986cc"])
+    axcol1.stackplot(b_cost, COL_sp2, COL_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar_heat", "Wind_heat"], alpha = 0.5)
+
+    axcol1.set_ylim(0, 1)
+    axcol0.set_ylim(0, 1)
+
+    axcol1.set_ylabel("Penetration")
+    axcol1.set_xlabel("Cost of Battery")
+
+    axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+
+    xticks = axcol1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+    axcol0.spines["top"].set_visible(False)
+    axcol0.spines["right"].set_visible(False)
+
+    
+    
+    ###California####
+
+    CAL_sp = [x[1] for x in battcal]
+    CAL_wp = [x[2] for x in battcal]
+    CAL_wc = list(map(abs,[x[4] for x in battcal]))
+    CAL_sc = list(map(abs,[x[3] for x in battcal]))
+    CAL_bp = list(map(abs,[x[8] for x in battcal]))    
+
+    CAL_sp2 = [x[1] for x in battcal2]
+    CAL_wp2 = [x[2] for x in battcal2]
+    CAL_bp2 = list(map(abs,[x[8] for x in battcal2]))
+
+
+    axcal0.scatter(b_cost, CAL_wc, s = 15, color = "C0")
+    axcal0.scatter(b_cost, CAL_sc, s = 15, color = "C1")
+    axcal0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+    axcal0.set_facecolor("#eeeeee")
+    axcal0.set_title("California")
+
+
+
+    axcal1.stackplot(b_cost, CAL_sp, CAL_wp, colors = ["#f1c232","#2986cc"])
+    axcal1.stackplot(b_cost, CAL_sp2, CAL_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar_heat", "Wind_heat"], alpha = 0.5)
+
+
+    axcal1.set_ylim(0, 1)
+    axcal0.set_ylim(0, 1)
+
+
+    axcal1.set_xlabel("Cost of Battery")
+
+    axcal1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+
+    xticks = axcal1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+
+  
+    axcal0.spines["top"].set_visible(False)
+    axcal0.spines["right"].set_visible(False)
+    axcal0.yaxis.set_ticklabels([])
+    axcal1.yaxis.set_ticklabels([])
+
+ 
+    #This applies things for all axes
+
+    #This applies things for only the axes of penetration.
+    for ax in plt.gcf().get_axes()[1::2]:
+        ax.fill_between([0.232, 0.311], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
+        ax.axvline(0.232, color='black',ls='--')
+        ax.axvline(0.311, color='black',ls='--')
+        ax.text(0.27 ,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+
+        ax.fill_between([0.075, 0.22], y1 = 1, alpha = 0.2, edgecolor = "k", hatch = "XX", facecolor = "purple")
+        ax.axvline(0.075, color='black',ls='--')
+        ax.axvline(0.22, color='black',ls='--')
+        ax.text(0.135, 0.05, "Future range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    
+    # for ax in plt.gcf().get_axes()[::2]:
+    #     ax.set_ylim(0,1)
+
+
+    axesp1.xaxis.set_ticklabels([])
+    axden1.xaxis.set_ticklabels([])
+
+
+
+
+
+
+    for ax in plt.gcf().get_axes():
+        ax.minorticks_on()
+      
+        ax.label_outer()
+
+        ax.margins(x = 0)
+        ax.set_xscale('log')        
+        ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
+
+    
+#    plt.rcParams["font.weight"] = "bold"
+    axden0b = axden0.twinx()
+    axden0b.scatter(b_cost, DNK_bp, marker = "x", s = 15, color = "C2", label = "Battery share new", alpha = 0.5) 
+    axden0b.scatter(b_cost, DNK_bp2, s = 15, color = "C2", label = "Battery share old")
+    axden0b.tick_params(axis = "y", labelcolor = "C2")
+
+    axesp0b = axesp0.twinx()
+    axesp0b.scatter(b_cost, ESP_bp, marker = "x", s = 15, color = "C2", label = "battery penetration", alpha = 0.5)
+    axesp0b.scatter(b_cost, ESP_bp2, s = 15, color = "C2", label = "battery penetration")
+    axesp0b.tick_params(axis = "y", labelcolor = "C2") 
+    axesp0b.set_ylabel("Battery\nfraction")
+ 
+    axcol0b = axcol0.twinx()
+    axcol0b.scatter(b_cost, COL_bp, marker = "x", s = 15, color = "C2", label = "battery penetration", alpha = 0.5)
+    axcol0b.scatter(b_cost, COL_bp2, s = 15, color = "C2", label = "battery penetration")
+    axcol0b.tick_params(axis = "y", labelcolor = "C2") 
+
+    axcal0b = axcal0.twinx()
+    axcal0b.scatter(b_cost, CAL_bp, marker = "x", s = 15, color = "C2", label = "battery penetration", alpha = 0.5)
+    axcal0b.scatter(b_cost, CAL_bp2, s = 15, color = "C2", label = "battery penetration")
+    axcal0b.tick_params(axis = "y", labelcolor = "C2")
+    axcal0b.set_ylabel("Battery\nfraction")
+
+
+    lines1, labels1 = axden1.get_legend_handles_labels()
+    #lines2, labels2 = axden0.get_legend_handles_labels()
+    lines3, labels3 = axden0b.get_legend_handles_labels()
+
+    fig.legend(lines1 +lines3, labels1+labels3, bbox_to_anchor=(0.8, 0.1), ncol = 3)
+
+    #print(fig.axes[1::2])
+
+    plt.savefig("Images/Figure_batt_compare3.png")
+    plt.show()
+pen_plus_batt_curtailoverlap()
+
+
+def pen_plus_curtail_overlap_select(choice):
+    '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
+    a scaling log of solar. It is very long. It uses gridspec to order the axes, and other than that
+    it is about the same as the other pen_plus_curtail() functions. 17/1
+    
+    This uses the github (Danish energy agency) value of onshore wind for the lower bound,
+    and the NREL annual technology baseline for the upper bound.'''
+    plt.rcParams.update({'font.size': 14})
+    plt.rcParams['hatch.linewidth'] = 1
+    fig = plt.figure(figsize=(10, 8))
+    outer = gridspec.GridSpec(2, 2, wspace=0.2, hspace=0.2)
+    inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_esp = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[1], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_col = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[2], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_cal = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[3], wspace=0.1, hspace=0, height_ratios = [1, 2])
+
+    axden0 = plt.Subplot(fig, inner_dnk[0])
+    axden1 = plt.Subplot(fig, inner_dnk[1])
+    fig.add_subplot(axden0)
+    fig.add_subplot(axden1)
+
+    axesp0 = plt.Subplot(fig, inner_esp[0])
+    axesp1 = plt.Subplot(fig, inner_esp[1])
+    fig.add_subplot(axesp0)
+    fig.add_subplot(axesp1)
+
+    axcol0 = plt.Subplot(fig, inner_col[0])
+    axcol1 = plt.Subplot(fig, inner_col[1])
+    fig.add_subplot(axcol0)
+    fig.add_subplot(axcol1)
+
+    axcal0 = plt.Subplot(fig, inner_cal[0])
+    axcal1 = plt.Subplot(fig, inner_cal[1])
+    fig.add_subplot(axcal0)
+    fig.add_subplot(axcal1)       
+
+    ####DENMARK###
+    w_cost = [x[6] for x in winddnk]
+    w_cost = [item for sublist in w_cost for item in sublist]
+    w_cost = [x / 10**6 /0.08442684282600257 for x in w_cost] 
+
+    DNK_sp = [x[1] for x in winddnk]
+    DNK_wp = [x[2] for x in winddnk]
+    DNK_sc = list(map(abs,[x[3] for x in winddnk]))
+    DNK_wc = list(map(abs,[x[4] for x in winddnk]))
+
+    DNK_sp2 = [x[1] for x in winddnk2]
+    DNK_wp2 = [x[2] for x in winddnk2]
+    DNK_sc2 = list(map(abs,[x[3] for x in winddnk2]))
+    DNK_wc2 = list(map(abs,[x[4] for x in winddnk2]))
+
+
+    ESP_sp = [x[1] for x in windesp]
+    ESP_wp = [x[2] for x in windesp]
+    ESP_sc = list(map(abs,[x[3] for x in windesp]))
+    ESP_wc = list(map(abs,[x[4] for x in windesp]))
+
+
+    ESP_sp2 = [x[1] for x in windesp2]
+    ESP_wp2 = [x[2] for x in windesp2]
+    ESP_wc2 = list(map(abs,[x[4] for x in windesp2]))
+
+
+    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
+
+    axden0.scatter(w_cost, DNK_wc, marker = "x", s = 15, color = "C1", alpha = 0.5)
+    axden0.scatter(w_cost, DNK_wc2, s = 15, color = "C1")
+    axden0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axden0.set_ylabel("Curtailment")
+    axden0.set_facecolor("#eeeeee")
+
+    #I'm a bit confused. one would think that the alpha should be the other way around. But it's not
+    axden1.stackplot(w_cost, DNK_sp2, DNK_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar_heat", "Wind_heat"]) 
+    axden1.stackplot(w_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar_og", "Wind_og"], alpha = 0.5)
+    
+    axden1.set_ylim(0, 1)
+    axden0.set_ylim(0, 1)
+
+    axden1.set_ylabel("Penetration")
+    #axden1.set_xlabel("Percent flexible source")
+
+    axden1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
+    axden0.set_title("Denmark")
+
+    xticks = axden1.yaxis.get_major_ticks() 
+    xticks[-1].label1.set_visible(False)
+
+
+    #The 2.7 is the offshore wind price
+
+
+    #We want to make a range for today's prices. the upper range is 
+    axden0.spines["top"].set_visible(False)
+    axden0.spines["right"].set_visible(False)
+   
+
+
+    ####SPAIN####
+
+
 
 
 
@@ -1989,296 +2609,7 @@ def pen_plus_wind_curtailoverlap():
     plt.savefig("Images/Figure_wind_compare_heat_var3.png")
     plt.show()
     
-pen_plus_wind_curtailoverlap()
-
-
-def pen_plus_batt_curtailoverlap():
-    '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
-    a scaling log of solar. It is very long. It uses gridspec to order the axes, and other than that
-    it is about the same as the other pen_plus_curtail() functions. 17/1
-    
-    This uses the github (Danish energy agency) value of onshore wind for the lower bound,
-    and the NREL annual technology baseline for the upper bound.'''
-    plt.rcdefaults()
-
-    plt.rcParams.update({'font.size': 14})
-    plt.rcParams['hatch.linewidth'] = 1
-    fig = plt.figure(figsize=(10, 9))
-    outer = gridspec.GridSpec(3, 2, wspace=0.2, hspace=0.3, height_ratios = [1, 1, 0.01])
-    inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.1, hspace=0, height_ratios = [1, 2])
-    inner_esp = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[1], wspace=0.1, hspace=0, height_ratios = [1, 2])
-    inner_col = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[2], wspace=0.1, hspace=0, height_ratios = [1, 2]) #(gridspec(3,1)) to add some extra space
-    inner_cal = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[3], wspace=0.1, hspace=0, height_ratios = [1, 2])
-
-    axden0 = plt.Subplot(fig, inner_dnk[0])
-    axden1 = plt.Subplot(fig, inner_dnk[1])
-    fig.add_subplot(axden0)
-    fig.add_subplot(axden1)
-
-    axesp0 = plt.Subplot(fig, inner_esp[0])
-    axesp1 = plt.Subplot(fig, inner_esp[1])
-    fig.add_subplot(axesp0)
-    fig.add_subplot(axesp1)
-
-
-    axcol0 = plt.Subplot(fig, inner_col[0])
-    axcol1 = plt.Subplot(fig, inner_col[1])
-    fig.add_subplot(axcol0)
-    fig.add_subplot(axcol1)
-
-
-
-
-    axcal0 = plt.Subplot(fig, inner_cal[0])
-    axcal1 = plt.Subplot(fig, inner_cal[1])
-    fig.add_subplot(axcal0)
-    fig.add_subplot(axcal1)     
-
-    ####DENMARK###
-    b_cost = [x[7] for x in battdnk]
-    b_cost = [item for sublist in b_cost for item in sublist]
-    b_cost = [x / 10**6 /0.09439292574325567  for x in b_cost] 
-
-    DNK_sp = [x[1] for x in battdnk]
-    DNK_wp = [x[2] for x in battdnk]
-    DNK_sc = list(map(abs,[x[3] for x in battdnk]))
-    DNK_wc = list(map(abs,[x[4] for x in battdnk]))
-    DNK_bp = list(map(abs,[x[8] for x in battdnk]))
-
-
-    ##NEW###
-    DNK_sp2 = [x[1] for x in battdnk2]
-    DNK_wp2 = [x[2] for x in battdnk2]
-    DNK_wc2 = list(map(abs,[x[4] for x in battdnk2]))
-    DNK_bp2 = list(map(abs,[x[8] for x in battdnk2]))
-
-
-    #fig, axs = plt.subplots(2,1, gridspec_kw={'height_ratios': [1, 2]})
-
-    axden0.scatter(b_cost, DNK_sc, s = 15, color = "C1", label = "solar curtailment")
-    axden0.scatter(b_cost, DNK_wc, s = 15, color = "C0", label = "wind curtailment")
-       
-    axden0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    axden0.set_ylabel("Curtailment")
-    axden0.set_facecolor("#eeeeee")
-
-
-
-
-    axden1.stackplot(b_cost, DNK_sp2, DNK_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar_heat", "Wind_heat"]) 
-    axden1.stackplot(b_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar_og", "Wind_og"], alpha = 0.5)
-     
-    axden1.set_ylim(0, 1)
-    axden0.set_ylim(0, 1)
-
-    axden1.set_ylabel("Penetration")
-
-
-    axden1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    axden0.set_title("Denmark")
-
-    xticks = axden1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
-
-
-    #We want to make a range for today's prices. the upper range is 
-    axden0.spines["top"].set_visible(False)
-    axden0.spines["right"].set_visible(False)
-   
-
-
-    ####SPAIN####
-
-    ESP_sp = [x[1] for x in battesp]
-    ESP_wp = [x[2] for x in battesp]
-    ESP_wc = list(map(abs,[x[4] for x in battesp]))
-    ESP_sc = list(map(abs,[x[3] for x in battesp]))
-    ESP_bp = list(map(abs,[x[8] for x in battesp]))
-
-
-    ##NEW###
-    ESP_sp2 = [x[1] for x in battesp2]
-    ESP_wp2 = [x[2] for x in battesp2]
-    ESP_wc2 = list(map(abs,[x[4] for x in battesp2]))
-    ESP_sc2 = list(map(abs,[x[3] for x in battesp2]))
-    ESP_bp2 = list(map(abs,[x[8] for x in battesp2]))
-
-    axesp0.scatter(b_cost, ESP_wc, s = 15, color = "C0") 
-    axesp0.scatter(b_cost, ESP_sc, s = 15, color = "C1") 
-    axesp0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-
-    axesp0.set_facecolor("#eeeeee")
-    axesp0.set_title("Spain")
-
-
-
-
-
-    axesp1.stackplot(b_cost, ESP_sp, ESP_wp, colors = ["#f1c232","#2986cc"])
-    axesp1.stackplot(b_cost, ESP_sp2, ESP_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar_heat", "Wind_heat"], alpha = 0.5)
-    
-    axesp1.set_ylim(0, 1)
-    axesp0.set_ylim(0, 1)
-
-    axesp1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-
-
-    xticks = axesp1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
-
-    axesp0.spines["top"].set_visible(False)
-    axesp0.spines["right"].set_visible(False)
-    axesp0.yaxis.set_ticklabels([])
-    axesp1.yaxis.set_ticklabels([])
-
-    ####Colorado#####
-
-    COL_sp = [x[1] for x in battcol]
-    COL_wp = [x[2] for x in battcol]
-    COL_wc = list(map(abs,[x[4] for x in battcol]))
-    COL_sc = list(map(abs,[x[3] for x in battcol]))    
-    COL_bp = list(map(abs,[x[8] for x in battcol]))
-
-    axcol0.scatter(b_cost, COL_wc, s = 15, color = "C0") 
-    axcol0.scatter(b_cost, COL_sc, s = 15, color = "C1")     
-    axcol0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-    axcol0.set_ylabel("Curtailment")
-    axcol0.set_facecolor("#eeeeee")
-    axcol0.set_title("Colorado")
-
-
-
-    axcol1.stackplot(b_cost, COL_sp, COL_wp, colors = ["#f1c232","#2986cc"])
-
-    axcol1.set_ylim(0, 1)
-    axcol0.set_ylim(0, 1)
-
-    axcol1.set_ylabel("Penetration")
-    axcol1.set_xlabel("Cost of Battery")
-
-    axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-
-
-    xticks = axcol1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
-
-    axcol0.spines["top"].set_visible(False)
-    axcol0.spines["right"].set_visible(False)
-
-    
-    
-    ###California####
-
-    CAL_sp = [x[1] for x in battcal]
-    CAL_wp = [x[2] for x in battcal]
-    CAL_wc = list(map(abs,[x[4] for x in battcal]))
-    CAL_sc = list(map(abs,[x[3] for x in battcal]))
-    CAL_bp = list(map(abs,[x[8] for x in battcal]))    
-
-
-
-
-    axcal0.scatter(b_cost, CAL_wc, s = 15, color = "C0")
-    axcal0.scatter(b_cost, CAL_sc, s = 15, color = "C1")
-    axcal0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-
-    axcal0.set_facecolor("#eeeeee")
-    axcal0.set_title("California")
-
-
-
-    axcal1.stackplot(b_cost, CAL_sp, CAL_wp, colors = ["#f1c232","#2986cc"])
-
-    axcal1.set_ylim(0, 1)
-    axcal0.set_ylim(0, 1)
-
-
-    axcal1.set_xlabel("Cost of Battery")
-
-    axcal1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-
-    xticks = axcal1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
-
-
-  
-    axcal0.spines["top"].set_visible(False)
-    axcal0.spines["right"].set_visible(False)
-    axcal0.yaxis.set_ticklabels([])
-    axcal1.yaxis.set_ticklabels([])
-
- 
-    #This applies things for all axes
-
-    #This applies things for only the axes of penetration.
-    for ax in plt.gcf().get_axes()[1::2]:
-        ax.fill_between([0.232, 0.311], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
-        ax.axvline(0.232, color='black',ls='--')
-        ax.axvline(0.311, color='black',ls='--')
-        ax.text(0.27 ,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
-
-        ax.fill_between([0.075, 0.22], y1 = 1, alpha = 0.2, edgecolor = "k", hatch = "XX", facecolor = "purple")
-        ax.axvline(0.075, color='black',ls='--')
-        ax.axvline(0.22, color='black',ls='--')
-        ax.text(0.135, 0.05, "Future range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
-    
-    # for ax in plt.gcf().get_axes()[::2]:
-    #     ax.set_ylim(0,1)
-
-
-    axesp1.xaxis.set_ticklabels([])
-    axden1.xaxis.set_ticklabels([])
-
-
-
-
-
-
-    for ax in plt.gcf().get_axes():
-        ax.minorticks_on()
-      
-        ax.label_outer()
-
-        ax.margins(x = 0)
-        ax.set_xscale('log')        
-        ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
-        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
-        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
-
-    
-#    plt.rcParams["font.weight"] = "bold"
-    axden0b = axden0.twinx()
-    axden0b.scatter(b_cost, DNK_bp, marker = "^", s = 15, color = "C2", label = "Battery") 
-    axden0b.scatter(b_cost, DNK_bp2, s = 15, color = "C2", label = "Battery")
-    axden0b.tick_params(axis = "y", labelcolor = "C2")
-
-    axesp0b = axesp0.twinx()
-    axesp0b.scatter(b_cost, ESP_bp, marker = "^", s = 15, color = "C2", label = "battery penetration")
-    axesp0b.scatter(b_cost, ESP_bp2, s = 15, color = "C2", label = "battery penetration")
-    axesp0b.tick_params(axis = "y", labelcolor = "C2") 
-    axesp0b.set_ylabel("Battery\nfraction")
- 
-    axcol0b = axcol0.twinx()
-    axcol0b.scatter(b_cost, COL_bp, s = 15, color = "C2", label = "battery penetration") 
-    axcol0b.tick_params(axis = "y", labelcolor = "C2") 
-
-    axcal0b = axcal0.twinx()
-    axcal0b.scatter(b_cost, CAL_bp, s = 15, color = "C2", label = "battery penetration") 
-    axcal0b.tick_params(axis = "y", labelcolor = "C2")
-    axcal0b.set_ylabel("Battery\nfraction")
-
-
-    lines1, labels1 = axden1.get_legend_handles_labels()
-    #lines2, labels2 = axden0.get_legend_handles_labels()
-    lines3, labels3 = axden0b.get_legend_handles_labels()
-
-    fig.legend(lines1 +lines3, labels1+labels3, bbox_to_anchor=(0.75, 0.1), ncol = 3)
-
-    #print(fig.axes[1::2])
-
-    plt.savefig("Images/Figure_batt_compare2.png")
-    plt.show()
-pen_plus_batt_curtailoverlap()
+#pen_plus_wind_curtailoverlap()
 
 
 ######OLD FUNCTIONS######
