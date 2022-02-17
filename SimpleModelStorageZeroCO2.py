@@ -10,6 +10,7 @@ import re
 import matplotlib.image as mpimg
 import matplotlib.gridspec as gridspec
 import pathlib
+import matplotlib
 
 #network = Denmark, nspain, ncal, ncolorado
 Denmark = pypsa.Network()
@@ -492,14 +493,7 @@ def natural_sort(l):
 
 
 
-def iterate_netcdf_solar(country, dataset):
-    '''Takes country as a string'''
-    solution_list = []
-    mypath = "NetCDF/" + country + f"/{dataset}"
-    for filename in natural_sort(os.listdir(mypath)):
-        f = os.path.join(mypath, filename)
-        solution_list += [import_cdf_data(f)]
-    return solution_list
+
 
 
 def iterate_netcdf(country, dataset):
@@ -1478,8 +1472,8 @@ for network in mynetworks:
 # list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
 # list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
 
-list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
-list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
+# list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
+# list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb7")))
 
 # make_dir("windcostLOGFeb7")
 
@@ -1490,8 +1484,8 @@ for network in mynetworks:
 # list(map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
 # list(map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
 
-list(map(find_wind_data, repeat(CA), repeat("CA"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
-list(map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
+# list(map(find_wind_data, repeat(CA), repeat("CA"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
+# list(map(find_wind_data, repeat(CO), repeat("CO"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb7")))
 
 #11 Feb--we want to 
 
@@ -1503,17 +1497,18 @@ for network in mynetworks:
 # list(map(find_batt_data, repeat(Denmark), repeat("Denmark"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
 # list(map(find_batt_data, repeat(Spain), repeat("Spain"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
 
-list(map(find_batt_data, repeat(CA), repeat("CA"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
-list(map(find_batt_data, repeat(CO), repeat("CO"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
+# list(map(find_batt_data, repeat(CA), repeat("CA"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
+# list(map(find_batt_data, repeat(CO), repeat("CO"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb8")))
 
 
 #As we plot the overlap, we need two to compare--old and new.
 #This is so we can make the three plots of overlap, for solar, wind, and battery
 
-solardnk2 = iterate_netcdf_solar("Denmark", "costLOGJan24")
-solaresp2 = iterate_netcdf_solar("Spain", "costLOGJan24")
-solarcol2 = iterate_netcdf_solar("CO", "costLOGJan24")
-solarcal2 = iterate_netcdf_solar("CA", "costLOGJan24")
+#These are without heat added
+solardnk2 = iterate_netcdf("Denmark", "costLOGJan24")
+solaresp2 = iterate_netcdf("Spain", "costLOGJan24")
+solarcol2 = iterate_netcdf("CO", "costLOGJan24")
+solarcal2 = iterate_netcdf("CA", "costLOGJan24")
 
 winddnk2 = iterate_netcdf("Denmark", "windcostLOGJan31")
 windesp2 = iterate_netcdf("Spain", "windcostLOGJan31")
@@ -1527,10 +1522,12 @@ battcol2 = iterate_netcdf("CO", "batterycostLOGJan31")
 battcal2 = iterate_netcdf("CA", "batterycostLOGJan31")
 
 
-solardnk = iterate_netcdf_solar("Denmark", "solarcostLOGFeb7")
-solaresp = iterate_netcdf_solar("Spain", "solarcostLOGFeb7")
-solarcol = iterate_netcdf_solar("CO", "solarcostLOGFeb7")
-solarcal = iterate_netcdf_solar("CA", "solarcostLOGFeb7")
+#These are with heat
+solardnk = iterate_netcdf("Denmark", "solarcostLOGFeb7")
+solaresp = iterate_netcdf("Spain", "solarcostLOGFeb7")
+solarcol = iterate_netcdf("CO", "solarcostLOGFeb7")
+solarcal = iterate_netcdf("CA", "solarcostLOGFeb7")
+
 
 winddnk = iterate_netcdf("Denmark", "windcostLOGFeb7")
 windesp = iterate_netcdf("Spain", "windcostLOGFeb7")
@@ -2069,7 +2066,6 @@ def pen_plus_wind_curtailoverlap():
     
 #pen_plus_wind_curtailoverlap()
 
-
 def pen_plus_batt_curtailoverlap():
     '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
     a scaling log of solar. It is very long. It uses gridspec to order the axes, and other than that
@@ -2317,7 +2313,6 @@ def pen_plus_batt_curtailoverlap():
 
 
 
-
     for ax in plt.gcf().get_axes():
         ax.minorticks_on()
       
@@ -2364,7 +2359,7 @@ def pen_plus_batt_curtailoverlap():
 
     plt.savefig("Images/Figure_batt_compare3.png")
     plt.show()
-pen_plus_batt_curtailoverlap()
+#pen_plus_batt_curtailoverlap()
 
 
 def pen_plus_curtail_overlap_select(choice):
@@ -2610,6 +2605,498 @@ def pen_plus_curtail_overlap_select(choice):
     plt.show()
     
 #pen_plus_wind_curtailoverlap()
+
+
+#with lower > 0,529, upper < 1.3
+def calc_solar_slope(lower, upper, lower_fut, upper_fut, country, mytype, heat):
+    '''To be clear, this does not only calculate the solar slope. It also calculates 
+    the slope of wind and battery plots. We can compare when there is heat and when
+    there is no heat added to the electricity demand 
+    
+    It takes the average slope over two given ranges, a present day range and a 
+    future range. 
+    15/2'''
+    if heat == "n":
+        if country == "DNK":
+            if mytype == "solar":
+                mydata = solardnk2
+            elif mytype == "wind":
+                mydata = winddnk2  
+            elif mytype == "batt":
+                mydata = battdnk2
+        elif country == "ESP":
+            if mytype == "solar":
+                mydata = solaresp2
+            elif mytype == "wind":
+                mydata = windesp2  
+            elif mytype == "batt":
+                mydata = battesp2
+        elif country == "CO":
+            if mytype == "solar":
+                mydata = solarcol2
+            elif mytype == "wind":
+                mydata = windcol2 
+            elif mytype == "batt":
+                mydata = battcol2
+        elif country == "CA":
+            if mytype == "solar":
+                mydata = solarcal
+            elif mytype == "wind":
+                mydata = windcal  
+            elif mytype == "batt":
+                mydata = battcal2
+
+    elif heat == "y":
+        if country == "DNK":
+            if mytype == "solar":
+                mydata = solardnk
+            elif mytype == "wind":
+                mydata = winddnk  
+            elif mytype == "batt":
+                mydata = battdnk
+        elif country == "ESP":
+            if mytype == "solar":
+                mydata = solaresp
+            elif mytype == "wind":
+                mydata = windesp  
+            elif mytype == "batt":
+                mydata = battesp
+        elif country == "CO":
+            if mytype == "solar":
+                mydata = solarcol
+            elif mytype == "wind":
+                mydata = windcol 
+            elif mytype == "batt":
+                mydata = battcol
+        elif country == "CA":
+            if mytype == "solar":
+                mydata = solarcal
+            elif mytype == "wind":
+                mydata = windcal  
+            elif mytype == "batt":
+                mydata = battcal
+
+
+    if mytype == "solar":    
+        s_cost = [x[0] for x in mydata]
+        s_cost = [item for sublist in s_cost for item in sublist]
+        s_cost = [x / 10**6 /0.07846970300338728 for x in s_cost]
+
+
+        s_cost_low = next(x for x, val in enumerate(s_cost) if val > lower) #index of lower
+        s_cost_high = next(x for x, val in enumerate(s_cost) if val > upper)-1 #index of upper
+
+        low_cost_val = mydata[s_cost_low][0]
+        low_cost_val = low_cost_val / 10**6 /0.07846970300338728
+
+        high_cost_val = mydata[s_cost_high][0]
+        high_cost_val = high_cost_val/ 10**6 /0.07846970300338728
+
+        low_cost_pen = mydata[s_cost_low][1]
+        high_cost_pen = mydata[s_cost_high][1]
+
+        slope_now = (high_cost_pen - low_cost_pen) / (high_cost_val - low_cost_val)
+
+
+        s_cost_low = next(x for x, val in enumerate(s_cost) if val > lower_fut) #index of lower
+        s_cost_high = next(x for x, val in enumerate(s_cost) if val > upper_fut)-1 #index of upper
+
+        low_cost_val = mydata[s_cost_low][0]
+        low_cost_val = low_cost_val / 10**6 /0.07846970300338728
+
+        high_cost_val = mydata[s_cost_high][0]
+        high_cost_val = high_cost_val/ 10**6 /0.07846970300338728
+
+        low_cost_pen = mydata[s_cost_low][1]
+        high_cost_pen = mydata[s_cost_high][1]
+
+        slope_fut = (high_cost_pen - low_cost_pen) / (high_cost_val - low_cost_val)
+    
+    elif mytype == "wind":    
+        s_cost = [x[6] for x in mydata]#s_cost is really wind cost now
+        s_cost = [item for sublist in s_cost for item in sublist]
+        s_cost = [x / 10**6 /0.08442684282600257 for x in s_cost]
+
+
+        s_cost_low = next(x for x, val in enumerate(s_cost) if val > lower) #index of lower
+        s_cost_high = next(x for x, val in enumerate(s_cost) if val > upper)-1 #index of upper
+
+        low_cost_val = mydata[s_cost_low][6]
+        low_cost_val = low_cost_val / 10**6 /0.08442684282600257
+
+        high_cost_val = mydata[s_cost_high][6]
+        high_cost_val = high_cost_val/ 10**6 /0.08442684282600257
+
+        low_cost_pen = mydata[s_cost_low][2]
+        high_cost_pen = mydata[s_cost_high][2]
+
+        slope_now = (high_cost_pen - low_cost_pen) / (high_cost_val - low_cost_val)
+
+
+        s_cost_low = next(x for x, val in enumerate(s_cost) if val > lower_fut) #index of lower
+        s_cost_high = next(x for x, val in enumerate(s_cost) if val > upper_fut)-1 #index of upper
+
+        low_cost_val = mydata[s_cost_low][6]
+        low_cost_val = low_cost_val/ 10**6 /0.08442684282600257
+
+        high_cost_val = mydata[s_cost_high][6]
+        high_cost_val = high_cost_val/ 10**6 /0.08442684282600257
+
+        low_cost_pen = mydata[s_cost_low][2]
+        high_cost_pen = mydata[s_cost_high][2]
+
+        slope_fut = (high_cost_pen - low_cost_pen) / (high_cost_val - low_cost_val)
+    
+    elif mytype == "batt":    
+        s_cost = [x[7] for x in mydata]#s_cost is really batt cost now
+        s_cost = [item for sublist in s_cost for item in sublist]
+        s_cost = [x / 10**6 /0.09439292574325567  for x in s_cost]
+
+
+        s_cost_low = next(x for x, val in enumerate(s_cost) if val > lower) #index of lower
+        s_cost_high = next(x for x, val in enumerate(s_cost) if val > upper)-1 #index of upper
+
+        low_cost_val = mydata[s_cost_low][7]
+        low_cost_val = low_cost_val / 10**6 /0.09439292574325567 
+
+        high_cost_val = mydata[s_cost_high][7]
+        high_cost_val = high_cost_val/ 10**6 /0.09439292574325567 
+
+        low_cost_pen = mydata[s_cost_low][1]
+        high_cost_pen = mydata[s_cost_high][1]
+
+        slope_now = (high_cost_pen - low_cost_pen) / (high_cost_val - low_cost_val)
+
+
+
+        s_cost_low = next(x for x, val in enumerate(s_cost) if val > lower_fut) #index of lower
+        s_cost_high = next(x for x, val in enumerate(s_cost) if val > upper_fut)-1 #index of upper
+
+        low_cost_val = mydata[s_cost_low][7]
+        low_cost_val = low_cost_val/ 10**6 /0.09439292574325567 
+
+        high_cost_val = mydata[s_cost_high][7]
+        high_cost_val = high_cost_val/ 10**6 /0.09439292574325567 
+
+        low_cost_pen = mydata[s_cost_low][1]
+        high_cost_pen = mydata[s_cost_high][1]
+
+        slope_fut = (high_cost_pen - low_cost_pen) / (high_cost_val - low_cost_val)         
+    #To find the slope, we take the penetration at the lowest and the highest points. Then, we take the
+    #cost at the lowest and highest points. Then, we subtract the penetrations and divide by the costs
+
+
+    #The slope is then the amount of percentage points gained per 0.1 Eur/Wp cheaper
+
+
+    slope_now *= -10
+    slope_fut *= -10
+    return slope_now, slope_fut
+
+
+
+
+def show_slope_solar():
+    '''This function makes a plot of the slopes generated from calc_solar_slope. It will compare
+    solar slopes to themselves, wind slopes to themselves, etc 15/2'''
+    esp_s_now, esp_s_fut = calc_solar_slope(0.529, 1.3, 0.019, 0.095, "ESP", "solar", "y")
+    dnk_s_now, dnk_s_fut = calc_solar_slope(0.529, 1.3, 0.019, 0.095,"DNK", "solar", "y")  
+    co_s_now, co_s_fut = calc_solar_slope(0.529, 1.3, 0.019, 0.095,"CO", "solar", "y")  
+    ca_s_now, ca_s_fut = calc_solar_slope(0.529, 1.3, 0.019, 0.095,"CA", "solar", "y")
+
+    esp_sn_now, esp_sn_fut = calc_solar_slope(0.529, 1.3, 0.019, 0.095, "ESP", "solar", "n")
+    dnk_sn_now, dnk_sn_fut = calc_solar_slope(0.529, 1.3, 0.019, 0.095,"DNK", "solar", "n")  
+    co_sn_now, co_sn_fut = calc_solar_slope(0.529, 1.3, 0.019, 0.095,"CO", "solar", "n")  
+    ca_sn_now, ca_sn_fut = calc_solar_slope(0.529, 1.3, 0.019, 0.095,"CA", "solar", "n")  
+
+    #colors = ['red','green','blue','purple']
+    country_labels = ["Spain", "Denmark", "Colorado","California"]
+    x_now = []
+    x_now.extend(repeat(0, 4))
+    y_now = [esp_s_now,dnk_s_now,co_s_now,ca_s_now]
+
+    x_fut = []
+    x_fut.extend(repeat(0,4))
+    y_fut = [esp_s_fut, dnk_s_fut, co_s_fut, ca_s_fut]
+
+    #we want to cluster the nows w/wout heat, and the futs w/wout heat
+    x_now_n = []
+    x_now_n.extend(repeat(1, 4))
+    y_now_n = [esp_sn_now,dnk_sn_now,co_sn_now,ca_sn_now]
+
+    x_fut_n = []
+    x_fut_n.extend(repeat(1,4))
+    y_fut_n = [esp_sn_fut, dnk_sn_fut, co_sn_fut, ca_sn_fut]
+
+
+    df = pd.DataFrame(
+        list(zip(x_now, y_now, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+
+    df2 = pd.DataFrame(
+        list(zip(x_fut, y_fut, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+
+    df3 = pd.DataFrame(
+        list(zip(x_now_n, y_now_n, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+
+    df4 = pd.DataFrame(
+        list(zip(x_fut_n, y_fut_n, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+    
+    mydict = {"Spain":"C0", "Denmark": "C1", "California": "C2", "Colorado": "C3"}
+    fig, axs = plt.subplots(1, 2)
+    plt.subplots_adjust( wspace = 0)
+
+    for ax in axs.flat:
+
+        ax.set_xlim(-0.8, 1.8)
+        ax.set_ylim(-2, 30)
+
+        ax.set_xticks([0,1])
+        ax.set_xticklabels(["w/heat", "w/out heat"])
+
+    legendhandle = [axs[0].plot([], marker="x", ls="", color=color)[0] for color in list(mydict.values())]
+  
+
+    # scatter = ax.scatter(x_now, y_now, c = colornum, cmap=matplotlib.colors.ListedColormap(colors), marker = "x")
+    # #ax.scatter(1, esp_s_fut, c = "r", marker = "x")
+    # legend1 = ax.legend(*scatter.legend_elements(country_labels),
+    #                 loc="lower left", title="Classes")
+    # ax.add_artist(legend1)
+
+    axs[0].set_ylabel(f"% increase in solar share per 0.1EUR/Wp cheaper")
+    axs[1].yaxis.set_ticklabels([])
+    axs[0].scatter(df.x, df.y, c=df['label'].map(mydict), marker = "x")
+
+    axs[1].scatter(df2.x, df2.y, c = df['label'].map(mydict), marker = "x")
+
+    axs[0].scatter(df3.x, df3.y, c=df['label'].map(mydict), marker = "x")
+
+    axs[1].scatter(df4.x, df4.y, c = df['label'].map(mydict), marker = "x")    
+
+    #axs[0].legend(legendhandle,list(mydict.keys()), frameon=True)
+
+    fig.legend(legendhandle,list(mydict.keys()), frameon=True, bbox_to_anchor=(0.89, 0.95),  ncol = 4)
+    axs[0].set_xlabel("Current Range")
+    axs[1].set_xlabel("Future Range")
+    plt.suptitle("Slope of solar for resource share chart varying by solar cost")
+
+    plt.savefig("Images/SolarSlope2")
+    plt.show()
+
+
+#show_slope_solar()
+#1.12-1.22, 0.57-0.77
+
+def show_slope_wind():
+    '''This function makes a plot of the slopes generated from calc_solar_slope. It will compare
+    solar slopes to themselves, wind slopes to themselves, etc 15/2'''
+    esp_s_now, esp_s_fut = calc_solar_slope(1.12, 1.22, 0.57, 0.77, "ESP", "wind", "y")
+    dnk_s_now, dnk_s_fut = calc_solar_slope(1.12, 1.22, 0.57, 0.77, "DNK", "wind", "y")  
+    co_s_now, co_s_fut = calc_solar_slope(1.12, 1.22, 0.57, 0.77, "CO", "wind", "y")  
+    ca_s_now, ca_s_fut = calc_solar_slope(1.12, 1.22, 0.57, 0.77, "CA", "wind", "y")
+
+    esp_sn_now, esp_sn_fut = calc_solar_slope(1.12, 1.22, 0.57, 0.77, "ESP", "wind", "n")
+    dnk_sn_now, dnk_sn_fut = calc_solar_slope(1.12, 1.22, 0.57, 0.77, "DNK", "wind", "n")  
+    co_sn_now, co_sn_fut = calc_solar_slope(1.12, 1.22, 0.57, 0.77, "CO", "wind", "n")  
+    ca_sn_now, ca_sn_fut = calc_solar_slope(1.12, 1.22, 0.57, 0.77, "CA", "wind", "n")  
+
+    #colors = ['red','green','blue','purple']
+    country_labels = ["Spain", "Denmark", "Colorado","California"]
+    x_now = []
+    x_now.extend(repeat(0, 4))
+    y_now = [esp_s_now,dnk_s_now,co_s_now,ca_s_now]
+
+    x_fut = []
+    x_fut.extend(repeat(0,4))
+    y_fut = [esp_s_fut, dnk_s_fut, co_s_fut, ca_s_fut]
+
+    #we want to cluster the nows w/wout heat, and the futs w/wout heat
+    x_now_n = []
+    x_now_n.extend(repeat(1, 4))
+    y_now_n = [esp_sn_now,dnk_sn_now,co_sn_now,ca_sn_now]
+
+    x_fut_n = []
+    x_fut_n.extend(repeat(1,4))
+    y_fut_n = [esp_sn_fut, dnk_sn_fut, co_sn_fut, ca_sn_fut]
+
+
+    df = pd.DataFrame(
+        list(zip(x_now, y_now, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+
+    df2 = pd.DataFrame(
+        list(zip(x_fut, y_fut, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+
+    df3 = pd.DataFrame(
+        list(zip(x_now_n, y_now_n, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+
+    df4 = pd.DataFrame(
+        list(zip(x_fut_n, y_fut_n, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+    
+    mydict = {"Spain":"C0", "Denmark": "C1", "California": "C2", "Colorado": "C3"}
+    fig, axs = plt.subplots(1, 2)
+    plt.subplots_adjust( wspace = 0)
+
+    for ax in axs.flat:
+
+        ax.set_xlim(-0.8, 1.8)
+        ax.set_ylim(-2, 30)
+
+        ax.set_xticks([0,1])
+        ax.set_xticklabels(["w/heat", "w/out heat"])
+
+    legendhandle = [axs[0].plot([], marker="x", ls="", color=color)[0] for color in list(mydict.values())]
+  
+
+    # scatter = ax.scatter(x_now, y_now, c = colornum, cmap=matplotlib.colors.ListedColormap(colors), marker = "x")
+    # #ax.scatter(1, esp_s_fut, c = "r", marker = "x")
+    # legend1 = ax.legend(*scatter.legend_elements(country_labels),
+    #                 loc="lower left", title="Classes")
+    # ax.add_artist(legend1)
+
+    axs[0].set_ylabel(f"% increase in wind share per 0.1EUR/Wp cheaper")
+    axs[1].yaxis.set_ticklabels([])
+    axs[0].scatter(df.x, df.y, c=df['label'].map(mydict), marker = "x")
+
+    axs[1].scatter(df2.x, df2.y, c = df['label'].map(mydict), marker = "x")
+
+    axs[0].scatter(df3.x, df3.y, c=df['label'].map(mydict), marker = "x")
+
+    axs[1].scatter(df4.x, df4.y, c = df['label'].map(mydict), marker = "x")    
+
+    #axs[0].legend(legendhandle,list(mydict.keys()), frameon=True)
+
+    fig.legend(legendhandle,list(mydict.keys()), frameon=True, bbox_to_anchor=(0.89, 0.95),  ncol = 4)
+    axs[0].set_xlabel("Current Range")
+    axs[1].set_xlabel("Future Range")
+    plt.suptitle("Slope of wind for resource share chart varying by wind cost")
+
+    plt.savefig("Images/Wind")
+    plt.show()
+
+
+show_slope_wind()
+
+
+#232-311, future 075-131
+def show_slope_batt():
+    #Using the "medium" as upper bound for future from Wesley cole
+    '''This function makes a plot of the slopes generated from calc_solar_slope. It will compare
+    solar slopes to themselves, wind slopes to themselves, etc 15/2'''
+    esp_s_now, esp_s_fut = calc_solar_slope(0.232, 0.311, 0.075, 0.131, "ESP", "batt", "y")
+    dnk_s_now, dnk_s_fut = calc_solar_slope(0.232, 0.311, 0.075, 0.131,"DNK", "batt", "y")  
+    co_s_now, co_s_fut = calc_solar_slope(0.232, 0.311, 0.075, 0.131,"CO", "batt", "y")  
+    ca_s_now, ca_s_fut = calc_solar_slope(0.232, 0.311, 0.075, 0.131,"CA", "batt", "y")
+
+    esp_sn_now, esp_sn_fut = calc_solar_slope(0.232, 0.311, 0.075, 0.131,"ESP", "batt", "n")
+    dnk_sn_now, dnk_sn_fut = calc_solar_slope(0.232, 0.311, 0.075, 0.131,"DNK", "batt", "n")  
+    co_sn_now, co_sn_fut = calc_solar_slope(0.232, 0.311, 0.075, 0.131,"CO", "batt", "n")  
+    ca_sn_now, ca_sn_fut = calc_solar_slope(0.232, 0.311, 0.075, 0.131,"CA", "batt", "n")  
+
+    #colors = ['red','green','blue','purple']
+    country_labels = ["Spain", "Denmark", "Colorado","California"]
+    x_now = []
+    x_now.extend(repeat(0, 4))
+    y_now = [esp_s_now,dnk_s_now,co_s_now,ca_s_now]
+
+    x_fut = []
+    x_fut.extend(repeat(0,4))
+    y_fut = [esp_s_fut, dnk_s_fut, co_s_fut, ca_s_fut]
+
+    #we want to cluster the nows w/wout heat, and the futs w/wout heat
+    x_now_n = []
+    x_now_n.extend(repeat(1, 4))
+    y_now_n = [esp_sn_now,dnk_sn_now,co_sn_now,ca_sn_now]
+
+    x_fut_n = []
+    x_fut_n.extend(repeat(1,4))
+    y_fut_n = [esp_sn_fut, dnk_sn_fut, co_sn_fut, ca_sn_fut]
+
+
+    df = pd.DataFrame(
+        list(zip(x_now, y_now, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+
+    df2 = pd.DataFrame(
+        list(zip(x_fut, y_fut, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+
+    df3 = pd.DataFrame(
+        list(zip(x_now_n, y_now_n, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+
+    df4 = pd.DataFrame(
+        list(zip(x_fut_n, y_fut_n, country_labels)), 
+        columns =['x', 'y', 'label']
+        ) 
+    
+    mydict = {"Spain":"C0", "Denmark": "C1", "California": "C2", "Colorado": "C3"}
+    fig, axs = plt.subplots(1, 2)
+    plt.subplots_adjust( wspace = 0)
+
+    for ax in axs.flat:
+
+        ax.set_xlim(-0.8, 1.8)
+        ax.set_ylim(-2, 30)
+
+        ax.set_xticks([0,1])
+        ax.set_xticklabels(["w/heat", "w/out heat"])
+
+    legendhandle = [axs[0].plot([], marker="x", ls="", color=color)[0] for color in list(mydict.values())]
+  
+
+    # scatter = ax.scatter(x_now, y_now, c = colornum, cmap=matplotlib.colors.ListedColormap(colors), marker = "x")
+    # #ax.scatter(1, esp_s_fut, c = "r", marker = "x")
+    # legend1 = ax.legend(*scatter.legend_elements(country_labels),
+    #                 loc="lower left", title="Classes")
+    # ax.add_artist(legend1)
+
+    axs[0].set_ylabel(f"% increase in wind share per 0.1EUR/Wp cheaper")
+    axs[1].yaxis.set_ticklabels([])
+    axs[0].scatter(df.x, df.y, c=df['label'].map(mydict), marker = "x")
+
+    axs[1].scatter(df2.x, df2.y, c = df['label'].map(mydict), marker = "x")
+
+    axs[0].scatter(df3.x, df3.y, c=df['label'].map(mydict), marker = "x")
+
+    axs[1].scatter(df4.x, df4.y, c = df['label'].map(mydict), marker = "x")    
+
+    #axs[0].legend(legendhandle,list(mydict.keys()), frameon=True)
+
+    fig.legend(legendhandle,list(mydict.keys()), frameon=True, bbox_to_anchor=(0.89, 0.95),  ncol = 4)
+    axs[0].set_xlabel("Current Range")
+    axs[1].set_xlabel("Future Range")
+    plt.suptitle("Slope of solar for resource share chart varying by batt cost")
+
+    plt.savefig("Images/Batt")
+    plt.show()
+
+
+show_slope_batt()
+
+#DNK_sp = [x[1] for x in solardnk]
+
+    
+
+    
+
 
 
 ######OLD FUNCTIONS######
