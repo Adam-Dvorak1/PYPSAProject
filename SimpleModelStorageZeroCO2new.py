@@ -343,8 +343,8 @@ def make_dir(foldername):
 
 def find_solar_data(n, name, solar_cost, dirname):
     #Takes annualized coefficient and multiplies by investment cost
-  
-    annualized_solar_cost =  0.07846970300338728* solar_cost
+    
+    annualized_solar_cost =  0.06529220204218368* solar_cost
     n.generators.loc[['solar'],['capital_cost']] = annualized_solar_cost
     
     #this substitutes the current solar cost in our generator for a new cost
@@ -521,6 +521,7 @@ def iterate_netcdf_results(run_name):
         solution_list += [import_cdf_data(f)]
     
     return solution_list
+
 
 def netcdf_to_csv(country, dataset):
     header_list = ["solar_cost", "solar_penetration", 'wind_penetration', 's_curtailment', 'w_curtailment', 'gas_penetration', 'wind_cost', 'batt_cost', 'battery_pen']

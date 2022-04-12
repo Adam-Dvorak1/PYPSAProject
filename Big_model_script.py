@@ -1,4 +1,5 @@
 
+import resource
 import pypsa
 import pandas as pd
 import numpy as np
@@ -6,18 +7,52 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import time
 from itertools import repeat
+from matplotlib import rc
 import os
 import re
 import matplotlib.image as mpimg
 import matplotlib.gridspec as gridspec
+import seaborn as sns
 import pathlib
 import matplotlib
 import csv
 import glob
 import yaml
+from pylab import *
+from sklearn.metrics import r2_score
 
 
 
+eu28 = (
+    "FR",
+    "DE",
+    "GB",
+    "IT",
+    "ES",
+    "PL",
+    "SE",
+    "NL",
+    "BE",
+    "FI",
+    "DK",
+    "PT",
+    "RO",
+    "AT",
+    "BG",
+    "EE",
+    "GR",
+    "LV",
+    "CZ",
+    "HU",
+    "IE",
+    "SK",
+    "LT",
+    "HR",
+    "LU",
+    "SI",
+    "CY",
+    "MT",
+)
 run_name = "adam_solar_costs_low_res"
 # filepath = "results/"+ run_name + "/postnetworks/elec_s_37_lv1.0__Co2L0-3H-T-H-B-I-A-solar+c0.1002546-solar+p3-dist1_2030.nc"
 #loop over all files in folder
@@ -31,7 +66,7 @@ def all_generators(run_name):
     generator.index = pd.to_numeric(generator.index)
 
     generator = generator.sort_index(ascending = True)
-    generator.to_csv(f'results/' + run_name + '/csvs/generators.csv')
+    generator.to_csv(f'results/' + run_name + '/csvs/generators_T.csv')
     return generator
     
      
@@ -42,39 +77,7 @@ def all_generators(run_name):
     #         writer.writerow(my_run)
         
 
-def retrieve_generators(filepath):
-    europe = pypsa.Network()
-    europe.import_from_netcdf(filepath)
-
-    my_gen = ("offwind-ac", "offwind-dc", "solar", "onwind", "ror")
-
-    countries = ("DK", "ES")
-    mydata = europe.generators_t.p
-    mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
-    # mydata = mydata[mydata.columns[mydata.columns.str.contains('|'.join(my_gen))]] #look at column names. look at whether it ends with 
-    # mydata = mydata[my_gen]
-    mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
-
-    for country in countries:
-        mydata[country + 'solar'] = mydata[[col for col in mydata.columns if col.endswith('solar') and col.startswith(country)]].sum(axis=1)
-        mydata[country + 'onwind'] = mydata[[col for col in mydata.columns if col.endswith('onwind') and col.startswith(country)]].sum(axis=1)
-        mydata[country + 'offwind'] = mydata[[col for col in mydata.columns if 'offwind' in col and col.startswith(country)]].sum(axis = 1)
-
-    mydata['ESror'] =  mydata[[col for col in mydata.columns if 'ror' in col and col.startswith("ES")]].sum(axis = 1)
-
-    mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]
-
-
-    solar_val = re.split('\_', filepath)
-    solar_val = solar_val[-3]
-
-
-    mydata = mydata.sum()
-
-    mydata = mydata.to_frame(name = solar_val).T
-    mydata = mydata.rename_axis("Solar_cost")
-    return mydata
-
+filepath = "results/adam_latitude_compare3h/postnetworks/elec_s_37_lv1.0__1_Co2L0-3H-T-H-B-I-A-solar+p3-dist0_2030.nc"
 # o = re.split('\_', "results/adam_solar_costs_low_res/postnetworks/elec_s_37_lv1.0__0.0319672952694881_Co2L0-168H-T-H-B-I-A-solar+p3-dist1_2030.nc")
 # "results/adam_solar_costs_low_res/postnetworks/elec_s_37_lv1.0__0.0319672952694881_Co2L0-168H-T-H-B-I-A-solar+p3-dist1_2030.nc"
 # all_generators("adam_solar_costs_test2")  
@@ -157,11 +160,142 @@ def make_stackplot(run_name, relative):
     plt.show()
     return generators
     
-f = make_stackplot("adam_solar_3", True)
+#f = make_stackplot("adam_solar_3", True)
+
+def retrieve_generators(filepath):
+    europe = pypsa.Network()
+    europe.import_from_netcdf(filepath)
+
+    my_gen = ("offwind-ac", "offwind-dc", "solar", "onwind", "ror")
+
+    countries = eu28
+    mydata = europe.generators_t.p
+    mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
+    # mydata = mydata[mydata.columns[mydata.columns.str.contains('|'.join(my_gen))]] #look at column names. look at whether it ends with 
+    # mydata = mydata[my_gen]s
+    mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
 
 
-with open('./tech_colors.yaml') as file:
-    tech_colors = yaml.safe_load(file)['tech_colors']
+    for country in countries:
+        resource_fracs = mydata
+        resource_fracs = resource_fracs[[col for col in resource_fracs.columns if col.startswith(country)]]
+        mydata[country + 'solar'] = resource_fracs[[col for col in resource_fracs.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        mydata[country + 'wind'] = resource_fracs[[col for col in resource_fracs.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in resource_fracs.columns):#checks if there is a 'ror' column present
+            mydata[country + 'ror'] =  resource_fracs[[col for col in resource_fracs.columns if 'ror' in col]].sum(axis = 1)
+
+    mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
+
+
+
+
+
+    mydata = mydata.sum()
+    #mydata.to_csv("results/adam_latitude_compare3h/csvs/generators_T.csv")
+
+    mydata = mydata.to_frame()
+
+    return mydata
+
+def add_to_df(csvpath):
+    
+    all_gens = pd.read_csv(csvpath)
+    all_gens['country'] = all_gens.apply(lambda row: row['name'][0:2], axis = 1)
+    all_gens['carrier'] = all_gens.apply(lambda row: row['name'].replace(row['country'], ''), axis = 1)
+    all_gens = all_gens.rename(columns = {"0": "Generation"})
+    all_gens["total_gen"] = ''
+    for country in eu28:
+        f = all_gens.loc[all_gens['country'] == country]
+        all_gens['total_gen'].loc[all_gens['country'] == country] = f['Generation'].sum()
+
+    all_gens['fraction'] = all_gens.apply(lambda row: 0 if row['total_gen'] == 0 else row['Generation']/row['total_gen'], axis = 1)
+
+    latitude = pd.read_csv("data/countries_lat.csv")
+    all_gens = pd.merge(all_gens, latitude[['country', 'latitude']], how = 'left', on = 'country' )
+    #create empty column
+    #use loc 
+    all_gens.to_csv('results/adam_latitude_compare3h/csvs/gen_and_lat.csv')
+    return(all_gens)
+
+def solar_by_latitude():
+    plt.rcdefaults()
+    solar_latdf = pd.read_csv("results/adam_latitude_compare3h/csvs/gen_and_lat.csv")
+    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
+    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only int3erested in solar share
+    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    solar_latdf['percent'] = solar_latdf["fraction"] * 100
+    
+    
+    #plotting: latitude on x axis, solar fraction on y axis
+
+    fig, ax = plt.subplots()
+
+    x = solar_latdf["latitude"]
+    y = solar_latdf["percent"]
+
+
+    ax.scatter(x, y)
+    ax.set_xlabel("Latitude (degrees)")
+    ax.set_ylabel("Optimal solar share (%)")
+    ax.set_title("Optimal solar share by Latitude for EU-28 in PyPSA-Eur-Sec")
+
+
+
+    for idx, row in solar_latdf.iterrows():
+        ax.annotate(row['country'], (row['latitude']* 1.007, row['percent']* 0.97))
+    
+
+    m, b = np.polyfit(x, y, 1)
+    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
+
+
+
+    plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
+    
+    #ax.annotate("r-squared = {:.3f}".format(r2_score(x, y)), (60, 100))
+
+
+    fig.legend()
+    #fig.savefig("results/adam_latitude_compare3h/graphs/solar_by_lat")
+    plt.show()
+
+
+
+solar_by_latitude()
+
+#f = f.query('`country`.str.startswith("FR")')
+
+#Function that tests whether a string is in 
+
+
+
+
+#Function that
+#loads in the good csv to df
+#isolates the solar carrier in the df
+#Plots solar share by latitude
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # mydata = mydata.sum()
 # mysum = mydata.sum()
 
