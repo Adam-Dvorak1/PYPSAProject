@@ -53,11 +53,11 @@ eu28 = (
     "CY",
     "MT",
 )
-run_name = "adam_solar_costs_low_res"
+#run_name = "adam_solar_costs_low_res"
 # filepath = "results/"+ run_name + "/postnetworks/elec_s_37_lv1.0__Co2L0-3H-T-H-B-I-A-solar+c0.1002546-solar+p3-dist1_2030.nc"
 #loop over all files in folder
 def all_generators(run_name):
-    #This makes 
+    #I am not sure if this actually works with the below
     generator = []
     for filepath in glob.glob("results/" + run_name + "/postnetworks/*"):
         my_run = retrieve_generators(filepath)
@@ -76,8 +76,20 @@ def all_generators(run_name):
     #         my_run = retrieve_generators(filepath)
     #         writer.writerow(my_run)
         
+def all_generators_real(run_name):
+    #I tried to modify it so it will work with my new code. I think that the old function is outdated
+    for filepath in glob.glob("results/" + run_name + "/postnetworks/*"):
+        retrieve_generators(filepath)
+        generator.append(my_run)
+    generator= pd.concat(generator)
+    generator.index = pd.to_numeric(generator.index)
 
-filepath = "results/adam_latitude_compare3h/postnetworks/elec_s_37_lv1.0__1_Co2L0-3H-T-H-B-I-A-solar+p3-dist0_2030.nc"
+    generator = generator.sort_index(ascending = True)
+    generator.to_csv(f'results/' + run_name + '/csvs/generators_T.csv')
+    return generator
+
+#filepath = "results/adam_latitude_compare3h/postnetworks/elec_s_37_lv1.0__1_Co2L0-3H-T-H-B-I-A-solar+p3-dist0_2030.nc"
+#filepath = "results/adam_latitude_compareno_sectors/postnetworks/elec_s_37_lv1.0__1_Co2L0-168H-solar+p3-dist0_2030.nc" #This new filepath now deals with no sectors
 # o = re.split('\_', "results/adam_solar_costs_low_res/postnetworks/elec_s_37_lv1.0__0.0319672952694881_Co2L0-168H-T-H-B-I-A-solar+p3-dist1_2030.nc")
 # "results/adam_solar_costs_low_res/postnetworks/elec_s_37_lv1.0__0.0319672952694881_Co2L0-168H-T-H-B-I-A-solar+p3-dist1_2030.nc"
 # all_generators("adam_solar_costs_test2")  
@@ -162,7 +174,10 @@ def make_stackplot(run_name, relative):
     
 #f = make_stackplot("adam_solar_3", True)
 
+
 def retrieve_generators(filepath):
+    '''This function takes a completed postnetwork, finds the resource frac'''
+    
     europe = pypsa.Network()
     europe.import_from_netcdf(filepath)
 
@@ -191,14 +206,27 @@ def retrieve_generators(filepath):
 
 
     mydata = mydata.sum()
-    #mydata.to_csv("results/adam_latitude_compare3h/csvs/generators_T.csv")
+
 
     mydata = mydata.to_frame()
+    #save csv in new file, related to filepath
+    now_path = pathlib.Path(filepath)
+    parent_path = now_path.parent
+    run_directory = parent_path.parent
+
+
+    
+
+
+    mydata.to_csv(run_directory / "csvs/generators_T.csv")
 
     return mydata
 
-def add_to_df(csvpath):
-    
+
+
+def add_to_df(run_name):
+    #This takes in a csv made from retrieve_generators and then adds to it
+    csvpath = "results/" + run_name + "/csvs/generators_T.csv"
     all_gens = pd.read_csv(csvpath)
     all_gens['country'] = all_gens.apply(lambda row: row['name'][0:2], axis = 1)
     all_gens['carrier'] = all_gens.apply(lambda row: row['name'].replace(row['country'], ''), axis = 1)
@@ -214,14 +242,21 @@ def add_to_df(csvpath):
     all_gens = pd.merge(all_gens, latitude[['country', 'latitude']], how = 'left', on = 'country' )
     #create empty column
     #use loc 
-    all_gens.to_csv('results/adam_latitude_compare3h/csvs/gen_and_lat.csv')
-    return(all_gens)
+    nowpath = pathlib.Path(csvpath)
+    parentpath = nowpath.parent
+    all_gens.to_csv(parentpath / 'gen_and_lat.csv')
 
-def solar_by_latitude():
+    latcsv_path = parentpath / 'gen_and_lat.csv'
+
+    return(latcsv_path)
+
+
+def solar_by_latitude(path):
+
     plt.rcdefaults()
-    solar_latdf = pd.read_csv("results/adam_latitude_compare3h/csvs/gen_and_lat.csv")
+    solar_latdf = pd.read_csv(path)
     solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
-    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only int3erested in solar share
+    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only interested in solar share
     solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
     solar_latdf['percent'] = solar_latdf["fraction"] * 100
     
@@ -237,7 +272,7 @@ def solar_by_latitude():
     ax.scatter(x, y)
     ax.set_xlabel("Latitude (degrees)")
     ax.set_ylabel("Optimal solar share (%)")
-    ax.set_title("Optimal solar share by Latitude for EU-28 in PyPSA-Eur-Sec")
+    ax.set_title("Optimal solar share for EU-28 in PyPSA-Eur-Sec, transmit + sectors")
 
 
 
@@ -256,12 +291,46 @@ def solar_by_latitude():
 
 
     fig.legend()
-    #fig.savefig("results/adam_latitude_compare3h/graphs/solar_by_lat")
+    parentpath = path.parent.parent
+
+    fig.savefig(parentpath / "graphs/solar_by_lat")
+
     plt.show()
 
 
+def check_exist_folder(run_name):
+    graphpath = "results/" + run_name + "/graphs"
+    csvpath = "results/" + run_name + "/csvs"
+    if os.path.exists(graphpath) == False:
+        os.makedirs(graphpath)
+    if os.path.exists(csvpath) == False:
+        os.makedirs(csvpath)
 
-solar_by_latitude()
+
+
+if __name__ == "__main__":
+    #Set filepath name
+    #This cannot really handle multiple postnetworks yet
+
+    run_name = "adam_latitude_compare_yessectors_yestransmit_3h_2"
+
+    
+    check_exist_folder(run_name)
+
+    for filepath in glob.glob("results/" + run_name + "/postnetworks/*"):
+        retrieve_generators(filepath)
+
+
+    path = add_to_df(run_name)
+
+    solar_by_latitude(path)
+
+    
+
+    #all_generators("adam_latitude_compare_no_sectors")
+
+
+#solar_by_latitude()
 
 #f = f.query('`country`.str.startswith("FR")')
 
