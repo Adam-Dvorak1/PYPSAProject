@@ -21,7 +21,7 @@ import yaml
 from pylab import *
 from sklearn.metrics import r2_score
 
-
+'''The issue is that before we could just get one item from each country. Now we need entire time series'''
 
 eu28 = (
     "FR",
@@ -175,6 +175,85 @@ def make_stackplot(run_name, relative):
 #f = make_stackplot("adam_solar_3", True)
 
 
+
+def retrieve_timeseries(filepath):
+    '''This function takes a completed postnetwork, finds the resource frac'''
+    
+    europe = pypsa.Network()
+    europe.import_from_netcdf(filepath)
+
+    my_gen = ("offwind-ac", "offwind-dc", "solar", "onwind", "ror")
+
+    countries = eu28
+    mydata = europe.generators_t.p
+    mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
+
+    mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
+
+
+    myloads = europe.loads_t.p
+    myloads = myloads[myloads.columns[myloads.columns.str.startswith(countries)]]
+
+    myloads = myloads-myloads.mean()#This is just myloads
+    myloads.rename(columns = lambda x: x[:2], inplace = True) #All of the loads are only named by the country
+    myloads = myloads.groupby(level = 0, axis = 1).sum() #There are some duplicate loads. This groups them (adds them together)
+
+    for country in countries:
+    #The purpose of this section is to get sum all the solar
+        resource_fracs = mydata
+        resource_fracs = resource_fracs[[col for col in resource_fracs.columns if col.startswith(country)]]
+        mydata[country] = resource_fracs[[col for col in resource_fracs.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+
+    mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
+
+    mydata = mydata-mydata.mean()
+
+    
+    covariances = pd.DataFrame()
+
+    for col in myloads.columns:
+        covariances[col] = myloads[col] * mydata[col]/(myloads[col].std()*mydata[col].std())#This is a time series of 
+
+
+    print(covariances)
+    print(covariances.sum()/len(covariances))
+        
+
+
+    #The purpose of this section is to multiply the loads and supply together, element-wise
+
+    print(mydata)
+    
+    
+    
+
+
+    mydata = mydata.to_frame()
+
+
+
+    #In this section of the code, I
+        #Extract 
+    #save csv in new file, related to filepath
+    now_path = pathlib.Path(filepath)
+    parent_path = now_path.parent
+    run_directory = parent_path.parent
+
+
+    
+
+
+    #mydata.to_csv(run_directory / "csvs/generators_T.csv")
+
+
+
+
+    return mydata
+
+
+
+
+
 def retrieve_generators(filepath):
     '''This function takes a completed postnetwork, finds the resource frac'''
     
@@ -186,9 +265,25 @@ def retrieve_generators(filepath):
     countries = eu28
     mydata = europe.generators_t.p
     mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
-    # mydata = mydata[mydata.columns[mydata.columns.str.contains('|'.join(my_gen))]] #look at column names. look at whether it ends with 
-    # mydata = mydata[my_gen]s
+
+    #This deals with p_nom_opt
     mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
+    totalpowers = europe.generators.p_nom_opt
+    totalpowers = totalpowers[mydata.columns]
+
+    totalpowers = totalpowers.to_frame()
+    totalpowers = totalpowers.T #The p_nom_opt is not a timeseries. However, before we were using timeseries. 
+                                # So, to make the same code work (combining similar names), we transpose it
+
+
+    myloads = europe.loads_t.p
+    myloads = myloads[myloads.columns[myloads.columns.str.startswith(countries)]]
+
+    myloads = myloads-myloads.mean()#remember, every time that we use myloads, the time series is averaged at 0
+    myloads.rename(columns = lambda x: x[:2], inplace = True) #All of the loads are only named by the country
+    myloads = myloads.groupby(level = 0, axis = 1).sum()#All of the loads for a given country are grouped
+
+    weekloads = myloads.rolling(56).mean()[::56]
 
 
     for country in countries:
@@ -199,16 +294,72 @@ def retrieve_generators(filepath):
         if any('ror' in col for col in resource_fracs.columns):#checks if there is a 'ror' column present
             mydata[country + 'ror'] =  resource_fracs[[col for col in resource_fracs.columns if 'ror' in col]].sum(axis = 1)
 
+
+
+
+        allsources = totalpowers
+        allsources =allsources[[col for col in allsources.columns if col.startswith(country)]]
+        totalpowers[country + 'solar'] = allsources[[col for col in allsources.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        totalpowers[country + 'wind'] = allsources[[col for col in allsources.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in allsources.columns):#checks if there is a 'ror' column present
+            totalpowers[country + 'ror'] =  allsources[[col for col in allsources.columns if 'ror' in col]].sum(axis = 1)
+
+
+
     mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
 
 
+    totalpowers = totalpowers[totalpowers.columns[~totalpowers.columns.str.contains('[0-9]+')]]
+    totalpowers = totalpowers.T
+
+
+    moddata = mydata-mydata.mean()
+
+    weekdata = moddata.rolling(56).mean()[::56]
+
+    covariances = pd.DataFrame()
+
+    weekcovariances = pd.DataFrame()
+    
 
 
 
+    for col in myloads.columns:
+        covariances[col+'solar'] = myloads[col] * moddata[col + 'solar']/(myloads[col].std()*moddata[col + 'solar'].std())
+        covariances[col+ 'wind'] = myloads[col] * moddata[col + 'wind']/(myloads[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            covariances[col + 'ror'] =  myloads[col] * moddata[col + 'ror']/(myloads[col].std()*moddata[col + 'ror'].std())
+
+
+        weekcovariances[col+'solar'] = weekloads[col] * weekdata[col + 'solar']/(weekloads[col].std()*weekdata[col + 'solar'].std())
+        weekcovariances[col+ 'wind'] = weekloads[col] * weekdata[col + 'wind']/(weekloads[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            weekcovariances[col + 'ror'] =  weekloads[col] * weekdata[col + 'ror']/(weekloads[col].std()*weekdata[col + 'ror'].std())
+    
+    print(weekcovariances)
+    weekcovariances = weekcovariances.sum()/len(weekcovariances)
+    weekcovariances.to_frame()
+    print(weekcovariances)
+
+    covariances = covariances.sum()/len(covariances)
+    covariances.to_frame()
+
+    covariances.columns = ['load_corr']
+    #print(covariances.columns)
+    
     mydata = mydata.sum()
+
+    
 
 
     mydata = mydata.to_frame()
+
+    mydata = pd.concat([mydata, totalpowers, covariances], axis = 1)#We want to do the same thing with the
+
+    mydata.columns = ['0', 'p_nom_opt', 'load_corr']
+
+    #In this section of the code, I
+        #Extract 
     #save csv in new file, related to filepath
     now_path = pathlib.Path(filepath)
     parent_path = now_path.parent
@@ -220,18 +371,22 @@ def retrieve_generators(filepath):
 
     mydata.to_csv(run_directory / "csvs/generators_T.csv")
 
-    return mydata
 
+
+
+    return mydata
 
 
 def add_to_df(run_name):
     #This takes in a csv made from retrieve_generators and then adds to it
     csvpath = "results/" + run_name + "/csvs/generators_T.csv"
     all_gens = pd.read_csv(csvpath)
+    all_gens.columns = ['name', "Generation", 'p_nom_opt', 'load_corr']
     all_gens['country'] = all_gens.apply(lambda row: row['name'][0:2], axis = 1)
-    all_gens['carrier'] = all_gens.apply(lambda row: row['name'].replace(row['country'], ''), axis = 1)
-    all_gens = all_gens.rename(columns = {"0": "Generation"})
-    all_gens["total_gen"] = ''
+    #all_gens['country'] = all_gens.apply(lambda row: row['name'][0:2], axis = 1)#This makes a new column, lops off the first two letters of each row name, which is the country
+    all_gens['carrier'] = all_gens.apply(lambda row: row['name'].replace(row['country'], ''), axis = 1)#This makes an ew column replaces the country in the name with just the resource
+    #all_gens = all_gens.rename(columns = {"0": "Generation"})#renames the column of production from "0" to "Generation"
+    all_gens["total_gen"] = '' #Makes an empty column
     for country in eu28:
         f = all_gens.loc[all_gens['country'] == country]
         all_gens['total_gen'].loc[all_gens['country'] == country] = f['Generation'].sum()
@@ -240,18 +395,57 @@ def add_to_df(run_name):
 
     latitude = pd.read_csv("data/countries_lat.csv")
     all_gens = pd.merge(all_gens, latitude[['country', 'latitude']], how = 'left', on = 'country' )
+
+    all_gens['year_CF'] = all_gens.apply(lambda row: 0 if row['p_nom_opt'] == 0 else row['Generation']/(row['p_nom_opt'] * 2920), axis = 1)
+
+    all_gen_solar = all_gens.loc[all_gens['carrier'] == 'solar']
+    all_gen_solar['solarfrac'] = all_gen_solar ['fraction']
+    all_gen_solar['solarcf'] = all_gen_solar['year_CF']
+    all_gens = pd.merge(all_gens, all_gen_solar[['country','solarfrac', 'solarcf']], how = 'left', on = 'country')
     #create empty column
     #use loc 
     nowpath = pathlib.Path(csvpath)
     parentpath = nowpath.parent
+
+    print(all_gens)
     all_gens.to_csv(parentpath / 'gen_and_lat.csv')
 
     latcsv_path = parentpath / 'gen_and_lat.csv'
 
     return(latcsv_path)
 
-
 def solar_by_latitude(path):
+    mypath = str(path)
+    
+    opts = mypath.split("_")
+    print(opts)
+    for opt in opts:
+        contains_digit = len(re.findall('\d+', opt)) > 0
+        if contains_digit:
+            f = re.findall(r'\d+', opt)
+            hrs = f[0]
+            hrs = hrs + "h"
+    if "sectors" in opts:
+        idxsec = opts.index('sectors')
+        idxsec -= 1
+        sec = opts[idxsec]
+        if sec == "yes":
+            sec = 'with'
+        else:
+            sec = 'without'
+        sec = sec + " sectors"
+    if "transmission" in opts:
+        idxtrans = opts.index('transmission')
+        idxtrans -= 1
+        trans = opts[idxtrans]
+        if trans == "yes":
+            trans = 'with'
+        else:
+            trans = 'without'
+        trans = trans + " transmission"
+
+    
+    
 
     plt.rcdefaults()
     solar_latdf = pd.read_csv(path)
@@ -272,7 +466,7 @@ def solar_by_latitude(path):
     ax.scatter(x, y)
     ax.set_xlabel("Latitude (degrees)")
     ax.set_ylabel("Optimal solar share (%)")
-    ax.set_title("Optimal solar share for EU-28 in PyPSA-Eur-Sec, transmit + sectors")
+    ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
 
 
 
@@ -298,6 +492,259 @@ def solar_by_latitude(path):
     plt.show()
 
 
+#Make a function that:
+    #Reads in the csv
+    #Makes a second dataframe with just solar
+    #Makes another column for solar fraction
+    #Joins back, adding column
+def solar_by_wind(path):
+    mypath = str(path)
+    
+    opts = mypath.split("_")
+    print(opts)
+    for opt in opts:
+        contains_digit = len(re.findall('\d+', opt)) > 0
+        if contains_digit:
+            f = re.findall(r'\d+', opt)
+            hrs = f[0]
+            hrs = hrs + "h"
+    if "sectors" in opts:
+        idxsec = opts.index('sectors')
+        idxsec -= 1
+        sec = opts[idxsec]
+        if sec == "yes":
+            sec = 'with'
+        else:
+            sec = 'without'
+        sec = sec + " sectors"
+    if "transmission" in opts:
+        idxtrans = opts.index('transmission')
+        idxtrans -= 1
+        trans = opts[idxtrans]
+        if trans == "yes":
+            trans = 'with'
+        else:
+            trans = 'without'
+        trans = trans + " transmission"
+
+    
+    
+
+    plt.rcdefaults()
+    solar_latdf = pd.read_csv(path)
+    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
+    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'wind']#only interested in wind share
+    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    #solar_latdf['windpercent'] = solar_latdf["fraction"] * 100
+    solar_latdf['solarpercent'] = solar_latdf['solarfrac'] * 100
+    
+    
+    #plotting: latitude on x axis, solar fraction on y axis
+
+    fig, ax = plt.subplots()
+
+    x = solar_latdf["year_CF"]
+    y = solar_latdf["solarpercent"]
+
+
+    ax.scatter(x, y)
+    ax.set_xlabel("Wind capacity factor")
+    ax.set_ylabel("Optimal solar share (%)")
+    ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
+
+
+
+    for idx, row in solar_latdf.iterrows():
+        ax.annotate(row['country'], (row['year_CF']* 1.007, row['solarpercent']* 0.97))
+    
+
+    m, b = np.polyfit(x, y, 1)
+    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
+
+
+
+    plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
+    
+    #ax.annotate("r-squared = {:.3f}".format(r2_score(x, y)), (60, 100))
+
+
+    fig.legend()
+    parentpath = path.parent.parent#path is csv, parent is csv folder, parent is run
+
+    # fig.savefig(parentpath / "graphs/solar_by_wind") #subdir graphs
+
+    parentpath = parentpath.parent.parent #parentpath is run folder, parent is results, parent is pypsaproject
+
+    fig.savefig(parentpath / f"Images/Shown images/11:5 meeting/solar_by_wind{sec}_{trans}")
+    
+
+    plt.show()
+
+def solar_by_solar(path):
+    mypath = str(path)
+    
+    opts = mypath.split("_")
+    print(opts)
+    for opt in opts:
+        contains_digit = len(re.findall('\d+', opt)) > 0
+        if contains_digit:
+            f = re.findall(r'\d+', opt)
+            hrs = f[0]
+            hrs = hrs + "h"
+    if "sectors" in opts:
+        idxsec = opts.index('sectors')
+        idxsec -= 1
+        sec = opts[idxsec]
+        if sec == "yes":
+            sec = 'with'
+        else:
+            sec = 'without'
+        sec = sec + " sectors"
+    if "transmission" in opts:
+        idxtrans = opts.index('transmission')
+        idxtrans -= 1
+        trans = opts[idxtrans]
+        if trans == "yes":
+            trans = 'with'
+        else:
+            trans = 'without'
+        trans = trans + " transmission"
+
+    
+    
+
+    plt.rcdefaults()
+    solar_latdf = pd.read_csv(path)
+    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
+    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only interested in wind share
+    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    #solar_latdf['windpercent'] = solar_latdf["fraction"] * 100
+    solar_latdf['solarpercent'] = solar_latdf['solarfrac'] * 100
+    
+    
+    #plotting: latitude on x axis, solar fraction on y axis
+
+    fig, ax = plt.subplots()
+
+    x = solar_latdf["solarcf"]
+    y = solar_latdf["solarpercent"]
+
+
+    ax.scatter(x, y)
+    ax.set_xlabel("Solar capacity factor")
+    ax.set_ylabel("Optimal solar share (%)")
+    ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
+
+
+
+    for idx, row in solar_latdf.iterrows():
+        ax.annotate(row['country'], (row['solarcf']* 1.007, row['solarpercent']* 0.97))
+    
+
+    m, b = np.polyfit(x, y, 1)
+    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
+
+
+
+    plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
+    
+    #ax.annotate("r-squared = {:.3f}".format(r2_score(x, y)), (60, 100))
+
+
+    fig.legend()
+    parentpath = path.parent.parent#path is csv, parent is csv folder, parent is run
+
+    fig.savefig(parentpath / "graphs/solar_by_solarcf") #subdir graphs
+
+    parentpath = parentpath.parent.parent #parentpath is run folder, parent is results, parent is pypsaproject
+
+    fig.savefig(parentpath / f"Images/Shown images/11:5 meeting/solar_by_solarcf{sec}_{trans}")
+    
+
+    #plt.show()
+
+def solar_by_corr(path):
+    mypath = str(path)
+    
+    opts = mypath.split("_")
+    print(opts)
+    for opt in opts:#This takes the first number of the last opt with a number
+        contains_digit = len(re.findall('\d+', opt)) > 0
+        if contains_digit:
+            f = re.findall(r'\d+', opt)
+            hrs = f[0]
+            hrs = hrs + "h"
+    if "sectors" in opts:#
+        idxsec = opts.index('sectors')
+        idxsec -= 1
+        sec = opts[idxsec]
+        if sec == "yes":
+            sec = 'with'
+        else:
+            sec = 'without'
+        sec = sec + " sectors"
+    if "transmission" in opts:
+        idxtrans = opts.index('transmission')
+        idxtrans -= 1
+        trans = opts[idxtrans]
+        if trans == "yes":
+            trans = 'with'
+        else:
+            trans = 'without'
+        trans = trans + " transmission"
+
+    
+    
+
+    plt.rcdefaults()
+    solar_latdf = pd.read_csv(path)
+    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
+    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only interested in wind share
+    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    #solar_latdf['windpercent'] = solar_latdf["fraction"] * 100
+    solar_latdf['solarpercent'] = solar_latdf['solarfrac'] * 100
+    
+    
+    #plotting: latitude on x axis, solar fraction on y axis
+
+    fig, ax = plt.subplots()
+
+    x = solar_latdf["load_corr"]
+    y = solar_latdf["solarpercent"]
+
+
+    ax.scatter(x, y)
+    ax.set_xlabel("Load correlation with solar production")
+    ax.set_ylabel("Optimal solar share (%)")
+    ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
+
+
+
+    for idx, row in solar_latdf.iterrows():
+        ax.annotate(row['country'], (row['load_corr']* 1.007, row['solarpercent']* 0.97))
+    
+
+    m, b = np.polyfit(x, y, 1)
+    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
+
+
+
+    plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
+    
+    #ax.annotate("r-squared = {:.3f}".format(r2_score(x, y)), (60, 100))
+
+
+    fig.legend()
+    parentpath = path.parent.parent#path is csv, parent is csv folder, parent is run
+
+    fig.savefig(parentpath / "graphs/solar_by_corr") #subdir graphs
+
+    parentpath = parentpath.parent.parent #parentpath is run folder, parent is results, parent is pypsaproject
+
+    #fig.savefig(parentpath / f"Images/Shown images/11:5 meeting/solar_by_solarcf{sec}_{trans}")
+    plt.show()
+
+
 def check_exist_folder(run_name):
     graphpath = "results/" + run_name + "/graphs"
     csvpath = "results/" + run_name + "/csvs"
@@ -308,22 +755,49 @@ def check_exist_folder(run_name):
 
 
 
+
+def compare_solar_lat_countries():
+    '''This is a functio that will look at '''
+    #Reads in four different runs
+    #Makes a bar plot 
+
+
+
+
+
 if __name__ == "__main__":
     #Set filepath name
     #This cannot really handle multiple postnetworks yet
 
-    run_name = "adam_latitude_compare_yessectors_yestransmit_3h_2"
+    run_name = ["adam_latitude_compare_yes_sectors_no_transmission_3h", "adam_latitude_compare_no_sectors_yes_transmission_3h",
+    "adam_latitude_compare_no_sectors_no_transmission_3h3", "adam_latitude_compare_yes_sectors_yes_transmission_3h2"]
+    # run_name = "adam_latitude_compare_no_sectors_yes_transmission_3h"
+    # run_name = "adam_latitude_compare_no_sectors_no_transmission_3h3"
+    # run_name = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
+
+
+
+
+
 
     
-    check_exist_folder(run_name)
-
-    for filepath in glob.glob("results/" + run_name + "/postnetworks/*"):
-        retrieve_generators(filepath)
+    #check_exist_folder(run_name)
 
 
-    path = add_to_df(run_name)
 
-    solar_by_latitude(path)
+    for run in run_name:
+        # for filepath in glob.glob("results/" + run + "/postnetworks/*"):
+        #     retrieve_generators(filepath)
+
+
+
+
+
+        # path = add_to_df(run)
+        path = 'results/' + run+ '/csvs/gen_and_lat.csv'
+        path = pathlib.Path(path)
+        solar_by_corr(path)
+        #solar_by_solar(path)
 
     
 
@@ -369,6 +843,90 @@ if __name__ == "__main__":
 # mysum = mydata.sum()
 
 
+
+
+
+###OUTDATED FUNCTIONS#####
+
+
+def retrieve_generators_old(filepath):
+    '''This function takes a completed postnetwork, finds the resource frac
+    Old version. This is outdated as of 17/5/22'''
+    
+    europe = pypsa.Network()
+    europe.import_from_netcdf(filepath)
+
+    my_gen = ("offwind-ac", "offwind-dc", "solar", "onwind", "ror")
+
+    countries = eu28
+    mydata = europe.generators_t.p
+    mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
+    # mydata = mydata[mydata.columns[mydata.columns.str.contains('|'.join(my_gen))]] #look at column names. look at whether it ends with 
+    # mydata = mydata[my_gen]s
+    mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
+    totalpowers = europe.generators.p_nom_opt
+    totalpowers = totalpowers[mydata.columns]
+
+    totalpowers = totalpowers.to_frame()
+    totalpowers = totalpowers.T #The p_nom_opt is not a timeseries. However, before we were using timeseries. 
+                                # So, to make the same code work (combining similar names), we transpose it
+
+
+    for country in countries:
+        resource_fracs = mydata
+        resource_fracs = resource_fracs[[col for col in resource_fracs.columns if col.startswith(country)]]
+        mydata[country + 'solar'] = resource_fracs[[col for col in resource_fracs.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        mydata[country + 'wind'] = resource_fracs[[col for col in resource_fracs.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in resource_fracs.columns):#checks if there is a 'ror' column present
+            mydata[country + 'ror'] =  resource_fracs[[col for col in resource_fracs.columns if 'ror' in col]].sum(axis = 1)
+
+
+
+
+        allsources = totalpowers
+        allsources =allsources[[col for col in allsources.columns if col.startswith(country)]]
+        totalpowers[country + 'solar'] = allsources[[col for col in allsources.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        totalpowers[country + 'wind'] = allsources[[col for col in allsources.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in allsources.columns):#checks if there is a 'ror' column present
+            totalpowers[country + 'ror'] =  allsources[[col for col in allsources.columns if 'ror' in col]].sum(axis = 1)
+
+
+
+    mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
+
+
+    totalpowers = totalpowers[totalpowers.columns[~totalpowers.columns.str.contains('[0-9]+')]]
+    totalpowers = totalpowers.T
+    
+    
+
+    mydata = mydata.sum()
+    print (mydata)
+    
+
+
+    mydata = mydata.to_frame()
+
+    mydata = pd.concat([mydata, totalpowers], axis = 1)
+
+
+    #In this section of the code, I
+        #Extract 
+    #save csv in new file, related to filepath
+    now_path = pathlib.Path(filepath)
+    parent_path = now_path.parent
+    run_directory = parent_path.parent
+
+
+    
+
+
+    #mydata.to_csv(run_directory / "csvs/generators_T.csv")
+
+
+
+
+    return mydata
 
 
 

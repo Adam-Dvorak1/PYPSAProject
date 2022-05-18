@@ -168,6 +168,9 @@ CFs_CA = df_cal_solar['solar'][[hour.strftime("%Y-%m-%dT%H:%M:%S") for hour in C
 CFs_CO = df_co_solar['solar'][[hour.strftime("%Y-%m-%dT%H:%M:%S") for hour in CO.snapshots]]
 
 CF_solar = [CFs_Denmark, CFs_Spain, CFs_CA, CFs_CO]
+
+
+
 #utility scale solar
 capital_cost_solar = annuity(35,0.07)*529000*(1+0.016)
 
