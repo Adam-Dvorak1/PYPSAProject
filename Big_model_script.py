@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+import scipy
 import time
 from itertools import repeat
 from matplotlib import rc
@@ -20,8 +21,11 @@ import glob
 import yaml
 from pylab import *
 from sklearn.metrics import r2_score
+import xarray as xr
 
 '''The issue is that before we could just get one item from each country. Now we need entire time series'''
+
+
 
 eu28 = (
     "FR",
@@ -87,6 +91,79 @@ def all_generators_real(run_name):
     generator = generator.sort_index(ascending = True)
     generator.to_csv(f'results/' + run_name + '/csvs/generators_T.csv')
     return generator
+
+
+
+def load_temp_data():
+
+    '''This function is to find the time series of '''
+    idx = pd.IndexSlice
+
+    countries = eu28
+
+    ds = xr.open_dataset('data/resources/temp_air_rural_elec_s_37.nc') #we find that rural and urban have the same
+    # ds2 = xr.open_dataset('data/resources/temp_air_urban_elec_s_37.nc')
+
+
+    df = ds.to_dataframe()#this is a multi index dataframe
+    df= df.unstack(level = 1)#This turns all of the different regions into 
+
+    df.columns = [col[1] for col in df.columns]#When we stacked it, each column name had two names--temperature and country. This gets rid of the country
+    
+    df = df[df.columns[df.columns.str.startswith(countries)]]
+
+    for country in countries:
+        temps = df.copy()
+        temps = temps[[col for col in temps.columns if col.startswith(country)]]
+        df[country]  = temps.mean(axis = 1) #There are some with multiple nodes, with multiple time series. To solve this we just take the average
+
+    df = df[df.columns[~df.columns.str.contains('[0-9]+')]]
+
+    df = df.append(df.iloc[0])
+    df = df.rolling(3).mean()[::3]
+
+    df = df.shift(-1)
+    df = df[:-1]
+
+    degreedays = df.copy()
+    degreedays = degreedays - 18
+
+    coolDD = degreedays.copy()
+    coolDD = coolDD.mask(coolDD < 0, 0)
+    heatDD = degreedays.copy()
+    heatDD = heatDD.mask(heatDD> 0, 0)
+
+
+    coolsum = coolDD.sum()/2920
+    coolsum = coolsum.to_frame()
+
+    heatsum = heatDD.sum()/2920
+    heatsum  = heatsum.to_frame()
+
+
+
+    heatcool = pd.concat([coolsum, heatsum], axis = 1)
+
+    heatcool.columns = ["avgcoolDD", "avgheatDD"]
+
+    #heatcool.to_csv("data/avgHDDCDD.csv")
+    
+
+    return coolDD, heatDD
+
+    
+
+
+    
+    # df2 = ds2.to_dataframe()
+    # df2 = df2.unstack(level = 1)
+
+
+
+    
+
+
+
 
 #filepath = "results/adam_latitude_compare3h/postnetworks/elec_s_37_lv1.0__1_Co2L0-3H-T-H-B-I-A-solar+p3-dist0_2030.nc"
 #filepath = "results/adam_latitude_compareno_sectors/postnetworks/elec_s_37_lv1.0__1_Co2L0-168H-solar+p3-dist0_2030.nc" #This new filepath now deals with no sectors
@@ -279,11 +356,36 @@ def retrieve_generators(filepath):
     myloads = europe.loads_t.p
     myloads = myloads[myloads.columns[myloads.columns.str.startswith(countries)]]
 
-    myloads = myloads-myloads.mean()#remember, every time that we use myloads, the time series is averaged at 0
+    myloads = myloads-myloads.mean()
     myloads.rename(columns = lambda x: x[:2], inplace = True) #All of the loads are only named by the country
-    myloads = myloads.groupby(level = 0, axis = 1).sum()#All of the loads for a given country are grouped
+    myloads = myloads.groupby(level = 0, axis = 1).sum() #There are some duplicate loads. This groups them (adds them together)
 
     weekloads = myloads.rolling(56).mean()[::56]
+
+    weekloads = weekloads.drop(0)# I did not add this line before. I wonder if this will make a difference
+                                    #It did make a bit of a difference--about 1% Nothign to write home about
+
+
+    #In this section, we attempt to add the covariance of solar with the cooling and heating degree days
+    coolDD, heatDD = load_temp_data()
+
+    coolDD = coolDD-coolDD.mean() #in the calculation of covariances, we want to use the difference between the amount of CDD/HDD and the mean
+    heatDD = heatDD-heatDD.mean()
+
+    coolDD = coolDD.reset_index()
+    coolDD = coolDD.drop('time', axis = 1)
+
+    heatDD = heatDD.reset_index()
+    heatDD = heatDD.drop('time', axis = 1)
+    heatDD = heatDD * -1
+
+    coolweek = coolDD.rolling(56).mean()[::56]
+    heatweek = heatDD.rolling(56).mean()[::56]
+
+
+
+    # coolsum = coolsum.T
+
 
 
     for country in countries:
@@ -304,6 +406,11 @@ def retrieve_generators(filepath):
         if any('ror' in col for col in allsources.columns):#checks if there is a 'ror' column present
             totalpowers[country + 'ror'] =  allsources[[col for col in allsources.columns if 'ror' in col]].sum(axis = 1)
 
+        
+
+        
+
+
 
 
     mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
@@ -316,12 +423,23 @@ def retrieve_generators(filepath):
     moddata = mydata-mydata.mean()
 
     weekdata = moddata.rolling(56).mean()[::56]
+    weekdata = weekdata.drop(0)#question: we are dropping the first row because the rolling/mean combo makes the first row NaN.
+    #However, what about the loads?
+
 
     covariances = pd.DataFrame()
 
     weekcovariances = pd.DataFrame()
     
+    coolvariances = pd.DataFrame()
 
+    coolweekvar = pd.DataFrame()
+
+    heatvariances = pd.DataFrame()
+
+    heatweekvar = pd.DataFrame()
+    
+    
 
 
     for col in myloads.columns:
@@ -336,27 +454,77 @@ def retrieve_generators(filepath):
         if col + 'ror' in moddata.columns:
             weekcovariances[col + 'ror'] =  weekloads[col] * weekdata[col + 'ror']/(weekloads[col].std()*weekdata[col + 'ror'].std())
     
-    print(weekcovariances)
+
+        coolvariances[col + 'solar'] = coolDD[col] * moddata[col + 'solar']/(coolDD[col].std()*moddata[col + 'solar'].std())
+        coolvariances[col + 'wind'] = coolDD[col] * moddata[col + 'wind']/(coolDD[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            coolvariances[col + 'ror'] =  coolDD[col] * moddata[col + 'ror']/(coolDD[col].std()*moddata[col + 'ror'].std())
+        
+        coolweekvar[col + 'solar'] = coolweek[col] * weekdata[col + 'solar']/(coolweek[col].std()*weekdata[col + 'solar'].std())
+        coolweekvar[col + 'wind'] = coolweek[col] * weekdata[col + 'wind']/(coolweek[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            coolweekvar[col + 'ror'] =  coolweek[col] * weekdata[col + 'ror']/(coolweek[col].std()*weekdata[col + 'ror'].std())
+
+
+        
+
+        heatvariances[col + 'solar'] = heatDD[col] * moddata[col + 'solar']/(heatDD[col].std()*moddata[col + 'solar'].std())
+        heatvariances[col + 'wind'] = heatDD[col] * moddata[col + 'wind']/(heatDD[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            heatvariances[col + 'ror'] =  heatDD[col] * moddata[col + 'ror']/(heatDD[col].std()*moddata[col + 'ror'].std())
+
+
+
+        heatweekvar[col + 'solar'] = heatweek[col] * weekdata[col + 'solar']/(heatweek[col].std()*weekdata[col + 'solar'].std())
+        heatweekvar[col + 'wind'] = heatweek[col] * weekdata[col + 'wind']/(heatweek[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            heatweekvar[col + 'ror'] =  heatweek[col] * weekdata[col + 'ror']/(heatweek[col].std()*weekdata[col + 'ror'].std())
+    
+    # print(weekcovariances)
     weekcovariances = weekcovariances.sum()/len(weekcovariances)
     weekcovariances.to_frame()
-    print(weekcovariances)
+    # print(weekcovariances)
 
     covariances = covariances.sum()/len(covariances)
     covariances.to_frame()
 
-    covariances.columns = ['load_corr']
+    coolvariances = coolvariances.sum()/len(coolvariances)
+    coolvariances.to_frame()
+
+    heatvariances = heatvariances.sum()/len(heatvariances)
+    heatvariances.to_frame()
+
+
+    coolweekvar = coolweekvar.sum()/len(coolweekvar)
+    coolweekvar.to_frame()
+
+    heatweekvar = heatweekvar.sum()/len(heatweekvar)
+    heatweekvar.to_frame()
     #print(covariances.columns)
+
+    #In this section:
+        #Bring in the relevant dataframes from temp function
+        #Add to mydata: CDDs/day on average, HDDs/day on average
+        #Also, covariance between CDD, HDDs
+    
+    
+
+
+
+
     
     mydata = mydata.sum()
+
 
     
 
 
     mydata = mydata.to_frame()
 
-    mydata = pd.concat([mydata, totalpowers, covariances], axis = 1)#We want to do the same thing with the
+    mydata = pd.concat([mydata, totalpowers, covariances, weekcovariances, coolvariances, coolweekvar, heatvariances, heatweekvar], axis = 1)#We want to do the same thing with the
+    #mydata = pd.concat([mydata, totalpowers, weekcovariances], axis = 1)
 
-    mydata.columns = ['0', 'p_nom_opt', 'load_corr']
+    #mydata.columns = ['0', 'p_nom_opt', 'load_corr', 'week_corr']
 
     #In this section of the code, I
         #Extract 
@@ -377,11 +545,252 @@ def retrieve_generators(filepath):
     return mydata
 
 
+def retrieve_generators_choice(filepath):
+    '''This function takes a completed postnetwork, finds the resource frac'''
+    
+    europe = pypsa.Network()
+    europe.import_from_netcdf(filepath)
+
+    opts = filepath.split('-')
+
+
+    if 'B' in opts:
+        sectors = 'yes'
+    else:
+        sectors = 'no'
+
+
+    trans = True
+
+    for opt in opts:
+        if opt.startswith('zero'):#If we make another wildcard with zero, that will obviously mess up this equation
+            trans = False
+    
+    if trans == False:
+        transmission = "no"
+    else:
+        transmission = "yes"
+
+    firstopts = opts[0].split('_')
+
+    solarcost = firstopts[-2]#The solar cost is the second to last opt of the first opts, so it is here we assign it
+    # solarcost = float(solarcost) #We are using solarcost as an 'opt'
+
+    my_gen = ("offwind-ac", "offwind-dc", "solar", "onwind", "ror")
+
+    countries = eu28
+    mydata = europe.generators_t.p
+    mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
+
+    #This deals with p_nom_opt
+    mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
+    totalpowers = europe.generators.p_nom_opt
+    totalpowers = totalpowers[mydata.columns]
+
+    totalpowers = totalpowers.to_frame()
+    totalpowers = totalpowers.T #The p_nom_opt is not a timeseries. However, before we were using timeseries. 
+                                # So, to make the same code work (combining similar names), we transpose it
+
+
+    myloads = europe.loads_t.p
+    myloads = myloads[myloads.columns[myloads.columns.str.startswith(countries)]]
+
+    myloads = myloads-myloads.mean()
+    myloads.rename(columns = lambda x: x[:2], inplace = True) #All of the loads are only named by the country
+    myloads = myloads.groupby(level = 0, axis = 1).sum() #There are some duplicate loads. This groups them (adds them together)
+
+    weekloads = myloads.rolling(56).mean()[::56]
+
+    weekloads = weekloads.drop(0)# I did not add this line before. I wonder if this will make a difference
+                                    #It did make a bit of a difference--about 1% Nothign to write home about
+
+
+    #In this section, we attempt to add the covariance of solar with the cooling and heating degree days
+    coolDD, heatDD = load_temp_data()
+
+    coolDD = coolDD-coolDD.mean() #in the calculation of covariances, we want to use the difference between the amount of CDD/HDD and the mean
+    heatDD = heatDD-heatDD.mean()
+
+    coolDD = coolDD.reset_index()
+    coolDD = coolDD.drop('time', axis = 1)
+
+    heatDD = heatDD.reset_index()
+    heatDD = heatDD.drop('time', axis = 1)
+    heatDD = heatDD * -1
+
+    coolweek = coolDD.rolling(56).mean()[::56]
+    heatweek = heatDD.rolling(56).mean()[::56]
+
+
+
+    # coolsum = coolsum.T
+
+
+
+    for country in countries:
+        resource_fracs = mydata
+        resource_fracs = resource_fracs[[col for col in resource_fracs.columns if col.startswith(country)]]
+        mydata[country + 'solar'] = resource_fracs[[col for col in resource_fracs.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        mydata[country + 'wind'] = resource_fracs[[col for col in resource_fracs.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in resource_fracs.columns):#checks if there is a 'ror' column present
+            mydata[country + 'ror'] =  resource_fracs[[col for col in resource_fracs.columns if 'ror' in col]].sum(axis = 1)
+
+
+
+
+        allsources = totalpowers
+        allsources =allsources[[col for col in allsources.columns if col.startswith(country)]]
+        totalpowers[country + 'solar'] = allsources[[col for col in allsources.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        totalpowers[country + 'wind'] = allsources[[col for col in allsources.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in allsources.columns):#checks if there is a 'ror' column present
+            totalpowers[country + 'ror'] =  allsources[[col for col in allsources.columns if 'ror' in col]].sum(axis = 1)
+
+        
+
+        
+
+
+
+
+    mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
+
+
+    totalpowers = totalpowers[totalpowers.columns[~totalpowers.columns.str.contains('[0-9]+')]]
+    totalpowers = totalpowers.T
+
+
+    moddata = mydata-mydata.mean()
+
+    weekdata = moddata.rolling(56).mean()[::56]
+    weekdata = weekdata.drop(0)#question: we are dropping the first row because the rolling/mean combo makes the first row NaN.
+    #However, what about the loads?
+
+
+    covariances = pd.DataFrame()
+
+    weekcovariances = pd.DataFrame()
+    
+    coolvariances = pd.DataFrame()
+
+    coolweekvar = pd.DataFrame()
+
+    heatvariances = pd.DataFrame()
+
+    heatweekvar = pd.DataFrame()
+    
+    
+
+
+    for col in myloads.columns:
+        covariances[col+'solar'] = myloads[col] * moddata[col + 'solar']/(myloads[col].std()*moddata[col + 'solar'].std())
+        covariances[col+ 'wind'] = myloads[col] * moddata[col + 'wind']/(myloads[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            covariances[col + 'ror'] =  myloads[col] * moddata[col + 'ror']/(myloads[col].std()*moddata[col + 'ror'].std())
+
+
+        weekcovariances[col+'solar'] = weekloads[col] * weekdata[col + 'solar']/(weekloads[col].std()*weekdata[col + 'solar'].std())
+        weekcovariances[col+ 'wind'] = weekloads[col] * weekdata[col + 'wind']/(weekloads[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            weekcovariances[col + 'ror'] =  weekloads[col] * weekdata[col + 'ror']/(weekloads[col].std()*weekdata[col + 'ror'].std())
+    
+
+        coolvariances[col + 'solar'] = coolDD[col] * moddata[col + 'solar']/(coolDD[col].std()*moddata[col + 'solar'].std())
+        coolvariances[col + 'wind'] = coolDD[col] * moddata[col + 'wind']/(coolDD[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            coolvariances[col + 'ror'] =  coolDD[col] * moddata[col + 'ror']/(coolDD[col].std()*moddata[col + 'ror'].std())
+        
+        coolweekvar[col + 'solar'] = coolweek[col] * weekdata[col + 'solar']/(coolweek[col].std()*weekdata[col + 'solar'].std())
+        coolweekvar[col + 'wind'] = coolweek[col] * weekdata[col + 'wind']/(coolweek[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            coolweekvar[col + 'ror'] =  coolweek[col] * weekdata[col + 'ror']/(coolweek[col].std()*weekdata[col + 'ror'].std())
+
+
+        
+
+        heatvariances[col + 'solar'] = heatDD[col] * moddata[col + 'solar']/(heatDD[col].std()*moddata[col + 'solar'].std())
+        heatvariances[col + 'wind'] = heatDD[col] * moddata[col + 'wind']/(heatDD[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            heatvariances[col + 'ror'] =  heatDD[col] * moddata[col + 'ror']/(heatDD[col].std()*moddata[col + 'ror'].std())
+
+
+
+        heatweekvar[col + 'solar'] = heatweek[col] * weekdata[col + 'solar']/(heatweek[col].std()*weekdata[col + 'solar'].std())
+        heatweekvar[col + 'wind'] = heatweek[col] * weekdata[col + 'wind']/(heatweek[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            heatweekvar[col + 'ror'] =  heatweek[col] * weekdata[col + 'ror']/(heatweek[col].std()*weekdata[col + 'ror'].std())
+    
+    # print(weekcovariances)
+    weekcovariances = weekcovariances.sum()/len(weekcovariances)
+    weekcovariances.to_frame()
+    # print(weekcovariances)
+
+    covariances = covariances.sum()/len(covariances)
+    covariances.to_frame()
+
+    coolvariances = coolvariances.sum()/len(coolvariances)
+    coolvariances.to_frame()
+
+    heatvariances = heatvariances.sum()/len(heatvariances)
+    heatvariances.to_frame()
+
+
+    coolweekvar = coolweekvar.sum()/len(coolweekvar)
+    coolweekvar.to_frame()
+
+    heatweekvar = heatweekvar.sum()/len(heatweekvar)
+    heatweekvar.to_frame()
+    #print(covariances.columns)
+
+    #In this section:
+        #Bring in the relevant dataframes from temp function
+        #Add to mydata: CDDs/day on average, HDDs/day on average
+        #Also, covariance between CDD, HDDs
+    
+    
+
+
+
+
+    
+    mydata = mydata.sum()
+
+
+    
+
+
+    mydata = mydata.to_frame()
+
+    mydata = pd.concat([mydata, totalpowers, covariances, weekcovariances, coolvariances, coolweekvar, heatvariances, heatweekvar], axis = 1)#We want to do the same thing with the
+    #mydata = pd.concat([mydata, totalpowers, weekcovariances], axis = 1)
+
+    #mydata.columns = ['0', 'p_nom_opt', 'load_corr', 'week_corr']
+
+    #In this section of the code, I
+        #Extract 
+    #save csv in new file, related to filepath
+    now_path = pathlib.Path(filepath)
+    parent_path = now_path.parent
+    run_directory = parent_path.parent
+
+
+    
+    csvpath =  "csvs/" + solarcost + "_generators_"+ sectors + "_sectors_" + transmission + "_transmission" + ".csv"
+
+    mydata.to_csv(run_directory /csvpath)
+
+
+
+
+    return mydata
+
+
+
+
 def add_to_df(run_name):
     #This takes in a csv made from retrieve_generators and then adds to it
     csvpath = "results/" + run_name + "/csvs/generators_T.csv"
     all_gens = pd.read_csv(csvpath)
-    all_gens.columns = ['name', "Generation", 'p_nom_opt', 'load_corr']
+    all_gens.columns = ['name', "Generation", 'p_nom_opt', 'load_corr', 'week_corr', 'cool_corr', 'week_cool', 'heat_corr', 'week_heat']#There is an extra column here than you might think, because importing from csv turns what was the index into a column. There is probably a way to avoid this but oh well :)
     all_gens['country'] = all_gens.apply(lambda row: row['name'][0:2], axis = 1)
     #all_gens['country'] = all_gens.apply(lambda row: row['name'][0:2], axis = 1)#This makes a new column, lops off the first two letters of each row name, which is the country
     all_gens['carrier'] = all_gens.apply(lambda row: row['name'].replace(row['country'], ''), axis = 1)#This makes an ew column replaces the country in the name with just the resource
@@ -394,8 +803,12 @@ def add_to_df(run_name):
     all_gens['fraction'] = all_gens.apply(lambda row: 0 if row['total_gen'] == 0 else row['Generation']/row['total_gen'], axis = 1)
 
     latitude = pd.read_csv("data/countries_lat.csv")
-    all_gens = pd.merge(all_gens, latitude[['country', 'latitude']], how = 'left', on = 'country' )
+    all_gens = pd.merge(all_gens, latitude[['country', 'latitude', 'name']], how = 'left', on = 'country' )
 
+    HDDCDD = pd.read_csv('data/avgHDDCDD.csv')#Here, this adds the avg HDD and CDD for each country
+    HDDCDD.columns = ["country", 'avgCDD', 'avgHDD']
+
+    all_gens = pd.merge(all_gens, HDDCDD, how = 'left', on = 'country')
     all_gens['year_CF'] = all_gens.apply(lambda row: 0 if row['p_nom_opt'] == 0 else row['Generation']/(row['p_nom_opt'] * 2920), axis = 1)
 
     all_gen_solar = all_gens.loc[all_gens['carrier'] == 'solar']
@@ -407,12 +820,171 @@ def add_to_df(run_name):
     nowpath = pathlib.Path(csvpath)
     parentpath = nowpath.parent
 
-    print(all_gens)
+    #print(all_gens)
     all_gens.to_csv(parentpath / 'gen_and_lat.csv')
 
     latcsv_path = parentpath / 'gen_and_lat.csv'
 
     return(latcsv_path)
+
+
+def add_to_df_choice(filepath):
+    #This takes in a csv made from retrieve_generators and then adds to it
+    opts = filepath.split('_')#hm not so simple because we are looking at the csv itself[[
+    print(opts)
+    filename = os.path.basename(filepath)
+    priceopt = filename.split("_")
+    solarcost = priceopt[0]
+    if "sectors" in opts:#
+        idxsec = opts.index('sectors')
+        idxsec -= 1
+        sec = opts[idxsec]
+        print(sec)
+        # if sec == "yes":
+        #     sec = 'with'
+        # else:
+        #     sec = 'without'
+        # sec = sec + "_sectors"
+    if "transmission.csv" in opts:
+        idxtrans = opts.index('transmission.csv')
+        idxtrans -= 1
+        trans = opts[idxtrans]
+
+        # if trans == "yes":
+        #     trans = 'with'
+        # else:
+        #     trans = 'without'
+        # trans = trans + "_transmission"    
+
+
+    all_gens = pd.read_csv(filepath)
+    all_gens.columns = ['name', "Generation", 'p_nom_opt', 'load_corr', 'week_corr', 'cool_corr', 'week_cool', 'heat_corr', 'week_heat']#There is an extra column here than you might think, because importing from csv turns what was the index into a column. There is probably a way to avoid this but oh well :)
+    all_gens['country'] = all_gens.apply(lambda row: row['name'][0:2], axis = 1)
+    #all_gens['country'] = all_gens.apply(lambda row: row['name'][0:2], axis = 1)#This makes a new column, lops off the first two letters of each row name, which is the country
+    all_gens['carrier'] = all_gens.apply(lambda row: row['name'].replace(row['country'], ''), axis = 1)#This makes an ew column replaces the country in the name with just the resource
+    #all_gens = all_gens.rename(columns = {"0": "Generation"})#renames the column of production from "0" to "Generation"
+    all_gens["total_gen"] = '' #Makes an empty column
+    for country in eu28:
+        f = all_gens.loc[all_gens['country'] == country]
+        all_gens['total_gen'].loc[all_gens['country'] == country] = f['Generation'].sum()
+
+    all_gens['fraction'] = all_gens.apply(lambda row: 0 if row['total_gen'] == 0 else row['Generation']/row['total_gen'], axis = 1)
+
+    latitude = pd.read_csv("data/countries_lat.csv")
+    all_gens = pd.merge(all_gens, latitude[['country', 'latitude', 'name']], how = 'left', on = 'country' )
+
+    HDDCDD = pd.read_csv('data/avgHDDCDD.csv')#Here, this adds the avg HDD and CDD for each country
+    HDDCDD.columns = ["country", 'avgCDD', 'avgHDD']
+
+    all_gens = pd.merge(all_gens, HDDCDD, how = 'left', on = 'country')
+    all_gens['year_CF'] = all_gens.apply(lambda row: 0 if row['p_nom_opt'] == 0 else row['Generation']/(row['p_nom_opt'] * 2920), axis = 1)
+
+    all_gen_solar = all_gens.loc[all_gens['carrier'] == 'solar']
+    all_gen_solar['solarfrac'] = all_gen_solar ['fraction']
+    all_gen_solar['solarcf'] = all_gen_solar['year_CF']
+    all_gens = pd.merge(all_gens, all_gen_solar[['country','solarfrac', 'solarcf']], how = 'left', on = 'country')
+    #create empty column
+    #use loc 
+    nowpath = pathlib.Path(filepath)
+    parentpath = nowpath.parent.parent#this is the csvs folder
+
+
+    #print(all_gens)
+
+    allgenscsv =   "csvs/" + solarcost + "_gen_and_lat_"+ sec + "_sectors_" + trans + "_transmission" + ".csv"
+    all_gens.to_csv(parentpath /allgenscsv)
+
+    latcsv_path = parentpath / allgenscsv
+
+    return(latcsv_path)
+
+
+
+def rsquared(x, y):
+    """ Return R^2 where x and y are array-like."""
+
+    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x, y)
+    return r_value**2
+
+
+def compare_cost_lat():
+
+    opts = mypath.split("_")
+    print(opts)
+    for opt in opts:
+        contains_digit = len(re.findall('\d+', opt)) > 0
+        if contains_digit:
+            f = re.findall(r'\d+', opt)
+            hrs = f[0]
+            hrs = hrs + "h"
+    if "sectors" in opts:
+        idxsec = opts.index('sectors')
+        idxsec -= 1
+        sec = opts[idxsec]
+        if sec == "yes":
+            sec = 'with'
+        else:
+            sec = 'without'
+        sec = sec + " sectors"
+    if "transmission" in opts:
+        idxtrans = opts.index('transmission')
+        idxtrans -= 1
+        trans = opts[idxtrans]
+        if trans == "yes":
+            trans = 'with'
+        else:
+            trans = 'without'
+        trans = trans + " transmission"
+
+    
+    
+
+    plt.rcdefaults()
+    solar_latdf = pd.read_csv(path)
+    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
+    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only interested in solar share
+    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    solar_latdf['percent'] = solar_latdf["fraction"] * 100
+    
+    
+    #plotting: latitude on x axis, solar fraction on y axis
+
+    fig, ax = plt.subplots()
+
+    x = solar_latdf["latitude"]
+    y = solar_latdf["percent"]
+
+
+    ax.scatter(x, y)
+    ax.set_xlabel("Latitude (degrees)")
+    ax.set_ylabel("Optimal solar share (%)")
+    ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
+
+
+
+    for idx, row in solar_latdf.iterrows():
+        ax.annotate(row['country'], (row['latitude']* 1.007, row['percent']* 0.97))
+    
+
+    m, b = np.polyfit(x, y, 1)
+    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
+
+
+
+    plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
+    
+    #ax.annotate("r-squared = {:.3f}".format(r2_score(x, y)), (60, 100))
+
+
+    fig.legend()
+    parentpath = path.parent.parent
+
+    fig.savefig(parentpath / "graphs/solar_by_lat")
+
+    plt.show()
+    
+
+
 
 def solar_by_latitude(path):
     mypath = str(path)
@@ -490,13 +1062,143 @@ def solar_by_latitude(path):
     fig.savefig(parentpath / "graphs/solar_by_lat")
 
     plt.show()
+    
+def solar_by_latitude_comparecost(path, ax):
+    '''The goal of this function is to plot solar share on the y axis and country ordered by
+    latitude on the x axis. Then, we will plot the three different costs'''
+    mypath = str(path)
+    
+    opts = mypath.split("_")
+    print(opts)
+    for opt in opts:
+        contains_digit = len(re.findall('\d+', opt)) > 0
+        if contains_digit:
+            f = re.findall(r'\d+', opt)
+            hrs = f[0]
+            hrs = hrs + "h"
+    if "sectors" in opts:
+        idxsec = opts.index('sectors')
+        idxsec -= 1
+        sec = opts[idxsec]
+        if sec == "yes":
+            sec = 'with'
+            searchsec = 'yes'
+        else:
+            sec = 'without'
+            searchsec = 'no'
+        sec = sec + " sectors"
+    if "transmission" in opts:
+        idxtrans = opts.index('transmission')
+        idxtrans -= 1
+        trans = opts[idxtrans]
+        if trans == "yes":
+            trans = 'with'
+            searchtrans = 'yes'
+        else:
+            trans = 'without'
+            searchtrans = 'no'
+        trans = trans + " transmission"
+
+    
+    
+
+    plt.rcdefaults()
+    solar_latdf = pd.read_csv(path)
+    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
+    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only interested in solar share
+    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    solar_latdf['percent'] = solar_latdf["fraction"] * 100
+    solar_latdf = solar_latdf.sort_values(by = ['latitude'])
+
+    #This is the first cheap path
+    costs_path = "results/adam_latitude_compare_anysectors_anytransmission_3h_futcost3/csvs/"
+    csvfile_cheap = '0.25_gen_and_lat_'+ searchsec + '_sectors_' + searchtrans + '_transmission.csv'
+
+    total_path = costs_path + csvfile_cheap
+    csvcheap_path = pathlib.Path(total_path)
+
+    solar_latdf_cheap = pd.read_csv(csvcheap_path)
+    solar_latdf_cheap = solar_latdf_cheap.iloc[:, 1:] #get rid of weird second index
+    solar_latdf_cheap = solar_latdf_cheap[solar_latdf_cheap['carrier'] == 'solar']#only interested in solar share
+    solar_latdf_cheap = solar_latdf_cheap.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    solar_latdf_cheap['percent'] = solar_latdf_cheap["fraction"] * 100
+    solar_latdf_cheap = solar_latdf_cheap.sort_values(by = ['latitude'])
+    
+
+    #This is the cheapest path
+    csvfile_cheapest = '0.036_gen_and_lat_'+ searchsec + '_sectors_' + searchtrans + '_transmission.csv'
+    total_path2 = costs_path + csvfile_cheapest
+    csvcheapest_path = pathlib.Path(total_path2)
+
+    
+    solar_latdf_cheapest = pd.read_csv(csvcheapest_path)
+    solar_latdf_cheapest = solar_latdf_cheapest.iloc[:, 1:] #get rid of weird second index
+    solar_latdf_cheapest = solar_latdf_cheapest[solar_latdf_cheapest['carrier'] == 'solar']#only interested in solar share
+    solar_latdf_cheapest = solar_latdf_cheapest.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    solar_latdf_cheapest['percent'] = solar_latdf_cheapest["fraction"] * 100
+    solar_latdf_cheapest = solar_latdf_cheapest.sort_values(by = ['latitude'])
 
 
-#Make a function that:
-    #Reads in the csv
-    #Makes a second dataframe with just solar
-    #Makes another column for solar fraction
-    #Joins back, adding column
+
+
+    
+    
+    #plotting: latitude on x axis, solar fraction on y axis
+
+    #It is here that we comment out the fig, ax bc we are already passing to a different axis    
+    # fig, ax = plt.subplots(figsize = (10, 4.8))
+
+    x = solar_latdf["country"]
+    y = solar_latdf["percent"]
+
+    x1 = solar_latdf_cheap["country"]
+    y1 = solar_latdf_cheap["percent"]
+
+    x2 = solar_latdf_cheapest["country"]
+    y2 = solar_latdf_cheapest["percent"]
+
+    ax.scatter(x, y, label = 'default', color = '#004488')
+    ax.scatter(x1, y1, label = '0.25 of price', color = '#BB5566')
+    ax.scatter(x2, y2, label = '0.036 of price', color = '#DDAA33')
+    ax.grid(True)
+    # ax.set_xlabel("Country sorted by latitude")
+    ax.set_ylabel("Optimal solar share (%)")
+    # ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
+
+
+
+    # for idx, row in solar_latdf.iterrows():
+    #     ax.annotate(row['country'], (row['latitude']* 1.007, row['percent']* 0.97))
+    
+
+    # m, b = np.polyfit(x, y, 1)
+    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
+
+
+
+    #plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
+    
+    #ax.annotate("r-squared = {:.3f}".format(r2_score(x, y)), (60, 100))
+
+    handles, labels = ax.get_legend_handles_labels()
+
+    handles.reverse()
+    labels.reverse()
+
+    # fig.legend(handles, labels)
+    # parentpath = path.parent.parent
+
+    #fig.savefig(parentpath / "graphs/solar_by_lat")
+
+    #No need to show 
+    #plt.show()
+  
+  
+def four_latitude_comparecost(path):
+    '''The goal of this function is to plot four of any given function (in this case solar_by_latitude_comparecost) in a grid
+    such that we can see the appropriate differences between sectors/no sectors, '''
+    x = 5
+
 def solar_by_wind(path):
     mypath = str(path)
     
@@ -541,7 +1243,8 @@ def solar_by_wind(path):
     
     #plotting: latitude on x axis, solar fraction on y axis
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize = (6.4, 9.6))
+  
 
     x = solar_latdf["year_CF"]
     y = solar_latdf["solarpercent"]
@@ -663,6 +1366,10 @@ def solar_by_solar(path):
 
     #plt.show()
 
+
+
+
+
 def solar_by_corr(path):
     mypath = str(path)
     
@@ -709,7 +1416,7 @@ def solar_by_corr(path):
 
     fig, ax = plt.subplots()
 
-    x = solar_latdf["load_corr"]
+    x = solar_latdf["week_corr"]
     y = solar_latdf["solarpercent"]
 
 
@@ -721,17 +1428,18 @@ def solar_by_corr(path):
 
 
     for idx, row in solar_latdf.iterrows():
-        ax.annotate(row['country'], (row['load_corr']* 1.007, row['solarpercent']* 0.97))
+        ax.annotate(row['country'], (row['week_corr']* 1.007, row['solarpercent']* 0.97))
     
 
     m, b = np.polyfit(x, y, 1)
     #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
 
 
-
+    r_sq = rsquared(x, y)
+    print(r_sq)
     plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
     
-    #ax.annotate("r-squared = {:.3f}".format(r2_score(x, y)), (60, 100))
+    ax.text(0, 1.1, "r-squared = {:.3f}".format(r_sq), transform = ax.transAxes)
 
 
     fig.legend()
@@ -741,17 +1449,138 @@ def solar_by_corr(path):
 
     parentpath = parentpath.parent.parent #parentpath is run folder, parent is results, parent is pypsaproject
 
-    #fig.savefig(parentpath / f"Images/Shown images/11:5 meeting/solar_by_solarcf{sec}_{trans}")
+    fig.savefig(parentpath / f"Images/Shown images/11:5 meeting/solar_by_weekcorr{sec}_{trans}")
     plt.show()
+
+
+
+
+def solar_by_anycorr(path, timeframe, corrtype):
+    '''The goal of this function is to choose between different timeframes and types, such as weekly/3h, or Load, Heating, Cooling
+    It builds off of the solar_by_corr function, which only included one type of correlation at a time'''
+    mypath = str(path)
+    
+    opts = mypath.split("_")
+    print(opts)
+    for opt in opts:#This takes the first number of the last opt with a number
+        contains_digit = len(re.findall('\d+', opt)) > 0
+        if contains_digit:
+            f = re.findall(r'\d+', opt)
+            hrs = f[0]
+            hrs = hrs + "h"
+    if "sectors" in opts:#
+        idxsec = opts.index('sectors')
+        idxsec -= 1
+        sec = opts[idxsec]
+        if sec == "yes":
+            sec = 'with'
+        else:
+            sec = 'without'
+        sec = sec + " sectors"
+    if "transmission" in opts:
+        idxtrans = opts.index('transmission')
+        idxtrans -= 1
+        trans = opts[idxtrans]
+        if trans == "yes":
+            trans = 'with'
+        else:
+            trans = 'without'
+        trans = trans + " transmission"
+
+    
+    
+
+    plt.rcdefaults()
+    solar_latdf = pd.read_csv(path)
+    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
+    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only interested in wind share
+    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    #solar_latdf['windpercent'] = solar_latdf["fraction"] * 100
+    solar_latdf['solarpercent'] = solar_latdf['solarfrac'] * 100
+    
+    
+    #plotting: latitude on x axis, solar fraction on y axis
+
+    fig, ax = plt.subplots()
+
+    y = solar_latdf["solarpercent"]
+    if timeframe == 'weekly':
+        if corrtype == 'Load':
+            x = solar_latdf["week_corr"]
+            c = 'week_corr'
+        if corrtype == 'Heating':
+            x = solar_latdf['week_heat']
+            c = 'week_heat'
+        if corrtype == 'Cooling':
+            x = solar_latdf['week_cool']
+            c = 'week_cool'
+    elif timeframe == '3h':
+        if corrtype == 'Load':
+            x = solar_latdf["load_corr"]     
+            c = 'load_corr'      
+        if corrtype == 'Heating':
+            x = solar_latdf['heat_corr']
+            c = 'heat_corr'
+        if corrtype == 'Cooling':
+            x = solar_latdf['cool_corr']
+            c = 'cool_corr'
+
+
+
+    ax.scatter(x, y)
+    ax.set_xlabel(timeframe + " " + corrtype + " correlation with solar production")
+    ax.set_ylabel("Optimal solar share (%)")
+    ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
+
+
+
+    for idx, row in solar_latdf.iterrows():
+        ax.annotate(row['country'], (row[c]* 1.007, row['solarpercent']* 0.97))
+    
+
+    m, b = np.polyfit(x, y, 1)
+    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
+
+
+    r_sq = rsquared(x, y)
+    print(r_sq)
+    plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
+    
+    ax.text(0, 1.1, "r-squared = {:.3f}".format(r_sq), transform = ax.transAxes)
+
+
+    fig.legend()
+    parentpath = path.parent.parent#path is csv, parent is csv folder, parent is run
+    mypath = "graphs/solar_by_"+ timeframe + "_" + corrtype + "_corr"
+    fig.savefig(parentpath / mypath) #subdir graphs
+
+    parentpath = parentpath.parent.parent #parentpath is run folder, parent is results, parent is pypsaproject
+
+    #if I want to save in a second place, then, I will also need to change the code for the path to include which vars it is
+    #fig.savefig(parentpath / f"Images/Shown images/11:5 meeting/solar_by_weekcorr{sec}_{trans}")
+    plt.show()
+
+#This is a function that:
+    #looks at whether there are sectors/zero transmission
+        #to do this, it needs to look at the file, dividing by underscore and dash both
+    #looks at the cost
+    #makes a new csv for each one, containing: cost, sectors, transmission
+
+
+#Another function is a modified version of a previous function, which is able to do the same stuff but with different csv files
+
 
 
 def check_exist_folder(run_name):
     graphpath = "results/" + run_name + "/graphs"
     csvpath = "results/" + run_name + "/csvs"
+    # secondcsv = "results/" + run_name + "/multicsvs"
     if os.path.exists(graphpath) == False:
         os.makedirs(graphpath)
     if os.path.exists(csvpath) == False:
         os.makedirs(csvpath)
+    # if os.path.exists(secondcsv) == False:
+    #     os.makedirs(secondcsv)
 
 
 
@@ -769,35 +1598,95 @@ if __name__ == "__main__":
     #Set filepath name
     #This cannot really handle multiple postnetworks yet
 
-    run_name = ["adam_latitude_compare_yes_sectors_no_transmission_3h", "adam_latitude_compare_no_sectors_yes_transmission_3h",
-    "adam_latitude_compare_no_sectors_no_transmission_3h3", "adam_latitude_compare_yes_sectors_yes_transmission_3h2"]
+    #run_name = ["adam_latitude_compare_yes_sectors_no_transmission_3h", "adam_latitude_compare_no_sectors_yes_transmission_3h",
+    #"adam_latitude_compare_no_sectors_no_transmission_3h3", "adam_latitude_compare_yes_sectors_yes_transmission_3h2"]
     # run_name = "adam_latitude_compare_no_sectors_yes_transmission_3h"
     # run_name = "adam_latitude_compare_no_sectors_no_transmission_3h3"
     # run_name = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
 
 
-
-
+    # run_name = "adam_latitude_compare_yes_sectors_no_transmission_3h_futcost3"
 
 
     
-    #check_exist_folder(run_name)
+    # check_exist_folder(run_name)
 
 
 
-    for run in run_name:
-        # for filepath in glob.glob("results/" + run + "/postnetworks/*"):
-        #     retrieve_generators(filepath)
+    # for run in run_name:
+    #     # for filepath in glob.glob("results/" + run + "/postnetworks/*"):
+    #     #     retrieve_generators(filepath)
 
 
+    #     #With multiple postnetworks per run, we may need to add another for loop here as well, as the same as above
+    #     # path = add_to_df(run)
+    #     path = 'results/' + run+ '/csvs/gen_and_lat.csv'
+    #     path = pathlib.Path(path)
+    #     # solar_by_anycorr(path, '3h', 'Heating')
+    #     solar_by_anycorr(path, '3h', 'Cooling')
+    #     solar_by_anycorr(path, 'weekly', 'Heating')
+    #     solar_by_anycorr(path, 'weekly', 'Cooling')        
+    #     #solar_by_solar(path)
+
+    ###THIS SECTION IS FOR THE NEW FOLDER
+
+    # run = "adam_latitude_compare_anysectors_anytransmission_3h_futcost3"
+    # for filepath in glob.glob("results/" + run + "/postnetworks/*"):
+    #     retrieve_generators_choice(filepath) #for our particular run, this makes a csv in the right folder for everything (8 csvs)
+    # for filepath in glob.glob("results/" + run + "/csvs/*"):
+    #     print(filepath)
+    #     add_to_df_choice(filepath)
+
+    run0 = "adam_latitude_compare_no_sectors_yes_transmission_3h"
+    run1 = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
+    run2 = "adam_latitude_compare_no_sectors_no_transmission_3h3"
+    run3 = "adam_latitude_compare_yes_sectors_no_transmission_3h"
+    path0 = 'results/' + run0 + '/csvs/gen_and_lat.csv'
+    path1 = 'results/' + run1 + '/csvs/gen_and_lat.csv'
+    path2 = 'results/' + run2 + '/csvs/gen_and_lat.csv'
+    path3 = 'results/' + run3 + '/csvs/gen_and_lat.csv'
+    path0 = pathlib.Path(path0)
+    path1 = pathlib.Path(path1)
+    path2 = pathlib.Path(path2)
+    path3 = pathlib.Path(path3)
+    
+
+    fs = 18
+    plt.rcParams['axes.labelsize'] = fs
+    plt.rcParams['xtick.labelsize'] = fs
+    plt.rcParams['ytick.labelsize'] = fs
+
+    fig,ax = plt.subplots(2,2,figsize=(13,7),sharex=True,sharey='row')
+    ax = ax.flatten()
+    solar_by_latitude_comparecost(path0, ax[0])
+    solar_by_latitude_comparecost(path1, ax[1])
+    solar_by_latitude_comparecost(path2, ax[2])
+    solar_by_latitude_comparecost(path3, ax[3])
+
+    fig.supxlabel(r"$\bf{Sectors}$" + '\nCountries ordered by latitude',fontsize=fs, y = 0.11, x = 0.53)
+    fig.supylabel (r"$\bf{Transmission}$",fontweight="bold",fontsize=fs, y = 0.6)
+    ax[3].set_xlabel(r"$\bf{Yes}$",fontsize=fs)
+    ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs)
+    ax[0].set_ylabel(r"$\bf{Yes}$" + '\nSolar Percent', fontsize = fs)
+    ax[2].set_ylabel(r"$\bf{No}$" + '\nSolar Percent', fontsize = fs)
+    ax[2].tick_params(axis='x', labelrotation =90, labelsize = fs-4)
+    ax[3].tick_params(axis='x', labelrotation = 90, labelsize = fs-4)
+
+    ax[1].set_ylabel("")
+    ax[3].set_ylabel("")
+    ax[2].set_title("")
+    
+
+    ax[3].set_title("")
+
+    handles1, labels1 = ax[1].get_legend_handles_labels()
+
+    fig.legend(handles1, labels1, prop={'size':fs}, ncol=3, loc = (0.25, 0.03))
+    fig.tight_layout(rect = [0.02, 0.1, 1, 1])
+
+    plt.show()
 
 
-
-        # path = add_to_df(run)
-        path = 'results/' + run+ '/csvs/gen_and_lat.csv'
-        path = pathlib.Path(path)
-        solar_by_corr(path)
-        #solar_by_solar(path)
 
     
 
@@ -929,7 +1818,130 @@ def retrieve_generators_old(filepath):
     return mydata
 
 
+def solar_by_latitude_all(path):
+    '''The goal of this function is to do the same thing as the solar_by_latitude function but with 
+    all three costs. We know that the costs are the full, 1/4, and 0.036 (appx) of cost
+    
+    Eventually I will need to make a plot with all of the countries on the x axis, ordered by latitude, and the three different costs
+    
+    I decided not to stick with this function. The different costs make it hard to read what's going on. Instead,
+    my goal is to do the line above this one'''
+    mypath = str(path)
+    
+    opts = mypath.split("_")
+    print(opts)
+    for opt in opts:
+        contains_digit = len(re.findall('\d+', opt)) > 0
+        if contains_digit:
+            f = re.findall(r'\d+', opt)
+            hrs = f[0]
+            hrs = hrs + "h"
+    if "sectors" in opts:
+        idxsec = opts.index('sectors')
+        idxsec -= 1
+        sec = opts[idxsec]
+        if sec == "yes":
+            sec = 'with'
+            searchsec = 'yes'
+        else:
+            sec = 'without'
+            searchsec = 'no'
+        sec = sec + " sectors"
+    if "transmission" in opts:
+        idxtrans = opts.index('transmission')
+        idxtrans -= 1
+        trans = opts[idxtrans]
+        if trans == "yes":
+            trans = 'with'
+            searchtrans = 'yes'
+        else:
+            trans = 'without'
+            searchtrans = 'no'
+        trans = trans + " transmission"
 
+    
+    
+
+    plt.rcdefaults()
+    solar_latdf = pd.read_csv(path)
+    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
+    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only interested in solar share
+    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    solar_latdf['percent'] = solar_latdf["fraction"] * 100
+
+    #This is the first cheap path
+    costs_path = "results/adam_latitude_compare_anysectors_anytransmission_3h_futcost3/csvs/"
+    csvfile_cheap = '0.25_gen_and_lat_'+ searchsec + '_sectors_' + searchtrans + '_transmission.csv'
+
+    total_path = costs_path + csvfile_cheap
+    csvcheap_path = pathlib.Path(total_path)
+
+    solar_latdf_cheap = pd.read_csv(csvcheap_path)
+    solar_latdf_cheap = solar_latdf_cheap.iloc[:, 1:] #get rid of weird second index
+    solar_latdf_cheap = solar_latdf_cheap[solar_latdf_cheap['carrier'] == 'solar']#only interested in solar share
+    solar_latdf_cheap = solar_latdf_cheap.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    solar_latdf_cheap['percent'] = solar_latdf_cheap["fraction"] * 100
+
+    #This is the cheapest path
+    csvfile_cheapest = '0.036_gen_and_lat_'+ searchsec + '_sectors_' + searchtrans + '_transmission.csv'
+    total_path2 = costs_path + csvfile_cheapest
+    csvcheapest_path = pathlib.Path(total_path2)
+
+    
+    solar_latdf_cheapest = pd.read_csv(csvcheapest_path)
+    solar_latdf_cheapest = solar_latdf_cheapest.iloc[:, 1:] #get rid of weird second index
+    solar_latdf_cheapest = solar_latdf_cheapest[solar_latdf_cheapest['carrier'] == 'solar']#only interested in solar share
+    solar_latdf_cheapest = solar_latdf_cheapest.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    solar_latdf_cheapest['percent'] = solar_latdf_cheapest["fraction"] * 100
+
+
+
+
+    
+    
+    #plotting: latitude on x axis, solar fraction on y axis
+
+    fig, ax = plt.subplots()
+
+    x = solar_latdf["latitude"]
+    y = solar_latdf["percent"]
+
+    x1 = solar_latdf_cheap["latitude"]
+    y1 = solar_latdf_cheap["percent"]
+
+    x2 = solar_latdf_cheapest["latitude"]
+    y2 = solar_latdf_cheapest["percent"]
+
+    ax.scatter(x, y, color = 'b')
+    ax.scatter(x1, y1, color = 'g')
+    ax.scatter(x2, y2, color = 'r')
+    ax.set_xlabel("Latitude (degrees)")
+    ax.set_ylabel("Optimal solar share (%)")
+    ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
+
+
+
+    for idx, row in solar_latdf.iterrows():
+        ax.annotate(row['country'], (row['latitude']* 1.007, row['percent']* 0.97))
+    
+
+    m, b = np.polyfit(x, y, 1)
+    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
+
+
+
+    #plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
+    
+    #ax.annotate("r-squared = {:.3f}".format(r2_score(x, y)), (60, 100))
+
+
+    fig.legend()
+    parentpath = path.parent.parent
+
+    #fig.savefig(parentpath / "graphs/solar_by_lat")
+
+    plt.show()
+  
 
 
 #mydata = europe.generators
