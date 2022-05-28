@@ -534,7 +534,7 @@ def netcdf_csv_all():
     datasets = ["battcostLOGFeb24_2deg_2sl", "windcostLOGFeb24_2deg_2sl", "solarcostLOGFeb24_2deg_2sl", "battcostLOGFeb8", "windcostLOGFeb7", "solarcostLOGFeb7"]
     for country, data in [(country, data) for country in countries for data in datasets]:
         netcdf_to_csv(country, data)
-netcdf_csv_all()
+#netcdf_csv_all()
 
 
 def iterate_netcdf_co2(country):
@@ -1606,7 +1606,7 @@ def increase_temp(degree_change, slope_factor):
 
     return df_elec, df_co_elec, df_cal_elec
 
-df_elec, df_co_elec, df_cal_elec = increase_temp (2, 2)
+#df_elec, df_co_elec, df_cal_elec = increase_temp (2, 2)
 
 
 Denmark.remove("Load", "load")
@@ -1729,7 +1729,7 @@ def mod_csvs():
 
         df.to_csv(path)
             
-mod_csvs()
+#mod_csvs()
 
 
 def pen_plus_solar_curtailoverlap():
@@ -1999,6 +1999,7 @@ def pen_plus_solar_curtailoverlap():
     
 #pen_plus_solar_curtailoverlap()
 
+#rc('text', usetex=True)
 def pen_plus_solar_curtailoverlap_t():
     '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
     a scaling log of solar. It is very long. It uses gridspec to order the axes, and other than that
@@ -2082,8 +2083,8 @@ def pen_plus_solar_curtailoverlap_t():
     #coloring the thing is the light blue. 
 
 
-    axden1.stackplot(s_cost, DNK_sp2, DNK_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar_heat", "Wind_heat"])
-    axden1.stackplot(s_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar_og", "Wind_og"], alpha = 0.5)
+    axden1.stackplot(s_cost, DNK_sp2, DNK_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar", "Wind"])
+    axden1.stackplot(s_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar with mod", "Wind with mod"], alpha = 0.5)
 
     axden1.set_ylim(0, 1)
     axden0.set_ylim(0, 1)
@@ -2188,7 +2189,7 @@ def pen_plus_solar_curtailoverlap_t():
     axcol0.set_ylim(0, 1)
 
     axcol1.set_ylabel("Penetration")
-    axcol1.set_xlabel("Cost of Solar")
+    axcol1.set_xlabel(r"$\bf{Cost\;of\;solar\;(€/MW)}$", x = 1.1, y = 0.1, fontsize = 14)
 
     axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
 
@@ -2232,7 +2233,7 @@ def pen_plus_solar_curtailoverlap_t():
 
 
     #axcal1.set_ylabel("Penetration")
-    axcal1.set_xlabel("Cost of Solar")
+    #axcal1.set_xlabel("Cost of Solar")
 
     axcal1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
 
@@ -2271,7 +2272,10 @@ def pen_plus_solar_curtailoverlap_t():
 
     lines1, labels1 = axden1.get_legend_handles_labels()
 
-    fig.legend(lines1, labels1, bbox_to_anchor=(0.85, 0.055), ncol=4)
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.88, 0.055), ncol=4)
+    #fig.suptitle(r"$\bf{Tests}$", fontsize = 20)
+    #fig.supxlabel(r"$\bf{Cost(€/MW)}$", fontsize = 20)
+    
     #plt.savefig("Images/solar_compare_gw_var1.png")
     plt.show()
 

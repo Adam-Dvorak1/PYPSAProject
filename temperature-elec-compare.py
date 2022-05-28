@@ -451,7 +451,7 @@ def elec_vs_temp_Spain():
 
     #plt.savefig("images/SpainED_plus_HDvsTw_eq")
     plt.show()
-elec_vs_temp_Spain()
+#elec_vs_temp_Spain()
 def elec_vs_temp_Denmark():
 
     '''This makes a plot of the electricity demand (or heating demand or elec+heating demand) vs temperature
@@ -535,7 +535,7 @@ def elec_vs_temp_Colorado():
     plt.plot(np.unique(new_x), np.poly1d(np.polyfit(new_x, new_y, 1))(np.unique(new_x)))
     plt.savefig("images/COTotalDemandvsTempvar1")
     plt.show()
-elec_vs_temp_Colorado()
+#elec_vs_temp_Colorado()
 
 def elec_vs_temp_California():
     x = get_temp_data("weekly")[3]
@@ -581,7 +581,7 @@ def elec_vs_temp_California():
 
     plt.savefig("images/CaliTotalDemandvsTempvar1")
     plt.show()
-elec_vs_temp_California()
+#elec_vs_temp_California()
 
 # elec_vs_temp_Denmark()
 # elec_vs_temp_Spain()
@@ -689,9 +689,9 @@ def plot_ED_and_CF_data_all():
     axdnk2=fig.add_subplot(411, frame_on=False)
 
     axdnk3 = fig.add_subplot(411, sharey = axdnk2, frame_on=False)
-    axdnk1.plot(elecdnk, 'C0-', label = "Electricity demand")
+    axdnk1.plot(elecdnk, 'k-', label = "Electricity demand")
     axdnk2.plot(solardnk, 'C1-',  label = "Solar CF")
-    axdnk2.plot(winddnk, 'C2-',  label = "Wind CF")
+    axdnk2.plot(winddnk, 'C0-',  label = "Wind CF")
     axdnk1.set_ylabel("Denmark")
     axdnk1.tick_params(direction = "in")
 
@@ -700,9 +700,9 @@ def plot_ED_and_CF_data_all():
     axesp2= fig.add_subplot(412, frame_on=False)
 
     axesp3 = fig.add_subplot(412, sharey = axesp2, frame_on=False)
-    axesp1.plot(elecesp, 'C0-', label = "Electricity demand")
+    axesp1.plot(elecesp, 'k-', label = "Electricity demand")
     axesp2.plot(solaresp, 'C1-', label = "Solar CF")
-    axesp3.plot(windesp, 'C2-', label = "Wind CF")
+    axesp3.plot(windesp, 'C0-', label = "Wind CF")
     axesp1.set_ylabel("Spain")
     axesp1.tick_params(direction = "in")
 
@@ -712,9 +712,9 @@ def plot_ED_and_CF_data_all():
     axco2= fig.add_subplot(413, frame_on=False)
 
     axco3 = fig.add_subplot(413, sharey = axco2, frame_on=False)
-    axco1.plot(elecCo, 'C0-', label = "Electricity demand")
+    axco1.plot(elecCo, 'k-', label = "Electricity demand")
     axco2.plot(solarCo, 'C1-', label = "Solar CF")
-    axco3.plot(windCo, 'C2-', label = "Wind CF")
+    axco3.plot(windCo, 'C0-', label = "Wind CF")
     axco1.set_ylabel("Colorado")
     axco1.tick_params(direction = "in")
 
@@ -723,9 +723,9 @@ def plot_ED_and_CF_data_all():
     axca2= fig.add_subplot(414, frame_on=False)
 
     axca3 = fig.add_subplot(414, sharey = axca2, frame_on=False)
-    axca1.plot(elecCA, 'C0-', label = "Electricity demand")
+    axca1.plot(elecCA, 'k-', label = "Electricity demand")
     axca2.plot(solarCA, 'C1-', label = "Solar CF")
-    axca3.plot(windCA, 'C2-', label = "Wind CF")
+    axca3.plot(windCA, 'C0-', label = "Wind CF")
     axca1.set_ylabel("California")
     axca1.tick_params(direction = "in")
 
@@ -733,6 +733,7 @@ def plot_ED_and_CF_data_all():
         ax.set_ylim(0.01, 2.4)
 
     fmt = mdates.DateFormatter("%b")
+ 
 
     plt.setp(axdnk1.get_xticklabels(), visible=False)
     axdnk2.set_xticks([]) #We have two graphs sharing one axis, and without this we would be seeing double
@@ -772,10 +773,15 @@ def plot_ED_and_CF_data_all():
     lines2, labels2 = axdnk2.get_legend_handles_labels()
     lines3, labels3 = axdnk3.get_legend_handles_labels()
 
+
+    axca1.set_xticks(axca1.get_xticks()[:-1])
+
+
     fig.legend(lines1+lines2+lines3, labels1+labels2+labels3, bbox_to_anchor=(0.85, 0.06), fontsize = 10, ncol=3)
+    fig.suptitle(r"$\bf{Seasonal\:Variation\:of\:Wind,\:Solar,\:and\:Electricity\:Demand}$", fontsize = 20)
     #fig.set_size_inches(6.4, 6)
     plt.subplots_adjust(hspace=0)
-    plt.savefig("images/EDandCFALL_var3")
+    plt.savefig("images/EDandCFALL_postervar")
     plt.show()
 #plot_ED_and_CF_data_all()
 
@@ -798,10 +804,11 @@ degrees3 = [8]
 def gw_elec_Spain_t(degree_change, slope_factor):
     '''This considers a universal degree change across all days. '''
     df = pd.DataFrame()
-    y = heat_to_elec()["ESP_demand"]
-    y = y/1000
-    #y = get_electricity_data("weekly")[0]
+    y = heat_to_elec()[0]
+ 
+    y = get_electricity_data("weekly")[0]
     x = get_temp_data("weekly")[0]
+    y = y/1000
     df["x"] = x
     df["y"] = y
     #print(df)
@@ -955,12 +962,13 @@ def gw_elec_Denmark_t(degree_change):
     df = pd.DataFrame()
     
     x = get_temp_data("weekly")[1]
-    y = heat_to_elec()["DNK_demand"]
+    #y = get_electricity_data("weekly")[1]
+    y = heat_to_elec()[1]
     y = y/1000
     df["x"] = x
     df["y"] = y
 
-    total_elec_demand = round(df["y"].sum())
+    #total_elec_demand = round(df["y"].sum())
     #print(df['y'].sum())
     fig, ax = plt.subplots()
     ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
@@ -978,7 +986,7 @@ def gw_elec_Denmark_t(degree_change):
     ax.axvline(15.8, color='black',ls='--', alpha = 0.5)
     ax.text(15.8, ax.get_ybound()[1]-.500, "T_th", horizontalalignment = "center", color = "C3")
 
-    ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "synthetic global warming (+4˚C)")
+    ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "synthetic global warming (+2˚C) and additional cooling demand")
 
     ax.set_title("Denmark")
     ax.set_ylabel("Electricity demand (GWh)")
@@ -999,10 +1007,10 @@ def gw_elec_all():
     plt.rcdefaults()
     fig2 = plt.figure()
 
-    ax1  = gw_elec_Denmark_t(4)
-    ax2 = gw_elec_Spain_t(4,1)
-    ax3 = gw_elec_Colorado_t(4,1)
-    ax4 = gw_elec_California_t(4,1)
+    ax1  = gw_elec_Denmark_t(2)
+    ax2 = gw_elec_Spain_t(2,2)
+    ax3 = gw_elec_Colorado_t(2,2)
+    ax4 = gw_elec_California_t(2,2)
  
     ax1.figure = fig2
     ax2.figure = fig2
@@ -1050,17 +1058,18 @@ def gw_elec_all():
 
     lines1, labels1 = ax1.get_legend_handles_labels()
 
-    fig2.legend(lines1, labels1, bbox_to_anchor=(0.85, 0.075), ncol=2)
+    fig2.legend(lines1, labels1, bbox_to_anchor=(1, 0.075), ncol=2)
 
     fig2.text(0.93, 0.08, "˚C", fontsize = 12)
-    fig2.text(0.93, 0.53, "˚C", fontsize = 12)
+    #fig2.text(0.93, 0.53, "˚C", fontsize = 12)
+    #fig2.suptitle(r"$\bf{Electricity\:Demand\:Sensitivity\:To\:Temperature$")
 
-    fig2.savefig("Images/elct_dmd_gw_change_all_test")
+    fig2.savefig("Images/elct_dmd_gw_2C_2slope")
     
     
     plt.show()
 
-
+gw_elec_all()
 
 #Before, California and Colorado did not have the added heating demand. Since I calculated the 
 #heating demand out of heating degree days, I was able to add this to California
@@ -1170,7 +1179,7 @@ def gw_elec_California_t_mod(degree_change, slope_factor):
     return ax
     #if x+degree_change-15.79 is greater than 0, then add this value times 1093.394 to y
 
-gw_elec_California_t_mod(4, 2)
+#gw_elec_California_t_mod(4, 2)
 #gw_elec_all()
 #In this section of code, I want to make a new data table of the averages of the csv files
 # plt.scatter([1,1,4,5,2,1],[2,3,6,7,2,0])
