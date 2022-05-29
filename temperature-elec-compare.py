@@ -778,12 +778,12 @@ def plot_ED_and_CF_data_all():
 
 
     fig.legend(lines1+lines2+lines3, labels1+labels2+labels3, bbox_to_anchor=(0.85, 0.06), fontsize = 10, ncol=3)
-    fig.suptitle(r"$\bf{Seasonal\:Variation\:of\:Wind,\:Solar,\:and\:Electricity\:Demand}$", fontsize = 20)
+    fig.suptitle(r"$\bf{Seasonal\:Variation\:of\:Wind,\:Solar,\:and\:Electricity\:Demand}$", fontsize = 14)
     #fig.set_size_inches(6.4, 6)
     plt.subplots_adjust(hspace=0)
     plt.savefig("images/EDandCFALL_postervar")
     plt.show()
-#plot_ED_and_CF_data_all()
+plot_ED_and_CF_data_all()
 
 #plot_ED_and_CF_data()
 
@@ -1062,7 +1062,7 @@ def gw_elec_all():
 
     fig2.text(0.93, 0.08, "˚C", fontsize = 12)
     #fig2.text(0.93, 0.53, "˚C", fontsize = 12)
-    #fig2.suptitle(r"$\bf{Electricity\:Demand\:Sensitivity\:To\:Temperature$")
+    fig2.suptitle(r"$\bf{Electricity\:Demand\:Sensitivity\:To\:Temperature$", fontsize = 18)
 
     fig2.savefig("Images/elct_dmd_gw_2C_2slope")
     
