@@ -971,7 +971,7 @@ def gw_elec_Denmark_t(degree_change):
     #total_elec_demand = round(df["y"].sum())
     #print(df['y'].sum())
     fig, ax = plt.subplots()
-    ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
+    ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "Historical")
 
     df["y"] = df.apply(lambda row: row ["y"] if row["x"] > 15.8
     else row["y"] - .273665 * (15.8-row["x"]) if row["x"]+ degree_change - 15.8 > 0 
@@ -1005,6 +1005,7 @@ def gw_elec_Denmark_t(degree_change):
 def gw_elec_all():
     
     plt.rcdefaults()
+    #plt.rcParams.update({'font.size': 12})
     fig2 = plt.figure()
 
     ax1  = gw_elec_Denmark_t(2)
@@ -1060,9 +1061,9 @@ def gw_elec_all():
 
     fig2.legend(lines1, labels1, bbox_to_anchor=(1, 0.075), ncol=2)
 
-    fig2.text(0.93, 0.08, "˚C", fontsize = 12)
+    fig2.text(0.93, 0.08, "˚C")
     #fig2.text(0.93, 0.53, "˚C", fontsize = 12)
-    fig2.suptitle(r"$\bf{Electricity\:Demand\:Sensitivity\:To\:Temperature$", fontsize = 18)
+    fig2.suptitle(r"$\bf{Electricity\:Demand\:Sensitivity\:To\:Temperature$", fontsize = 16)
 
     fig2.savefig("Images/elct_dmd_gw_2C_2slope")
     

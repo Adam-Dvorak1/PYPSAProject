@@ -2016,7 +2016,7 @@ def pen_plus_solar_curtailoverlap_t():
     solarcol2 = pd.read_csv("results/csvs/CO/solarcostLOGFeb7.csv")
     solarcal2 = pd.read_csv("results/csvs/CA/solarcostLOGFeb7.csv")
 
-    plt.rcParams.update({'font.size': 14})
+    #plt.rcParams.update({'font.size': 14})
     fig = plt.figure(figsize=(10, 8))
     outer = gridspec.GridSpec(2, 2, wspace=0.2, hspace=0.2)
     inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.1, hspace=0, height_ratios = [1, 2])
@@ -2084,7 +2084,7 @@ def pen_plus_solar_curtailoverlap_t():
 
 
     axden1.stackplot(s_cost, DNK_sp2, DNK_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar", "Wind"])
-    axden1.stackplot(s_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar with mod", "Wind with mod"], alpha = 0.5)
+    axden1.stackplot(s_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Modified Solar", "Modified Wind"], alpha = 0.5)
 
     axden1.set_ylim(0, 1)
     axden0.set_ylim(0, 1)
@@ -2103,11 +2103,11 @@ def pen_plus_solar_curtailoverlap_t():
     axden1.axvline(0.529, color='black',ls='--')
     axden1.axvline(1.3, color='black',ls='--')
     #We want to make a range for today's prices. the upper range is 
-    axden1.text(0.85,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    #axden1.text(0.85,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
     axden1.axvline(0.019, color='black',ls='--')
-    axden1.text(0.025,0.05, "2050--Optimistic",  fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    #axden1.text(0.025,0.05, "2050--Optimistic",  fontsize = 12, horizontalalignment = "center", rotation = "vertical")
     axden1.axvline(0.095, color='black',ls='--')
-    axden1.text(0.13,0.05,  "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    #axden1.text(0.13,0.05,  "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
 
     axden0.spines["top"].set_visible(False)
     axden0.spines["right"].set_visible(False)
@@ -2155,16 +2155,16 @@ def pen_plus_solar_curtailoverlap_t():
     axesp1.axvline(0.529, color='black',ls='--')
     
     axesp1.axvline(0.019, color='black',ls='--')
-    axesp1.text(0.025,0.05, "2050--Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    #axesp1.text(0.025,0.05, "2050--Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
     axesp1.axvline(0.095, color='black',ls='--')
-    axesp1.text(0.13,0.05, "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    #axesp1.text(0.13,0.05, "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
     axesp0.spines["top"].set_visible(False)
     axesp0.spines["right"].set_visible(False)
     axesp0.yaxis.set_ticklabels([])
     axesp1.yaxis.set_ticklabels([])
     axesp1.fill_between([0.529, 1.3], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
     axesp1.axvline(1.3, color='black',ls='--')
-    axesp1.text(0.85,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    #axesp1.text(0.85,0.05,  "Today's range", fontsize = 16, horizontalalignment = "center", rotation = "vertical")
 
     ####Colorado#####
 
@@ -2189,7 +2189,7 @@ def pen_plus_solar_curtailoverlap_t():
     axcol0.set_ylim(0, 1)
 
     axcol1.set_ylabel("Penetration")
-    axcol1.set_xlabel(r"$\bf{Cost\;of\;solar\;(€/MW)}$", x = 1.1, y = 0.1, fontsize = 14)
+    #axcol1.set_xlabel(r"$\bf{Cost\;of\;solar\;(€/MW)}$", x = 1.1, y = 0.1, fontsize = 14)
 
     axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
 
@@ -2200,14 +2200,14 @@ def pen_plus_solar_curtailoverlap_t():
     axcol1.axvline(0.529, color='black',ls='--')
     
     axcol1.axvline(0.019, color='black',ls='--')
-    axcol1.text(0.025,0.05, "2050--Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    #axcol1.text(0.025,0.05, "2050--Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
     axcol1.axvline(0.095, color='black',ls='--')
-    axcol1.text(0.13,0.05, "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    #axcol1.text(0.13,0.05, "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
     axcol0.spines["top"].set_visible(False)
     axcol0.spines["right"].set_visible(False)
     axcol1.fill_between([0.529, 1.3], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
     axcol1.axvline(1.3, color='black',ls='--')
-    axcol1.text(0.85,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+
     ###California####
 
     CAL_sp = solarcal['solar_penetration']
@@ -2243,16 +2243,16 @@ def pen_plus_solar_curtailoverlap_t():
     axcal1.axvline(0.529, color='black',ls='--')
   
     axcal1.axvline(0.019, color='black',ls='--')
-    axcal1.text(0.025,0.05, "2050--Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    #axcal1.text(0.025,0.05, "2050--Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
     axcal1.axvline(0.095, color='black',ls='--')
-    axcal1.text(0.13,0.05, "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    #axcal1.text(0.13,0.05, "2050--Less Optimistic", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
     axcal0.spines["top"].set_visible(False)
     axcal0.spines["right"].set_visible(False)
     axcal0.yaxis.set_ticklabels([])
     axcal1.yaxis.set_ticklabels([])
     axcal1.fill_between([0.529, 1.3], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
     axcal1.axvline(1.3, color='black',ls='--')
-    axcal1.text(0.85,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+    #axcal1.text(0.85,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
  
     for ax in plt.gcf().get_axes():
         ax.minorticks_on()
@@ -2264,16 +2264,21 @@ def pen_plus_solar_curtailoverlap_t():
         ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
         ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
         ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
-    
 
+    
+    for ax in plt.gcf().get_axes()[1::2]:
+        ax.fill_between([0.019, 0.095], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "purple")
+        ax.text(0.045,0.05, "Future Range", fontsize = 16, horizontalalignment = "center", rotation = "vertical")
+        ax.text(0.85,0.05,  "Today's range", fontsize = 16, horizontalalignment = "center", rotation = "vertical")
+    
 
     axesp1.xaxis.set_ticklabels([])
     axden1.xaxis.set_ticklabels([])
 
     lines1, labels1 = axden1.get_legend_handles_labels()
 
-    fig.legend(lines1, labels1, bbox_to_anchor=(0.88, 0.055), ncol=4)
-    #fig.suptitle(r"$\bf{Tests}$", fontsize = 20)
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.91, 0.07), ncol=4)
+    fig.suptitle(r"$\bf{Sensitivity\;to\;Cost\;of\;Solar\;(€/W)}$", fontsize = 24)
     #fig.supxlabel(r"$\bf{Cost(€/MW)}$", fontsize = 20)
     
     #plt.savefig("Images/solar_compare_gw_var1.png")
@@ -2540,8 +2545,8 @@ def pen_plus_wind_curtailoverlap_t():
     
     This uses the github (Danish energy agency) value of onshore wind for the lower bound,
     and the NREL annual technology baseline for the upper bound.'''
-    plt.rcParams.update({'font.size': 14})
-    plt.rcParams['hatch.linewidth'] = 1
+    #plt.rcParams.update({'font.size': 14})
+    #plt.rcParams['hatch.linewidth'] = 1
     fig = plt.figure(figsize=(10, 8))
     outer = gridspec.GridSpec(2, 2, wspace=0.2, hspace=0.2)
     inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.1, hspace=0, height_ratios = [0, 2])
@@ -2603,8 +2608,8 @@ def pen_plus_wind_curtailoverlap_t():
     axden0.set_facecolor("#eeeeee")
 
     #I'm a bit confused. one would think that the alpha should be the other way around. But it's not
-    axden1.stackplot(w_cost, DNK_sp2, DNK_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar with mod", "Wind with mod"]) 
-    axden1.stackplot(w_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar", "Wind"], alpha = 0.5)
+    axden1.stackplot(w_cost, DNK_sp2, DNK_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar", "Wind"]) 
+    axden1.stackplot(w_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Modified Solar", "Modified Wind"], alpha = 0.5)
     
     axden1.set_ylim(0, 1)
     axden0.set_ylim(0, 1)
@@ -2616,7 +2621,7 @@ def pen_plus_wind_curtailoverlap_t():
     axden0.set_title("Denmark")
 
     xticks = axden1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
+    #xticks[-1].label1.set_visible(False)
 
 
     #The 2.7 is the offshore wind price
@@ -2658,7 +2663,7 @@ def pen_plus_wind_curtailoverlap_t():
 
 
     xticks = axesp1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
+    #xticks[-1].label1.set_visible(False)
 
     axesp0.spines["top"].set_visible(False)
     axesp0.spines["right"].set_visible(False)
@@ -2689,13 +2694,13 @@ def pen_plus_wind_curtailoverlap_t():
     axcol0.set_ylim(0, 1)
 
     axcol1.set_ylabel("Penetration")
-    axcol1.set_xlabel(r"$\bf{Cost\;of\;Wind\;(€/MW)}$", x = 1.1, y = 0.1, fontsize = 14)
+    #axcol1.set_xlabel(r"$\bf{Cost\;of\;Wind\;(€/MW)}$", x = 1.1, y = 0.1, fontsize = 14)
 
     axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
 
 
     xticks = axcol1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
+    #xticks[-1].label1.set_visible(False)
 
     axcol0.spines["top"].set_visible(False)
     axcol0.spines["right"].set_visible(False)
@@ -2733,8 +2738,7 @@ def pen_plus_wind_curtailoverlap_t():
     axcal1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
 
     xticks = axcal1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
-
+    #xticks[-1].label1.set_visible(False)
 
   
     axcal0.spines["top"].set_visible(False)
@@ -2761,30 +2765,34 @@ def pen_plus_wind_curtailoverlap_t():
         ax.fill_between([1.12, 1.22], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
         ax.axvline(1.12, color='black',ls='--')
         ax.axvline(1.22, color='black',ls='--')
-        ax.text(1.4 ,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+        ax.text(1.4 ,0.05,  "Today's range", fontsize = 16, horizontalalignment = "center", rotation = "vertical")
 
         ax.fill_between([0.57, 0.77], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "purple")
         ax.axvline(0.57, color='black',ls='--')
         ax.axvline(0.77, color='black',ls='--')
-        ax.text(0.65, 0.05, "Future range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
+        ax.text(0.65, 0.05, "Future range", fontsize = 16, horizontalalignment = "center", rotation = "vertical")
     
     # for ax in plt.gcf().get_axes()[::2]:
     #     ax.set_ylim(0,1)
 
+    axden0.yaxis.set_ticklabels([])
+    axcol0.yaxis.set_ticklabels([])
 
     axesp1.xaxis.set_ticklabels([])
     axden1.xaxis.set_ticklabels([])
 
     lines1, labels1 = axden1.get_legend_handles_labels()
 
-    fig.legend(lines1, labels1, bbox_to_anchor=(0.85, 0.055), ncol=4)
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.9, 0.06), ncol=4)
 
     #print(fig.axes[1::2])
-
+    fig.suptitle(r"$\bf{Sensitivity\;to\;Cost\;of\;Wind\;(€/W)}$", fontsize = 24)
     plt.savefig("Images/Figure_wind_cost_poster.png")
     plt.show()
    
-#pen_plus_wind_curtailoverlap_t()
+pen_plus_wind_curtailoverlap_t()
+
+
 def pen_plus_batt_curtailoverlap():
     '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
     a scaling log of solar. It is very long. It uses gridspec to order the axes, and other than that
@@ -2856,8 +2864,8 @@ def pen_plus_batt_curtailoverlap():
 
 
 
-    axden1.stackplot(b_cost, DNK_sp2, DNK_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar with mod", "Wind with mod"]) 
-    axden1.stackplot(b_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar", "Wind"], alpha = 0.5)
+    axden1.stackplot(b_cost, DNK_sp2, DNK_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar", "Wind"]) 
+    axden1.stackplot(b_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Modified Solar", "Modified Wind"], alpha = 0.5)
      
     axden1.set_ylim(0, 1)
     axden0.set_ylim(0, 1)
@@ -2869,7 +2877,7 @@ def pen_plus_batt_curtailoverlap():
     axden0.set_title("Denmark")
 
     xticks = axden1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
+    #xticks[-1].label1.set_visible(False)
 
 
     #We want to make a range for today's prices. the upper range is 
@@ -2913,7 +2921,7 @@ def pen_plus_batt_curtailoverlap():
 
 
     xticks = axesp1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
+    #xticks[-1].label1.set_visible(False)
 
     axesp0.spines["top"].set_visible(False)
     axesp0.spines["right"].set_visible(False)
@@ -2948,13 +2956,13 @@ def pen_plus_batt_curtailoverlap():
     axcol0.set_ylim(0, 1)
 
     axcol1.set_ylabel("Penetration")
-    axcol1.set_xlabel(r"$\bf{Cost\;of\;Battery\;(€/MW)}$", x = 1.1, y = 0.1, fontsize = 16)
+    #axcol1.set_xlabel(r"$\bf{Cost\;of\;Battery\;(€/MW)}$", x = 1.1, y = 0.1, fontsize = 16)
 
     axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
 
 
     xticks = axcol1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
+    #xticks[-1].label1.set_visible(False)
 
     axcol0.spines["top"].set_visible(False)
     axcol0.spines["right"].set_visible(False)
@@ -2996,7 +3004,7 @@ def pen_plus_batt_curtailoverlap():
     axcal1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
 
     xticks = axcal1.yaxis.get_major_ticks() 
-    xticks[-1].label1.set_visible(False)
+    #xticks[-1].label1.set_visible(False)
 
 
   
@@ -3016,13 +3024,15 @@ def pen_plus_batt_curtailoverlap():
         # ax.axvline(0.232, color='black',ls='--')
         # ax.axvline(0.311, color='black',ls='--')
         ax.axvline(0.300, color='black',ls='--')
-        ax.text(0.342 ,0.05,  "Today's cost", fontsize = 14, horizontalalignment = "center", rotation = "vertical")
+        ax.text(0.36 ,0.05,  "Today's cost", fontsize = 16, horizontalalignment = "center", rotation = "vertical")
 
         #ax.fill_between([0.075, 0.22], y1 = 1, alpha = 0.2, edgecolor = "k", hatch = "XX", facecolor = "purple")
+        ax.fill_between([0.056, 0.24], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "purple")
         ax.axvline(0.056, color='black',ls='--')
         ax.axvline(0.24, color='black',ls='--')
-        ax.text(0.062, 0.05, "More optimistic", fontsize = 14, horizontalalignment = "center", rotation = "vertical")
-        ax.text(0.262, 0.05, "Less optimistic", fontsize = 14, horizontalalignment = "center", rotation = "vertical")
+        ax.text(0.12, 0.05, "Future Range", fontsize = 16, horizontalalignment = "center", rotation = "vertical")
+        # ax.text(0.062, 0.05, "More optimistic", fontsize = 14, horizontalalignment = "center", rotation = "vertical")
+        # ax.text(0.262, 0.05, "Less optimistic", fontsize = 14, horizontalalignment = "center", rotation = "vertical")
 
     
     # for ax in plt.gcf().get_axes()[::2]:
@@ -3036,10 +3046,15 @@ def pen_plus_batt_curtailoverlap():
 
 
 
+
     for ax in plt.gcf().get_axes():
         ax.minorticks_on()
+        #ax.grid()
+        
       
         ax.label_outer()
+        ax.set_ylim(0, 1)
+        ax.xaxis.set_major_locator(plt.MultipleLocator(1 / 5))
 
         ax.margins(x = 0)
         ax.set_xscale('log')        
@@ -3047,7 +3062,10 @@ def pen_plus_batt_curtailoverlap():
         ax.xaxis.set_major_formatter(mtick.FormatStrFormatter("%.3f"))
         ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%g'))
 
-    
+    axden0.yaxis.set_ticklabels([])
+    axcol0.yaxis.set_ticklabels([])
+    axden1.xaxis.set_ticklabels([])
+    axesp1.xaxis.set_ticklabels([])
 #    plt.rcParams["font.weight"] = "bold"
     # axden0b = axden0.twinx()
     # axden0b.scatter(b_cost, DNK_bp, marker = "x", s = 15, color = "C2", label = "Battery share new", alpha = 0.5) 
@@ -3077,11 +3095,12 @@ def pen_plus_batt_curtailoverlap():
     # lines3, labels3 = axden0b.get_legend_handles_labels()
 
     #fig.legend(lines1 +lines3, labels1+labels3, bbox_to_anchor=(0.8, 0.1), ncol = 3)
-    fig.legend(lines1, labels1, bbox_to_anchor=(0.9, 0.1), ncol = 4)
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.91, 0.14), ncol = 4)
 
 
     #print(fig.axes[1::2])
 
+    fig.suptitle(r"$\bf{Sensitivity\;to\;Cost\;of\;Battery\;(€/Wh)}$", fontsize = 24)
     plt.savefig("Images/Figure_batt_compare_gw_var1.png")
     plt.show()
 pen_plus_batt_curtailoverlap()
