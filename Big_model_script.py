@@ -27,7 +27,7 @@ import xarray as xr
 
 
 
-eu28 = (
+eu28 = [
     "FR",
     "DE",
     "GB",
@@ -56,7 +56,14 @@ eu28 = (
     "SI",
     "CY",
     "MT",
-)
+]
+
+eu7 = ["AL", "BA", "CH", "ME", "MK", "NO", "RS"] #these are countries that are in PyPSA-Eur-Sec but not in EU
+
+eu28.pop(-1) #pops CY
+eu28.pop(-1) #pops MT
+eu28 = eu28 + eu7
+eu28 = tuple(eu28)
 #run_name = "adam_solar_costs_low_res"
 # filepath = "results/"+ run_name + "/postnetworks/elec_s_37_lv1.0__Co2L0-3H-T-H-B-I-A-solar+c0.1002546-solar+p3-dist1_2030.nc"
 #loop over all files in folder
@@ -332,20 +339,29 @@ def retrieve_timeseries(filepath):
 
 
 def retrieve_generators(filepath):
-    '''This function takes a completed postnetwork, finds the resource frac'''
+    '''This function takes a completed postnetwork, finds the resource frac
+    
+    This function is useful if there is one postnetwork per run name'''
     
     europe = pypsa.Network()
     europe.import_from_netcdf(filepath)
 
     my_gen = ("offwind-ac", "offwind-dc", "solar", "onwind", "ror")
 
+    #Before, we were missing 
     countries = eu28
     mydata = europe.generators_t.p
     mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
 
+    mystorage = europe.storage_units_t.p
+    #mystorage = mystorage[mystorage.columns[mystorage.columns.str.startswith(countries) ]] #this line is actually useless for PHS because all generators start with one of the european countries
+    mystorage = mystorage[mystorage.columns[mystorage.columns.str.endswith("hydro")]]
+
     #This deals with p_nom_opt
     mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
-    totalpowers = europe.generators.p_nom_opt
+
+    
+    totalpowers = europe.generators.p_nom_opt#installed generators
     totalpowers = totalpowers[mydata.columns]
 
     totalpowers = totalpowers.to_frame()
@@ -406,6 +422,12 @@ def retrieve_generators(filepath):
         if any('ror' in col for col in allsources.columns):#checks if there is a 'ror' column present
             totalpowers[country + 'ror'] =  allsources[[col for col in allsources.columns if 'ror' in col]].sum(axis = 1)
 
+
+
+        allstorage = mystorage
+        allstorage = allstorage[[col for col in allstorage.columns if col.startswith(country)]]
+        if any ('hydro' in col for col in allstorage.columns):
+            mydata[country + "hydro"] = allstorage[[col for col in allstorage.columns]].sum(axis = 1) 
         
 
         
@@ -415,6 +437,7 @@ def retrieve_generators(filepath):
 
     mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
 
+    #print(mydata)
 
     totalpowers = totalpowers[totalpowers.columns[~totalpowers.columns.str.contains('[0-9]+')]]
     totalpowers = totalpowers.T
@@ -516,6 +539,7 @@ def retrieve_generators(filepath):
     mydata = mydata.sum()
 
 
+
     
 
 
@@ -546,7 +570,9 @@ def retrieve_generators(filepath):
 
 
 def retrieve_generators_choice(filepath):
-    '''This function takes a completed postnetwork, finds the resource frac'''
+    '''This function takes a completed postnetwork, finds the resource frac
+    
+    This function is useful if there are multiple networks per run name'''
     
     europe = pypsa.Network()
     europe.import_from_netcdf(filepath)
@@ -584,6 +610,12 @@ def retrieve_generators_choice(filepath):
 
     #This deals with p_nom_opt
     mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
+
+    mystorage = europe.storage_units_t.p
+    #mystorage = mystorage[mystorage.columns[mystorage.columns.str.startswith(countries) ]] #this line is actually useless for PHS because all generators start with one of the european countries
+    mystorage = mystorage[mystorage.columns[mystorage.columns.str.endswith("hydro")]]
+
+
     totalpowers = europe.generators.p_nom_opt
     totalpowers = totalpowers[mydata.columns]
 
@@ -646,7 +678,10 @@ def retrieve_generators_choice(filepath):
             totalpowers[country + 'ror'] =  allsources[[col for col in allsources.columns if 'ror' in col]].sum(axis = 1)
 
         
-
+        allstorage = mystorage
+        allstorage = allstorage[[col for col in allstorage.columns if col.startswith(country)]]
+        if any ('hydro' in col for col in allstorage.columns):
+            mydata[country + "hydro"] = allstorage[[col for col in allstorage.columns]].sum(axis = 1) 
         
 
 
@@ -1193,11 +1228,59 @@ def solar_by_latitude_comparecost(path, ax):
     #No need to show 
     #plt.show()
   
+#solar_by_latitude_comparecost("results/adam_latitude_compare_no_sectors_no_transmission_3h3/csvs/gen_and_lat.csv", )
   
-def four_latitude_comparecost(path):
+def four_latitude_comparecost():
     '''The goal of this function is to plot four of any given function (in this case solar_by_latitude_comparecost) in a grid
     such that we can see the appropriate differences between sectors/no sectors, '''
-    x = 5
+    run0 = "adam_latitude_compare_no_sectors_yes_transmission_3h"
+    run1 = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
+    run2 = "adam_latitude_compare_no_sectors_no_transmission_3h3"
+    run3 = "adam_latitude_compare_yes_sectors_no_transmission_3h"
+    path0 = 'results/' + run0 + '/csvs/gen_and_lat.csv'
+    path1 = 'results/' + run1 + '/csvs/gen_and_lat.csv'
+    path2 = 'results/' + run2 + '/csvs/gen_and_lat.csv'
+    path3 = 'results/' + run3 + '/csvs/gen_and_lat.csv'
+    path0 = pathlib.Path(path0)
+    path1 = pathlib.Path(path1)
+    path2 = pathlib.Path(path2)
+    path3 = pathlib.Path(path3)
+
+
+    fs = 18
+    plt.rcParams['axes.labelsize'] = fs
+    plt.rcParams['xtick.labelsize'] = fs
+    plt.rcParams['ytick.labelsize'] = fs
+
+    fig,ax = plt.subplots(2,2,figsize=(13,7),sharex=True,sharey='row')
+    ax = ax.flatten()
+    solar_by_latitude_comparecost(path0, ax[0])
+    solar_by_latitude_comparecost(path1, ax[1])
+    solar_by_latitude_comparecost(path2, ax[2])
+    solar_by_latitude_comparecost(path3, ax[3])
+
+    fig.supxlabel(r"$\bf{Sectors}$" + '\nCountries ordered by latitude',fontsize=fs, y = 0.11, x = 0.53)
+    fig.supylabel (r"$\bf{Transmission}$",fontweight="bold",fontsize=fs, y = 0.6)
+    ax[3].set_xlabel(r"$\bf{Yes}$",fontsize=fs)
+    ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs)
+    ax[0].set_ylabel(r"$\bf{Yes}$" + '\nSolar Percent', fontsize = fs)
+    ax[2].set_ylabel(r"$\bf{No}$" + '\nSolar Percent', fontsize = fs)
+    ax[2].tick_params(axis='x', labelrotation =90, labelsize = fs-4)
+    ax[3].tick_params(axis='x', labelrotation = 90, labelsize = fs-4)
+
+    ax[1].set_ylabel("")
+    ax[3].set_ylabel("")
+    ax[2].set_title("")
+
+    ax[3].set_title("")
+
+    handles1, labels1 = ax[1].get_legend_handles_labels()
+
+    fig.legend(handles1, labels1, prop={'size':fs}, ncol=3, loc = (0.25, 0.03))
+    fig.tight_layout(rect = [0.02, 0.1, 1, 1])
+
+    plt.show()
+four_latitude_comparecost()
 
 def solar_by_wind(path, ax):
     mypath = str(path)
@@ -1455,7 +1538,7 @@ def solar_by_solar_all():
     fig.suptitle("Solar share by solar capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
 
     plt.show()
-solar_by_solar_all()
+##solar_by_solar_all()
 
 
 
@@ -1529,7 +1612,7 @@ def solar_by_wind_all():
     fig.suptitle("Solar share by wind capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
 
     plt.show()
-solar_by_wind_all()
+#solar_by_wind_all()
 
 def solar_by_corr(path):
     mypath = str(path)
@@ -1746,10 +1829,6 @@ def check_exist_folder(run_name):
 
 
 
-def compare_solar_lat_countries():
-    '''This is a functio that will look at '''
-    #Reads in four different runs
-    #Makes a bar plot 
 
 
 
@@ -1761,8 +1840,8 @@ if __name__ == "__main__":
     #Set filepath name
     #This cannot really handle multiple postnetworks yet
 
-    #run_name = ["adam_latitude_compare_yes_sectors_no_transmission_3h", "adam_latitude_compare_no_sectors_yes_transmission_3h",
-    #"adam_latitude_compare_no_sectors_no_transmission_3h3", "adam_latitude_compare_yes_sectors_yes_transmission_3h2"]
+    run_name = ["adam_latitude_compare_yes_sectors_no_transmission_3h", "adam_latitude_compare_no_sectors_yes_transmission_3h",
+    "adam_latitude_compare_no_sectors_no_transmission_3h3", "adam_latitude_compare_yes_sectors_yes_transmission_3h2"]
     # run_name = "adam_latitude_compare_no_sectors_yes_transmission_3h"
     # run_name = "adam_latitude_compare_no_sectors_no_transmission_3h3"
     # run_name = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
@@ -1776,31 +1855,32 @@ if __name__ == "__main__":
 
 
 
-    # for run in run_name:
-    #     # for filepath in glob.glob("results/" + run + "/postnetworks/*"):
-    #     #     retrieve_generators(filepath)
+    for run in run_name:
+        # for filepath in glob.glob("results/" + run + "/postnetworks/*"):
+        #     retrieve_generators(filepath)
 
 
-    #     #With multiple postnetworks per run, we may need to add another for loop here as well, as the same as above
-    #     # path = add_to_df(run)
+        #With multiple postnetworks per run, we may need to add another for loop here as well, as the same as above
+        path = add_to_df(run)
     #     path = 'results/' + run+ '/csvs/gen_and_lat.csv'
     #     path = pathlib.Path(path)
     #     # solar_by_anycorr(path, '3h', 'Heating')
     #     solar_by_anycorr(path, '3h', 'Cooling')
     #     solar_by_anycorr(path, 'weekly', 'Heating')
     #     solar_by_anycorr(path, 'weekly', 'Cooling')        
-    #     #solar_by_solar(path)
+        #solar_by_solar(path)
 
     ###THIS SECTION IS FOR THE NEW FOLDER
 
-    # run = "adam_latitude_compare_anysectors_anytransmission_3h_futcost3"
+    run = "adam_latitude_compare_anysectors_anytransmission_3h_futcost3"
     # for filepath in glob.glob("results/" + run + "/postnetworks/*"):
     #     retrieve_generators_choice(filepath) #for our particular run, this makes a csv in the right folder for everything (8 csvs)
-    # for filepath in glob.glob("results/" + run + "/csvs/*"):
-    #     print(filepath)
-    #     add_to_df_choice(filepath)
+    for filepath in glob.glob("results/" + run + "/csvs/*"):
+        # note: for this to work, there can be no pre-existing gen_and_lat csvs. They must be deleted or moved to a different folder
+        #print(filepath)
+        add_to_df_choice(filepath)
 
-    solar_by_solar_all()
+    #solar_by_solar_all()
 
 
 

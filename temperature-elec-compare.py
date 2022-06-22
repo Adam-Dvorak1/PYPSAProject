@@ -46,6 +46,21 @@ df_co_elec["HDD"] = heatCO["HDD"]
 df_co_elec["heating_demand"]= df_co_elec.apply(lambda row: 1782 * row["HDD"] + 6472, axis = 1)
 df_co_elec["adjust_elec_demand"] =  df_co_elec["demand_mwh"] + 1/3 * df_co_elec["heating_demand"]
 
+
+# Code for cfs--solar, wind, ED 
+# EUdf = pd.DataFrame()
+# USdf = pd.DataFrame()
+
+# EUdf["ESPsol"], EUdf["DNKsol"] = get_solar_data("weekly")[0:2]
+# EUdf["ESPwind"], EUdf['DNKwind'] =  get_wind_data("weekly")[0:2]
+# EUdf["ESPdem"], EUdf['DNKdem'] = get_electricity_data("weekly")[0:2]
+
+# USdf["COsol"], USdf["CAsol"] = get_solar_data("weekly")[2:4]
+# USdf["COwind"], USdf["CAwind"] = get_wind_data("weekly")[2:4]
+
+# USdf["COdem"], USdf["CAdem"] = get_electricity_data("weekly")[2:4]
+
+
 def get_temp_data(timeframe):
     
     
@@ -224,8 +239,9 @@ def get_electricity_data(timeframe):
 
     #print (DKDayElec.head())
 
+    CODayElec.index = pd.to_datetime(CODayElec.index)
+    CADayElec.index = pd.to_datetime(CADayElec.index)
 
-    
     return ESDayElec, DKDayElec, CODayElec, CADayElec
 
 #get_electricity_data("weekly")
@@ -648,36 +664,64 @@ def plot_ED_and_CF_data_all():
     This serves as figure 1 '''
     plt.rcdefaults()
     plt.rcParams.update({'font.size': 12})
-    elecdnk = get_electricity_data("weekly")[1] #note: this returns a DATAFRAME so to to keep it as a dataframe do not use list comprehension
+    EUdf = pd.read_csv("data/EUcfs.csv", index_col=0, parse_dates = True)
+    USdf = pd.read_csv("data/UScfs.csv", index_col = 0, parse_dates=True)
+
+    # elecdnk = get_electricity_data("weekly")[1] #note: this returns a DATAFRAME so to to keep it as a dataframe do not use list comprehension
+    # elecdnk = elecdnk/elecdnk.mean()
+    # solardnk = get_solar_data("weekly")[1]
+    # solardnk = solardnk/solardnk.mean()
+    # winddnk = get_wind_data("weekly")[1]
+    # winddnk = winddnk/winddnk.mean()
+
+    elecdnk = EUdf["DNKdem"]
     elecdnk = elecdnk/elecdnk.mean()
-    solardnk = get_solar_data("weekly")[1]
+    solardnk = EUdf["DNKsol"]
     solardnk = solardnk/solardnk.mean()
-    winddnk = get_wind_data("weekly")[1]
+    winddnk = EUdf['DNKwind']
     winddnk = winddnk/winddnk.mean()
-    #elec = temp_to_elec()["DNK_demand"]
+
+
     
-    elecesp = get_electricity_data("weekly")[0]
+    elecesp = EUdf["ESPdem"]
     elecesp = elecesp/elecesp.mean()
-    solaresp = get_solar_data("weekly")[0]
+    solaresp = EUdf["ESPsol"]
     solaresp = solaresp/solaresp.mean()
-    windesp = get_wind_data("weekly")[0]
+    windesp = EUdf['ESPwind']
     windesp = windesp/windesp.mean()
 
-    elecCo = get_electricity_data("weekly")[2]
+    # elecCo = get_electricity_data("weekly")[2]
+    # elecCo = elecCo/elecCo.mean()
+    # #elecCo = [x/max(elecCo) for x in elecCo]
+    # solarCo = get_solar_data("weekly")[2]
+    # solarCo = solarCo/solarCo.mean()
+    # windCo = get_wind_data("weekly")[2]
+    # windCo = windCo/windCo.mean()
+
+    elecCo = USdf["COdem"]
     elecCo = elecCo/elecCo.mean()
-    #elecCo = [x/max(elecCo) for x in elecCo]
-    solarCo = get_solar_data("weekly")[2]
+    solarCo = USdf["COsol"]
     solarCo = solarCo/solarCo.mean()
-    windCo = get_wind_data("weekly")[2]
+    windCo = USdf['COwind']
     windCo = windCo/windCo.mean()
 
-    elecCA = get_electricity_data("weekly")[3]
-    elecCA = elecCA/elecCA.mean()
 
-    #elecCA = [x/max(elecCA) for x in elecCA]
-    solarCA = get_solar_data("weekly")[3]
+
+
+    # elecCA = get_electricity_data("weekly")[3]
+    # elecCA = elecCA/elecCA.mean()
+
+    # #elecCA = [x/max(elecCA) for x in elecCA]
+    # solarCA = get_solar_data("weekly")[3]
+    # solarCA = solarCA/solarCA.mean()
+    # windCA = get_wind_data("weekly")[3]
+    # windCA = windCA/windCA.mean()
+
+    elecCA = USdf["CAdem"]
+    elecCA = elecCA/elecCA.mean()
+    solarCA = USdf["CAsol"]
     solarCA = solarCA/solarCA.mean()
-    windCA = get_wind_data("weekly")[3]
+    windCA = USdf['CAwind']
     windCA = windCA/windCA.mean()
 
     fig = plt.figure()
@@ -690,10 +734,16 @@ def plot_ED_and_CF_data_all():
 
     axdnk3 = fig.add_subplot(411, sharey = axdnk2, frame_on=False)
     axdnk1.plot(elecdnk, 'k-', label = "Electricity demand")
+    
+
     axdnk2.plot(solardnk, 'C1-',  label = "Solar CF")
     axdnk2.plot(winddnk, 'C0-',  label = "Wind CF")
     axdnk1.set_ylabel("Denmark")
     axdnk1.tick_params(direction = "in")
+    axdnk2.text(1.02, 0.6, "0.29", color = 'C0', transform = axdnk2.transAxes)
+    axdnk2.text(1.02, 0.4, "0.11", color = 'C1', transform = axdnk2.transAxes)
+
+    
 
     axesp1 = fig.add_subplot(412)
 
@@ -705,7 +755,8 @@ def plot_ED_and_CF_data_all():
     axesp3.plot(windesp, 'C0-', label = "Wind CF")
     axesp1.set_ylabel("Spain")
     axesp1.tick_params(direction = "in")
-
+    axesp2.text(1.02, 0.6, "0.23", color = 'C0', transform = axesp2.transAxes)
+    axesp2.text(1.02, 0.4, "0.17", color = 'C1', transform = axesp2.transAxes)
 
     axco1 = fig.add_subplot(413)
 
@@ -718,6 +769,9 @@ def plot_ED_and_CF_data_all():
     axco1.set_ylabel("Colorado")
     axco1.tick_params(direction = "in")
 
+    axco2.text(1.02, 0.6, "0.18", color = 'C0', transform = axco2.transAxes)
+    axco2.text(1.02, 0.4, "0.20", color = 'C1', transform = axco2.transAxes)
+
     axca1 = fig.add_subplot(414)
 
     axca2= fig.add_subplot(414, frame_on=False)
@@ -728,6 +782,8 @@ def plot_ED_and_CF_data_all():
     axca3.plot(windCA, 'C0-', label = "Wind CF")
     axca1.set_ylabel("California")
     axca1.tick_params(direction = "in")
+    axca2.text(1.02, 0.6, "0.31", color = 'C0', transform = axca2.transAxes)
+    axca2.text(1.02, 0.4, "0.20", color = 'C1', transform = axca2.transAxes)
 
     for ax in plt.gcf().get_axes():
         ax.set_ylim(0.01, 2.4)
@@ -749,6 +805,8 @@ def plot_ED_and_CF_data_all():
 
     axca1.xaxis.set_major_formatter(fmt)
     axca2.set_xticks([]) #We have two graphs sharing one axis, and without this we would be seeing double
+    axca3.set_xticks([])
+    #axca1.set_xticks([])
 
     axdnk2.yaxis.set_visible(False)
     axdnk3.set_xticks([])
@@ -778,11 +836,13 @@ def plot_ED_and_CF_data_all():
 
 
     fig.legend(lines1+lines2+lines3, labels1+labels2+labels3, bbox_to_anchor=(0.85, 0.06), fontsize = 10, ncol=3)
-    fig.suptitle(r"$\bf{Seasonal\:Variation\:of\:Wind,\:Solar,\:and\:Electricity\:Demand}$", fontsize = 14)
+    #fig.suptitle(r"$\bf{Seasonal\:Variation\:of\:Wind,\:Solar,\:and\:Electricity\:Demand}$", fontsize = 14)
     #fig.set_size_inches(6.4, 6)
+    #plt.text(0.5, 0.5, "test")
     plt.subplots_adjust(hspace=0)
-    plt.savefig("images/EDandCFALL_postervar")
+    #plt.savefig("images/EDandCFALL_postervar")
     plt.show()
+
 plot_ED_and_CF_data_all()
 
 #plot_ED_and_CF_data()
@@ -801,12 +861,14 @@ degrees3 = [8]
 
 
 ###Used to be testing, now current functions####
-def gw_elec_Spain_t(degree_change, slope_factor):
+def gw_elec_Spain_t(degree_change, slope_factor, yseries):
     '''This considers a universal degree change across all days. '''
     df = pd.DataFrame()
-    y = heat_to_elec()[0]
- 
-    y = get_electricity_data("weekly")[0]
+    if yseries == "elec":
+        y = get_electricity_data("weekly")[0]
+    else:
+        y = heat_to_elec()[0]
+        
     x = get_temp_data("weekly")[0]
     y = y/1000
     df["x"] = x
@@ -849,11 +911,14 @@ def gw_elec_Spain_t(degree_change, slope_factor):
     plt.close(fig)
     return ax
 
-def gw_elec_Colorado_t(degree_change, slope_factor):
+def gw_elec_Colorado_t(degree_change, slope_factor, yseries):
     '''As it stands, we do not '''
     df = pd.DataFrame()
-    y = get_electricity_data("weekly")[2]
-    # y = heat_to_elec()[2]
+    if yseries == "elec":
+        y = get_electricity_data("weekly")[2]
+    else:
+        y = heat_to_elec()[2]
+        
     x = get_temp_data("weekly")[2]
     y = y/1000
     df["x"] = x
@@ -905,7 +970,7 @@ def gw_elec_Colorado_t(degree_change, slope_factor):
 #     for slope in slopes[1:]:
 #         gw_elec_Spain(degree, slope)
 
-def gw_elec_California_t(degree_change, slope_factor):
+def gw_elec_California_t(degree_change, slope_factor, yseries):
     '''Here, I am trying to model what would happen to electricity demand in California if
     the temperature increases uniformly by x degrees due to global warming
     
@@ -915,7 +980,11 @@ def gw_elec_California_t(degree_change, slope_factor):
     df = pd.DataFrame()
     
     x = get_temp_data("weekly")[3]
-    y = get_electricity_data("weekly")[3]
+    if yseries == "elec":
+        y = get_electricity_data("weekly")[3]
+    else:
+        y = heat_to_elec()[3]
+        
     y = y/1000
     df["x"] = x
     df["y"] = y
@@ -952,7 +1021,7 @@ def gw_elec_California_t(degree_change, slope_factor):
     return ax
     #if x+degree_change-15.79 is greater than 0, then add this value times 1093.394 to y
 
-def gw_elec_Denmark_t(degree_change):
+def gw_elec_Denmark_t(degree_change, yseries):
     '''Here, I am trying to model what would happen to electricity demand in Denmark if
     the temperature increases uniformly by x degrees due to global warming
     
@@ -961,9 +1030,14 @@ def gw_elec_Denmark_t(degree_change):
     a linear increase'''
     df = pd.DataFrame()
     
+
+
     x = get_temp_data("weekly")[1]
-    #y = get_electricity_data("weekly")[1]
-    y = heat_to_elec()[1]
+    if yseries == "elec":
+        y = get_electricity_data("weekly")[1]
+    else:
+        y = heat_to_elec()[1]
+
     y = y/1000
     df["x"] = x
     df["y"] = y
@@ -1002,16 +1076,16 @@ def gw_elec_Denmark_t(degree_change):
 
 
 
-def gw_elec_all():
-    
+def gw_elec_all(yseries):
+    #yseries can be 'elec' or "w_heat"
     plt.rcdefaults()
     #plt.rcParams.update({'font.size': 12})
     fig2 = plt.figure()
 
-    ax1  = gw_elec_Denmark_t(2)
-    ax2 = gw_elec_Spain_t(2,2)
-    ax3 = gw_elec_Colorado_t(2,2)
-    ax4 = gw_elec_California_t(2,2)
+    ax1  = gw_elec_Denmark_t(2, yseries)
+    ax2 = gw_elec_Spain_t(2,2, yseries)
+    ax3 = gw_elec_Colorado_t(2,2, yseries)
+    ax4 = gw_elec_California_t(2,2, yseries)
  
     ax1.figure = fig2
     ax2.figure = fig2
@@ -1070,7 +1144,7 @@ def gw_elec_all():
     
     plt.show()
 
-gw_elec_all()
+gw_elec_all("w_heat")
 
 #Before, California and Colorado did not have the added heating demand. Since I calculated the 
 #heating demand out of heating degree days, I was able to add this to California
