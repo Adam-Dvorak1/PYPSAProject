@@ -1538,8 +1538,38 @@ def solar_by_solar_all():
     fig.suptitle("Solar share by solar capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
 
     plt.show()
-##solar_by_solar_all()
+solar_by_solar_all()
 
+
+def find_solar_share(path):
+    df0 = pd.read_csv(path)
+    tot = df0['Generation'].sum()
+    df0sol = df0.query('carrier == "solar"')
+    soltot = df0sol['Generation'].sum()
+    print(soltot/tot)
+
+
+def solar_share_tot():
+    run0 = "adam_latitude_compare_no_sectors_yes_transmission_3h"
+    run1 = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
+    run2 = "adam_latitude_compare_no_sectors_no_transmission_3h3"
+    run3 = "adam_latitude_compare_yes_sectors_no_transmission_3h"
+    path0 = 'results/' + run0 + '/csvs/gen_and_lat.csv'
+    path1 = 'results/' + run1 + '/csvs/gen_and_lat.csv'
+    path2 = 'results/' + run2 + '/csvs/gen_and_lat.csv'
+    path3 = 'results/' + run3 + '/csvs/gen_and_lat.csv'
+    path0 = pathlib.Path(path0)
+    path1 = pathlib.Path(path1)
+    path2 = pathlib.Path(path2)
+    path3 = pathlib.Path(path3)
+    
+    find_solar_share(path0)
+    find_solar_share(path1)
+    find_solar_share(path2)
+    find_solar_share(path3)
+
+
+solar_share_tot()
 
 
 def solar_by_wind_all():
@@ -1612,94 +1642,11 @@ def solar_by_wind_all():
     fig.suptitle("Solar share by wind capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
 
     plt.show()
-#solar_by_wind_all()
-
-def solar_by_corr(path):
-    mypath = str(path)
-    
-    opts = mypath.split("_")
-    print(opts)
-    for opt in opts:#This takes the first number of the last opt with a number
-        contains_digit = len(re.findall('\d+', opt)) > 0
-        if contains_digit:
-            f = re.findall(r'\d+', opt)
-            hrs = f[0]
-            hrs = hrs + "h"
-    if "sectors" in opts:#
-        idxsec = opts.index('sectors')
-        idxsec -= 1
-        sec = opts[idxsec]
-        if sec == "yes":
-            sec = 'with'
-        else:
-            sec = 'without'
-        sec = sec + " sectors"
-    if "transmission" in opts:
-        idxtrans = opts.index('transmission')
-        idxtrans -= 1
-        trans = opts[idxtrans]
-        if trans == "yes":
-            trans = 'with'
-        else:
-            trans = 'without'
-        trans = trans + " transmission"
-
-    
-    
-
-    plt.rcdefaults()
-    solar_latdf = pd.read_csv(path)
-    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
-    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only interested in wind share
-    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
-    #solar_latdf['windpercent'] = solar_latdf["fraction"] * 100
-    solar_latdf['solarpercent'] = solar_latdf['solarfrac'] * 100
-    
-    
-    #plotting: latitude on x axis, solar fraction on y axis
-
-    fig, ax = plt.subplots()
-
-    x = solar_latdf["week_corr"]
-    y = solar_latdf["solarpercent"]
-
-
-    ax.scatter(x, y)
-    ax.set_xlabel("Load correlation with solar production")
-    ax.set_ylabel("Optimal solar share (%)")
-    ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
+solar_by_wind_all()
 
 
 
-    for idx, row in solar_latdf.iterrows():
-        ax.annotate(row['country'], (row['week_corr']* 1.007, row['solarpercent']* 0.97))
-    
-
-    m, b = np.polyfit(x, y, 1)
-    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
-
-
-    r_sq = rsquared(x, y)
-    print(r_sq)
-    plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
-    
-    ax.text(0, 1.1, "r-squared = {:.3f}".format(r_sq), transform = ax.transAxes)
-
-
-    fig.legend()
-    parentpath = path.parent.parent#path is csv, parent is csv folder, parent is run
-
-    fig.savefig(parentpath / "graphs/solar_by_corr") #subdir graphs
-
-    parentpath = parentpath.parent.parent #parentpath is run folder, parent is results, parent is pypsaproject
-
-    fig.savefig(parentpath / f"Images/Shown images/11:5 meeting/solar_by_weekcorr{sec}_{trans}")
-    plt.show()
-
-
-
-
-def solar_by_anycorr(path, timeframe, corrtype):
+def solar_by_anycorr(path, timeframe, corrtype, ax):
     '''The goal of this function is to choose between different timeframes and types, such as weekly/3h, or Load, Heating, Cooling
     It builds off of the solar_by_corr function, which only included one type of correlation at a time'''
     mypath = str(path)
@@ -1745,7 +1692,7 @@ def solar_by_anycorr(path, timeframe, corrtype):
     
     #plotting: latitude on x axis, solar fraction on y axis
 
-    fig, ax = plt.subplots()
+    #fig, ax = plt.subplots()
 
     y = solar_latdf["solarpercent"]
     if timeframe == 'weekly':
@@ -1772,7 +1719,7 @@ def solar_by_anycorr(path, timeframe, corrtype):
 
 
     ax.scatter(x, y)
-    ax.set_xlabel(timeframe + " " + corrtype + " correlation with solar production")
+    #ax.set_xlabel(timeframe + " " + corrtype + " correlation with solar production")
     ax.set_ylabel("Optimal solar share (%)")
     ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
 
@@ -1787,32 +1734,113 @@ def solar_by_anycorr(path, timeframe, corrtype):
 
 
     r_sq = rsquared(x, y)
-    print(r_sq)
-    plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
+    #print(r_sq)
+    ax.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
     
-    ax.text(0, 1.1, "r-squared = {:.3f}".format(r_sq), transform = ax.transAxes)
+    #ax.text(0, 1.1, "r-squared = {:.3f}".format(r_sq), transform = ax.transAxes)
 
 
-    fig.legend()
+    handles, labels = ax.get_legend_handles_labels()
+    labels[0] = "r² = {:.3f}".format(r_sq)
+    ax.legend(handles, [labels[0]])
+    ax.legend().set_visible(False)
+    # fig.legend()
     parentpath = path.parent.parent#path is csv, parent is csv folder, parent is run
     mypath = "graphs/solar_by_"+ timeframe + "_" + corrtype + "_corr"
-    fig.savefig(parentpath / mypath) #subdir graphs
+    #fig.savefig(parentpath / mypath) #subdir graphs
 
     parentpath = parentpath.parent.parent #parentpath is run folder, parent is results, parent is pypsaproject
 
     #if I want to save in a second place, then, I will also need to change the code for the path to include which vars it is
     #fig.savefig(parentpath / f"Images/Shown images/11:5 meeting/solar_by_weekcorr{sec}_{trans}")
+    #plt.show()
+    return labels
+
+
+def solar_by_anycorr_four(mytime, mycorr):
+    '''The purpose of this function is to be able to plot correlation with solar by solar 
+    for each of the four scenarios (w/wout transmit, sectors) on the same plot
+    
+    Choose between "weekly" or "3h" for mytime, and between "Load", "Heating", and "Cooling" for mycorr '''
+    run0 = "adam_latitude_compare_no_sectors_yes_transmission_3h"
+    run1 = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
+    run2 = "adam_latitude_compare_no_sectors_no_transmission_3h3"
+    run3 = "adam_latitude_compare_yes_sectors_no_transmission_3h"
+    path0 = 'results/' + run0 + '/csvs/gen_and_lat.csv'
+    path1 = 'results/' + run1 + '/csvs/gen_and_lat.csv'
+    path2 = 'results/' + run2 + '/csvs/gen_and_lat.csv'
+    path3 = 'results/' + run3 + '/csvs/gen_and_lat.csv'
+    path0 = pathlib.Path(path0)
+    path1 = pathlib.Path(path1)
+    path2 = pathlib.Path(path2)
+    path3 = pathlib.Path(path3)
+    
+
+    fs = 18
+    plt.rcParams['axes.labelsize'] = fs
+    plt.rcParams['xtick.labelsize'] = fs
+    plt.rcParams['ytick.labelsize'] = fs
+
+
+    fig,ax = plt.subplots(2,2,figsize=(13,9),sharex=True,sharey='row')
+    ax = ax.flatten()
+
+
+    timeframe = mytime
+
+
+    corrtype = mycorr
+    #solar_by_latitude_comparecost(path0, ax[0]) #We know that solar_by_latitude_comparecost is also compatible
+    labels0 = solar_by_anycorr(path0, timeframe, corrtype, ax[0])
+    labels1 = solar_by_anycorr(path1, timeframe, corrtype, ax[1])
+    
+    labels2 = solar_by_anycorr(path2, timeframe, corrtype, ax[2])
+    
+    labels3 = solar_by_anycorr(path3,timeframe, corrtype,  ax[3])
+    ax[1].lines[-1].set_color('C1')
+    ax[2].lines[-1].set_color('C2')
+    ax[3].lines[-1].set_color('C3')
+
+
+    fig.supxlabel(r"$\bf{Sectors}$" + '\nCorrelation of Solar with ' + corrtype, fontsize=fs, y = 0.11, x = 0.53)
+    fig.supylabel ('Solar Percent\n' + r"$\bf{Transmission}$",fontsize=fs, y = 0.6)
+    ax[3].set_xlabel(r"$\bf{Yes}$",fontsize=fs)
+    ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs)
+    #plt.gca().lines[-].set_color('C2')
+    ax[0].set_ylabel(r"$\bf{Yes}$" , fontsize = fs)
+    ax[2].set_ylabel(r"$\bf{No}$", fontsize = fs)
+    ax[2].tick_params(axis='x', labelsize = fs-4)
+    ax[3].tick_params(axis='x', labelsize = fs-4)
+
+    ax[0].set_title("")
+    ax[1].set_title("")
+    #plt.gca().lines[-3].set_color('C1')
+    ax[1].set_ylabel("")
+    ax[3].set_ylabel("")
+    ax[2].set_title("")
+    
+    #ax[0].get_lines().set_color('black')
+
+
+
+    ax[3].set_title("")
+
+    handles0, labels = ax[0].get_legend_handles_labels()
+    handles1, labels = ax[1].get_legend_handles_labels()
+    handles2, labels = ax[2].get_legend_handles_labels()
+    handles3, labels = ax[3].get_legend_handles_labels()
+
+    handles = handles0 + handles2 + handles1 + handles3
+    labels = labels0 + labels2 + labels1 + labels3
+
+    fig.legend(handles, labels, prop={'size':fs-4}, ncol=2, loc = (0.4, 0.03))
+    fig.tight_layout(rect = [0.03, 0.1, 1, 0.9])
+    fig.suptitle("Solar share by solar correlation with " + corrtype, x = 0.55, fontsize = fs, weight = 'bold')
+
+    fig.savefig("Images/Paper/solar_by_loadcorr.png")
     plt.show()
 
-#This is a function that:
-    #looks at whether there are sectors/zero transmission
-        #to do this, it needs to look at the file, dividing by underscore and dash both
-    #looks at the cost
-    #makes a new csv for each one, containing: cost, sectors, transmission
-
-
-#Another function is a modified version of a previous function, which is able to do the same stuff but with different csv files
-
+solar_by_anycorr_four("weekly", "Load")
 
 
 def check_exist_folder(run_name):
@@ -1861,13 +1889,13 @@ if __name__ == "__main__":
 
 
         #With multiple postnetworks per run, we may need to add another for loop here as well, as the same as above
-        path = add_to_df(run)
-    #     path = 'results/' + run+ '/csvs/gen_and_lat.csv'
-    #     path = pathlib.Path(path)
-    #     # solar_by_anycorr(path, '3h', 'Heating')
-    #     solar_by_anycorr(path, '3h', 'Cooling')
-    #     solar_by_anycorr(path, 'weekly', 'Heating')
-    #     solar_by_anycorr(path, 'weekly', 'Cooling')        
+        #path = add_to_df(run)
+        path = 'results/' + run+ '/csvs/gen_and_lat.csv'
+        path = pathlib.Path(path)
+        # solar_by_anycorr(path, '3h', 'Heating')
+        # solar_by_anycorr(path, '3h', 'Cooling')
+        solar_by_anycorr(path, 'weekly', 'Heating')
+        solar_by_anycorr(path, 'weekly', 'Cooling')        
         #solar_by_solar(path)
 
     ###THIS SECTION IS FOR THE NEW FOLDER
@@ -2140,6 +2168,90 @@ def solar_by_latitude_all(path):
 
     plt.show()
   
+
+def solar_by_corr(path):
+    '''This function is outdated. Use solar_by_anycorr() and solar_by_anycorr_four()'''
+    mypath = str(path)
+    
+    opts = mypath.split("_")
+    print(opts)
+    for opt in opts:#This takes the first number of the last opt with a number
+        contains_digit = len(re.findall('\d+', opt)) > 0
+        if contains_digit:
+            f = re.findall(r'\d+', opt)
+            hrs = f[0]
+            hrs = hrs + "h"
+    if "sectors" in opts:#
+        idxsec = opts.index('sectors')
+        idxsec -= 1
+        sec = opts[idxsec]
+        if sec == "yes":
+            sec = 'with'
+        else:
+            sec = 'without'
+        sec = sec + " sectors"
+    if "transmission" in opts:
+        idxtrans = opts.index('transmission')
+        idxtrans -= 1
+        trans = opts[idxtrans]
+        if trans == "yes":
+            trans = 'with'
+        else:
+            trans = 'without'
+        trans = trans + " transmission"
+
+    
+    
+
+    plt.rcdefaults()
+    solar_latdf = pd.read_csv(path)
+    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
+    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only interested in wind share
+    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    #solar_latdf['windpercent'] = solar_latdf["fraction"] * 100
+    solar_latdf['solarpercent'] = solar_latdf['solarfrac'] * 100
+    
+    
+    #plotting: latitude on x axis, solar fraction on y axis
+
+    fig, ax = plt.subplots()
+
+    x = solar_latdf["week_corr"]
+    y = solar_latdf["solarpercent"]
+
+
+    ax.scatter(x, y)
+    ax.set_xlabel("Load correlation with solar production")
+    ax.set_ylabel("Optimal solar share (%)")
+    ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
+
+
+
+    for idx, row in solar_latdf.iterrows():
+        ax.annotate(row['country'], (row['week_corr']* 1.007, row['solarpercent']* 0.97))
+    
+
+    m, b = np.polyfit(x, y, 1)
+    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
+
+
+    r_sq = rsquared(x, y)
+    print(r_sq)
+    plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
+    
+    ax.text(0, 1.1, "r-squared = {:.3f}".format(r_sq), transform = ax.transAxes)
+
+
+    fig.legend()
+    parentpath = path.parent.parent#path is csv, parent is csv folder, parent is run
+
+    fig.savefig(parentpath / "graphs/solar_by_corr") #subdir graphs
+
+    parentpath = parentpath.parent.parent #parentpath is run folder, parent is results, parent is pypsaproject
+
+    fig.savefig(parentpath / f"Images/Shown images/11:5 meeting/solar_by_weekcorr{sec}_{trans}")
+    plt.show()
+
 
 
 #mydata = europe.generators
