@@ -568,6 +568,243 @@ def retrieve_generators(filepath):
 
     return mydata
 
+def mod_retrieve_generators(filepath):
+    '''This function takes a completed postnetwork, finds the resource frac
+    
+    This function is useful if there is one postnetwork per run name
+    
+    This function is a test to see if the definition of covariance I have is wrong'''
+    
+    europe = pypsa.Network()
+    europe.import_from_netcdf(filepath)
+
+    my_gen = ("offwind-ac", "offwind-dc", "solar", "onwind", "ror")
+
+    #Before, we were missing 
+    countries = eu28
+    mydata = europe.generators_t.p
+    mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
+
+    mystorage = europe.storage_units_t.p
+    #mystorage = mystorage[mystorage.columns[mystorage.columns.str.startswith(countries) ]] #this line is actually useless for PHS because all generators start with one of the european countries
+    mystorage = mystorage[mystorage.columns[mystorage.columns.str.endswith("hydro")]]
+
+    #This deals with p_nom_opt
+    mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
+
+    
+    totalpowers = europe.generators.p_nom_opt#installed generators
+    totalpowers = totalpowers[mydata.columns]
+
+    totalpowers = totalpowers.to_frame()
+    totalpowers = totalpowers.T #The p_nom_opt is not a timeseries. However, before we were using timeseries. 
+                                # So, to make the same code work (combining similar names), we transpose it
+
+
+    myloads = europe.loads_t.p
+    myloads = myloads[myloads.columns[myloads.columns.str.startswith(countries)]]
+
+    myloads = myloads-myloads.mean()
+    myloads.rename(columns = lambda x: x[:2], inplace = True) #All of the loads are only named by the country
+    myloads = myloads.groupby(level = 0, axis = 1).sum() #There are some duplicate loads. This groups them (adds them together)
+
+    weekloads = myloads.rolling(56).mean()[::56]
+
+    weekloads = weekloads.drop(0)# I did not add this line before. I wonder if this will make a difference
+                                    #It did make a bit of a difference--about 1% Nothign to write home about
+
+
+    #In this section, we attempt to add the covariance of solar with the cooling and heating degree days
+    coolDD, heatDD = load_temp_data()
+
+    coolDD = coolDD-coolDD.mean() #in the calculation of covariances, we want to use the difference between the amount of CDD/HDD and the mean
+    heatDD = heatDD-heatDD.mean()
+
+    coolDD = coolDD.reset_index()
+    coolDD = coolDD.drop('time', axis = 1)
+
+    heatDD = heatDD.reset_index()
+    heatDD = heatDD.drop('time', axis = 1)
+    heatDD = heatDD * -1
+
+    coolweek = coolDD.rolling(56).mean()[::56]
+    heatweek = heatDD.rolling(56).mean()[::56]
+
+
+
+    # coolsum = coolsum.T
+
+
+
+    for country in countries:
+        resource_fracs = mydata
+        resource_fracs = resource_fracs[[col for col in resource_fracs.columns if col.startswith(country)]]
+        mydata[country + 'solar'] = resource_fracs[[col for col in resource_fracs.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        mydata[country + 'wind'] = resource_fracs[[col for col in resource_fracs.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in resource_fracs.columns):#checks if there is a 'ror' column present
+            mydata[country + 'ror'] =  resource_fracs[[col for col in resource_fracs.columns if 'ror' in col]].sum(axis = 1)
+
+
+
+
+        allsources = totalpowers
+        allsources =allsources[[col for col in allsources.columns if col.startswith(country)]]
+        totalpowers[country + 'solar'] = allsources[[col for col in allsources.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        totalpowers[country + 'wind'] = allsources[[col for col in allsources.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in allsources.columns):#checks if there is a 'ror' column present
+            totalpowers[country + 'ror'] =  allsources[[col for col in allsources.columns if 'ror' in col]].sum(axis = 1)
+
+
+
+        allstorage = mystorage
+        allstorage = allstorage[[col for col in allstorage.columns if col.startswith(country)]]
+        if any ('hydro' in col for col in allstorage.columns):
+            mydata[country + "hydro"] = allstorage[[col for col in allstorage.columns]].sum(axis = 1) 
+        
+
+        
+
+
+
+
+    mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
+
+    #print(mydata)
+
+    totalpowers = totalpowers[totalpowers.columns[~totalpowers.columns.str.contains('[0-9]+')]]
+    totalpowers = totalpowers.T
+
+
+    moddata = mydata-mydata.mean()#WE SUBTRACT THE MEAN HERE
+
+    weekdata = moddata.rolling(56).mean()[::56]
+    weekdata = weekdata.drop(0)#question: we are dropping the first row because the rolling/mean combo makes the first row NaN.
+    #However, what about the loads?
+
+
+    covariances = pd.DataFrame()
+
+    weekcovariances = pd.DataFrame()
+    
+    coolvariances = pd.DataFrame()
+
+    coolweekvar = pd.DataFrame()
+
+    heatvariances = pd.DataFrame()
+
+    heatweekvar = pd.DataFrame()
+    
+    
+
+
+    for col in myloads.columns:
+        covariances[col+'solar'] =(myloads[col]-myloads[col].mean()) * (moddata[col + 'solar']-moddata[col + 'solar'].mean())/(myloads[col].std()*moddata[col + 'solar'].std())
+        print(myloads[col].mean())
+        print(moddata[col+'solar'].mean())
+        covariances[col+ 'wind'] = (myloads[col]-myloads[col].mean()) * (moddata[col + 'wind']-moddata[col + 'wind'].mean())/(myloads[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            covariances[col + 'ror'] =  myloads[col] * moddata[col + 'ror']/(myloads[col].std()*moddata[col + 'ror'].std())
+
+
+        weekcovariances[col+'solar'] = weekloads[col] * weekdata[col + 'solar']/(weekloads[col].std()*weekdata[col + 'solar'].std())
+        weekcovariances[col+ 'wind'] = weekloads[col] * weekdata[col + 'wind']/(weekloads[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            weekcovariances[col + 'ror'] =  weekloads[col] * weekdata[col + 'ror']/(weekloads[col].std()*weekdata[col + 'ror'].std())
+    
+
+        coolvariances[col + 'solar'] = coolDD[col] * moddata[col + 'solar']/(coolDD[col].std()*moddata[col + 'solar'].std())
+        coolvariances[col + 'wind'] = coolDD[col] * moddata[col + 'wind']/(coolDD[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            coolvariances[col + 'ror'] =  coolDD[col] * moddata[col + 'ror']/(coolDD[col].std()*moddata[col + 'ror'].std())
+        
+        coolweekvar[col + 'solar'] = coolweek[col] * weekdata[col + 'solar']/(coolweek[col].std()*weekdata[col + 'solar'].std())
+        coolweekvar[col + 'wind'] = coolweek[col] * weekdata[col + 'wind']/(coolweek[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            coolweekvar[col + 'ror'] =  coolweek[col] * weekdata[col + 'ror']/(coolweek[col].std()*weekdata[col + 'ror'].std())
+
+
+        
+
+        heatvariances[col + 'solar'] = heatDD[col] * moddata[col + 'solar']/(heatDD[col].std()*moddata[col + 'solar'].std())
+        heatvariances[col + 'wind'] = heatDD[col] * moddata[col + 'wind']/(heatDD[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            heatvariances[col + 'ror'] =  heatDD[col] * moddata[col + 'ror']/(heatDD[col].std()*moddata[col + 'ror'].std())
+
+
+
+        heatweekvar[col + 'solar'] = heatweek[col] * weekdata[col + 'solar']/(heatweek[col].std()*weekdata[col + 'solar'].std())
+        heatweekvar[col + 'wind'] = heatweek[col] * weekdata[col + 'wind']/(heatweek[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            heatweekvar[col + 'ror'] =  heatweek[col] * weekdata[col + 'ror']/(heatweek[col].std()*weekdata[col + 'ror'].std())
+    
+    # print(weekcovariances)
+    weekcovariances = weekcovariances.sum()/len(weekcovariances)
+    weekcovariances.to_frame()
+    # print(weekcovariances)
+
+    covariances = covariances.sum()/len(covariances)
+    covariances.to_frame()
+
+    coolvariances = coolvariances.sum()/len(coolvariances)
+    coolvariances.to_frame()
+
+    heatvariances = heatvariances.sum()/len(heatvariances)
+    heatvariances.to_frame()
+
+
+    coolweekvar = coolweekvar.sum()/len(coolweekvar)
+    coolweekvar.to_frame()
+
+    heatweekvar = heatweekvar.sum()/len(heatweekvar)
+    heatweekvar.to_frame()
+    #print(covariances.columns)
+
+    #In this section:
+        #Bring in the relevant dataframes from temp function
+        #Add to mydata: CDDs/day on average, HDDs/day on average
+        #Also, covariance between CDD, HDDs
+    
+    
+
+
+
+
+    
+    mydata = mydata.sum()
+
+
+
+    
+
+
+    mydata = mydata.to_frame()
+
+    mydata = pd.concat([mydata, totalpowers, covariances, weekcovariances, coolvariances, coolweekvar, heatvariances, heatweekvar], axis = 1)#We want to do the same thing with the
+    #mydata = pd.concat([mydata, totalpowers, weekcovariances], axis = 1)
+
+    #mydata.columns = ['0', 'p_nom_opt', 'load_corr', 'week_corr']
+
+    #In this section of the code, I
+        #Extract 
+    #save csv in new file, related to filepath
+    now_path = pathlib.Path(filepath)
+    parent_path = now_path.parent
+    run_directory = parent_path.parent
+
+
+    
+
+
+    mydata.to_csv(run_directory / "csvs/generators_test.csv")
+
+
+
+
+    return mydata
+
+
+
+
 
 def retrieve_generators_choice(filepath):
     '''This function takes a completed postnetwork, finds the resource frac
@@ -1193,8 +1430,8 @@ def solar_by_latitude_comparecost(path, ax):
     y2 = solar_latdf_cheapest["percent"]
 
     ax.scatter(x, y, label = 'default', color = '#004488')
-    ax.scatter(x1, y1, label = '0.25 of price', color = '#BB5566')
-    ax.scatter(x2, y2, label = '0.036 of price', color = '#DDAA33')
+    ax.scatter(x1, y1, label = 'less optimistic', color = '#BB5566')
+    ax.scatter(x2, y2, label = 'optimistic', color = '#DDAA33')
     ax.grid(True)
     # ax.set_xlabel("Country sorted by latitude")
     ax.set_ylabel("Optimal solar share (%)")
@@ -1247,7 +1484,7 @@ def four_latitude_comparecost():
     path3 = pathlib.Path(path3)
 
 
-    fs = 18
+    fs = 20
     plt.rcParams['axes.labelsize'] = fs
     plt.rcParams['xtick.labelsize'] = fs
     plt.rcParams['ytick.labelsize'] = fs
@@ -1259,17 +1496,19 @@ def four_latitude_comparecost():
     solar_by_latitude_comparecost(path2, ax[2])
     solar_by_latitude_comparecost(path3, ax[3])
 
-    fig.supxlabel(r"$\bf{Sectors}$" + '\nCountries ordered by latitude',fontsize=fs, y = 0.11, x = 0.53)
+    fig.supxlabel(r"$\bf{Sectors}$",fontsize=fs, y = 0.11, x = 0.53)
     fig.supylabel (r"$\bf{Transmission}$",fontweight="bold",fontsize=fs, y = 0.6)
-    ax[3].set_xlabel(r"$\bf{Yes}$",fontsize=fs)
-    ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs)
-    ax[0].set_ylabel(r"$\bf{Yes}$" + '\nSolar Percent', fontsize = fs)
-    ax[2].set_ylabel(r"$\bf{No}$" + '\nSolar Percent', fontsize = fs)
-    ax[2].tick_params(axis='x', labelrotation =90, labelsize = fs-4)
-    ax[3].tick_params(axis='x', labelrotation = 90, labelsize = fs-4)
+    ax[3].set_xlabel(" ",fontsize=fs)
+    #ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs)
+    #ax[0].set_ylabel(r"$\bf{Yes}$" + '\nSolar Percent', fontsize = fs)
+    #ax[2].set_ylabel(r"$\bf{No}$" + '\nSolar Percent', fontsize = fs)
+    ax[2].tick_params(axis='x', labelrotation =90, labelsize = fs-6)
+    ax[3].tick_params(axis='x', labelrotation = 90, labelsize = fs-6)
 
     ax[1].set_ylabel("")
     ax[3].set_ylabel("")
+    ax[2].set_ylabel("")
+    ax[0].set_ylabel("Solar Share", y = -0.1)
     ax[2].set_title("")
 
     ax[3].set_title("")
@@ -1278,6 +1517,16 @@ def four_latitude_comparecost():
 
     fig.legend(handles1, labels1, prop={'size':fs}, ncol=3, loc = (0.25, 0.03))
     fig.tight_layout(rect = [0.02, 0.1, 1, 1])
+
+    fig.text(0.325, 0.12, "No", fontweight= "bold", fontsize = fs)
+    fig.text(0.76, 0.12, "Yes", fontweight= "bold", fontsize = fs)
+
+    fig.text(0.02, 0.81, "Yes", fontweight= "bold", rotation = 90, fontsize = fs)
+    fig.text(0.02, 0.33, "No", fontweight= "bold", rotation = 90, fontsize = fs)
+
+    fig.text(0.41, 0.18, "Countries ordered by latitude",fontsize=fs)
+
+    plt.savefig("Images/Paper/fourlatitude_compare.png", dpi = 600)
 
     plt.show()
 four_latitude_comparecost()
@@ -1341,7 +1590,7 @@ def solar_by_wind(path, ax):
 
 
     for idx, row in solar_latdf.iterrows():
-        ax.annotate(row['country'], (row['year_CF']* 1.007, row['solarpercent']* 0.97))
+        ax.annotate(row['country'], (row['year_CF']* 1.007, row['solarpercent']* 0.97), fontsize = 11)
     
 
     m, b = np.polyfit(x, y, 1)
@@ -1433,7 +1682,7 @@ def solar_by_solar(path, ax):
 
 
     for idx, row in solar_latdf.iterrows():
-        ax.annotate(row['country'], (row['solarcf']* 1.007, row['solarpercent']* 0.97))
+        ax.annotate(row['country'], (row['solarcf']* 1.007, row['solarpercent']* 0.97), fontsize = 11)
     
 
     m, b = np.polyfit(x, y, 1)
@@ -1482,8 +1731,8 @@ def solar_by_solar_all():
     path2 = pathlib.Path(path2)
     path3 = pathlib.Path(path3)
     
-
-    fs = 18
+    plt.rcParams.update({'font.size': 18})
+    fs = 20
     plt.rcParams['axes.labelsize'] = fs
     plt.rcParams['xtick.labelsize'] = fs
     plt.rcParams['ytick.labelsize'] = fs
@@ -1502,17 +1751,18 @@ def solar_by_solar_all():
     ax[3].lines[-1].set_color('C3')
 
 
-    fig.supxlabel(r"$\bf{Sectors}$" + '\nCapacity factor of solar',fontsize=fs, y = 0.11, x = 0.53)
-    fig.supylabel ('Solar Percent\n' + r"$\bf{Transmission}$",fontsize=fs, y = 0.6)
-    ax[3].set_xlabel(r"$\bf{Yes}$",fontsize=fs)
-    ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs)
+    fig.supxlabel(r"$\bf{Sectors}$" ,fontsize=fs, y = 0.11, x = 0.53)
+    fig.supylabel ( r"$\bf{Transmission}$",fontsize=fs, y = 0.53)
+    ax[3].set_xlabel(" ",fontsize=fs)
+    #ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs, y = 0)
     #plt.gca().lines[-].set_color('C2')
-    ax[0].set_ylabel(r"$\bf{Yes}$" , fontsize = fs)
-    ax[2].set_ylabel(r"$\bf{No}$", fontsize = fs)
+    ax[0].set_ylabel("Solar share" , fontsize = fs, y = -0.1)
+    #ax[2].set_ylabel(r"$\bf{No}$", fontsize = fs, x = 0.1)
     ax[2].tick_params(axis='x', labelsize = fs-4)
     ax[3].tick_params(axis='x', labelsize = fs-4)
 
     ax[0].set_title("")
+    ax[2].set_ylabel("")
     ax[1].set_title("")
     #plt.gca().lines[-3].set_color('C1')
     ax[1].set_ylabel("")
@@ -1533,12 +1783,24 @@ def solar_by_solar_all():
     handles = handles0 + handles2 + handles1 + handles3
     labels = labels0 + labels2 + labels1 + labels3
 
-    fig.legend(handles, labels, prop={'size':fs-4}, ncol=2, loc = (0.4, 0.03))
+    fig.legend(handles, labels, prop={'size':fs-4}, ncol=2, loc = (0.39, 0.01))
     fig.tight_layout(rect = [0.03, 0.1, 1, 0.9])
-    fig.suptitle("Solar share by solar capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
+    #fig.suptitle("Solar share by solar capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
+    fig.text(0.325, 0.12, "No", fontweight= "bold", fontsize = fs)
+    fig.text(0.76, 0.12, "Yes", fontweight= "bold", fontsize = fs)
+
+    fig.text(0.02, 0.73, "Yes", fontweight= "bold", rotation = 90, fontsize = fs)
+    fig.text(0.02, 0.33, "No", fontweight= "bold", rotation = 90, fontsize = fs)
+
+    fig.text(0.43, 0.16, "Capacity factor of Solar",fontsize=fs)
+
+    
+
+    plt.savefig("Images/Paper/cap_factor_solar.pdf")
+
 
     plt.show()
-solar_by_solar_all()
+#solar_by_solar_all()
 
 
 def find_solar_share(path):
@@ -1569,7 +1831,7 @@ def solar_share_tot():
     find_solar_share(path3)
 
 
-solar_share_tot()
+#solar_share_tot()
 
 
 def solar_by_wind_all():
@@ -1587,7 +1849,9 @@ def solar_by_wind_all():
     path3 = pathlib.Path(path3)
     
 
-    fs = 18
+    
+    plt.rcParams.update({'font.size': 18})
+    fs = 20
     plt.rcParams['axes.labelsize'] = fs
     plt.rcParams['xtick.labelsize'] = fs
     plt.rcParams['ytick.labelsize'] = fs
@@ -1606,17 +1870,19 @@ def solar_by_wind_all():
     ax[3].lines[-1].set_color('C3')
 
 
-    fig.supxlabel(r"$\bf{Sectors}$" + '\nCapacity factor of wind',fontsize=fs, y = 0.11, x = 0.53)
-    fig.supylabel ('Solar Percent\n' + r"$\bf{Transmission}$",fontsize=fs, y = 0.6)
-    ax[3].set_xlabel(r"$\bf{Yes}$",fontsize=fs)
-    ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs)
+    fig.supxlabel(r"$\bf{Sectors}$" ,fontsize=fs, y = 0.11, x = 0.53)
+    fig.supylabel ( r"$\bf{Transmission}$",fontsize=fs, y = 0.53)
+    ax[3].set_xlabel(" ",fontsize=fs)
+    ax[0].set_ylabel("Solar share" , fontsize = fs, y = -0.1)
+    # ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs)
     #plt.gca().lines[-].set_color('C2')
-    ax[0].set_ylabel(r"$\bf{Yes}$" , fontsize = fs)
-    ax[2].set_ylabel(r"$\bf{No}$", fontsize = fs)
+    # ax[0].set_ylabel(r"$\bf{Yes}$" , fontsize = fs)
+    # ax[2].set_ylabel(r"$\bf{No}$", fontsize = fs)
     ax[2].tick_params(axis='x',  labelsize = fs-4)
     ax[3].tick_params(axis='x',  labelsize = fs-4)
 
     ax[0].set_title("")
+    ax[2].set_ylabel("")
     ax[1].set_title("")
     #plt.gca().lines[-3].set_color('C1')
     ax[1].set_ylabel("")
@@ -1637,9 +1903,19 @@ def solar_by_wind_all():
     handles = handles0 + handles2 + handles1 + handles3
     labels = labels0 + labels2 + labels1 + labels3
 
-    fig.legend(handles, labels, prop={'size':fs-4}, ncol=2, loc = (0.4, 0.03))
+    fig.legend(handles, labels, prop={'size':fs-4}, ncol=2, loc = (0.39, 0.01))
     fig.tight_layout(rect = [0.03, 0.1, 1, 0.9])
-    fig.suptitle("Solar share by wind capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
+    # fig.suptitle("Solar share by wind capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
+
+    fig.text(0.325, 0.12, "No", fontweight= "bold", fontsize = fs)
+    fig.text(0.76, 0.12, "Yes", fontweight= "bold", fontsize = fs)
+
+    fig.text(0.02, 0.73, "Yes", fontweight= "bold", rotation = 90, fontsize = fs)
+    fig.text(0.02, 0.33, "No", fontweight= "bold", rotation = 90, fontsize = fs)
+
+    fig.text(0.43, 0.16, "Capacity factor of Wind",fontsize=fs)
+
+    plt.savefig("Images/Paper/cap_wind_paper.png", dpi = 600)
 
     plt.show()
 solar_by_wind_all()
@@ -1840,7 +2116,7 @@ def solar_by_anycorr_four(mytime, mycorr):
     fig.savefig("Images/Paper/solar_by_loadcorr.png")
     plt.show()
 
-solar_by_anycorr_four("weekly", "Load")
+#solar_by_anycorr_four("weekly", "Load")
 
 
 def check_exist_folder(run_name):
@@ -1863,7 +2139,7 @@ def check_exist_folder(run_name):
 
 
 
-
+'''
 if __name__ == "__main__":
     #Set filepath name
     #This cannot really handle multiple postnetworks yet
@@ -1918,7 +2194,7 @@ if __name__ == "__main__":
 
     #all_generators("adam_latitude_compare_no_sectors")
 
-
+'''
 #solar_by_latitude()
 
 #f = f.query('`country`.str.startswith("FR")')

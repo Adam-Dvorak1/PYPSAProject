@@ -50,7 +50,7 @@ df_co_elec = pd.read_csv('data_extra/ColoradoTimeSeries.csv', index_col=0)
 df_co_elec.index = pd.to_datetime(df_co_elec.index)
 
 #We want to simulate electrification of heating. We can then add to Denmark and Spain
-df_heat = pd.read_csv('data/heat_demand.csv', sep=';', index_col=0)# in MWh
+df_heat = pd.read_csv('data/heat_demand.csv', sep=';', index_col=0)# in MWh #How is df_heat calculated?
 df_heat.index = pd.to_datetime(df_heat.index) #change index to datatime
 heatCA = pd.read_csv("data/TemperatureData/ninja_2011_weather_country_US.CA_merra-2_population_weighted.csv",  header = 2, index_col=0)
 heatCA.index = pd.to_datetime(heatCA.index)
@@ -267,7 +267,7 @@ def add_storage(n, cost_electro, cost_H2, cost_fuelcell, cost_batt, cost_inverte
          bus1 = "electricity bus",
          p_nom_extendable = True,
          carrier = "H2 Fuel Cell",
-         efficiency = .5,
+         efficiency = 0.5,
          capital_cost = cost_fuelcell * .5)#need to multiply by efficiency 
     
     n.add("Store",

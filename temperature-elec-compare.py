@@ -7,6 +7,7 @@ import numpy as np
 import statsmodels.api as sm
 import matplotlib.dates as mdates
 from decimal import Decimal
+import matplotlib.gridspec as gridspec
 #from matplotlib import gridspec
 
 
@@ -38,10 +39,12 @@ df_elec["ESPcombine"] = df_elec.apply(lambda row: row["ESP"] + row["ESPheat"]/3,
 heatCA["HDD"] = heatCA.apply(lambda row: 17 - row["temperature"] if row["temperature"] < 17 else 0, axis = 1)
 heatCO["HDD"] = heatCO.apply(lambda row: 17 - row["temperature"] if row["temperature"] < 17 else 0, axis = 1)
 
+#print (df_cal_elec)
 df_cal_elec["HDD"] = heatCA["HDD"]
 df_cal_elec["heating_demand"] = df_cal_elec.apply(lambda row: 1715 * row["HDD"] + 6356, axis = 1)# 1715 is California's G factor, MWh/HDD. 6356 is the constant, that we get from water heating
 df_cal_elec["adjust_elec_demand"] =  df_cal_elec["demand_mwh"] + 1/3 * df_cal_elec["heating_demand"]
 
+##print (df_cal_elec)
 df_co_elec["HDD"] = heatCO["HDD"]
 df_co_elec["heating_demand"]= df_co_elec.apply(lambda row: 1782 * row["HDD"] + 6472, axis = 1)
 df_co_elec["adjust_elec_demand"] =  df_co_elec["demand_mwh"] + 1/3 * df_co_elec["heating_demand"]
@@ -405,11 +408,21 @@ def heat_to_elec():
     new_elec = pd.DataFrame()
     states_elec = pd.DataFrame()
 
+    #print (CA_elec)
+
     new_elec["ESP_demand"] = ESP_elec + ESP_heat/3
     new_elec["DNK_demand"] = DNK_elec + DNK_heat/3
     states_elec["CA_demand"] = CA_elec + CA_heat/3
     states_elec["CO_demand"] = CO_elec + CO_heat/3
     #print(new_elec.head())
+
+    #print(states_elec["CA_demand"])
+
+    # CAdf = pd.DataFrame()
+    # CAdf['elec'] = CO_elec
+    # CAdf['heat'] = CO_heat
+    # CAdf['totdemand'] = states_elec['CO_demand']
+    # print(CAdf)
 
     return new_elec["ESP_demand"], new_elec["DNK_demand"], states_elec["CO_demand"], states_elec["CA_demand"]
 
@@ -843,7 +856,7 @@ def plot_ED_and_CF_data_all():
     #plt.savefig("images/EDandCFALL_postervar")
     plt.show()
 
-plot_ED_and_CF_data_all()
+#plot_ED_and_CF_data_all()
 
 #plot_ED_and_CF_data()
 
@@ -861,8 +874,15 @@ degrees3 = [8]
 
 
 ###Used to be testing, now current functions####
-def gw_elec_Spain_t(degree_change, slope_factor, yseries):
-    '''This considers a universal degree change across all days. '''
+def gw_elec_Spain_t(degree_change, slope_factor, yseries, ax):
+    '''This considers a universal degree change across all days. 
+    
+    We are modifying the functions such that there is a more accurate reflection of what we
+    are actually testing in the model--the presence or absence of heating demand. Luckily
+    we already have heating demand
+    
+    Note: we are using "degree_change", which is outdated, given we do no longer use it as global warming, as
+    an indicator of whether or not we want to include the '''
     df = pd.DataFrame()
     if yseries == "elec":
         y = get_electricity_data("weekly")[0]
@@ -870,17 +890,18 @@ def gw_elec_Spain_t(degree_change, slope_factor, yseries):
         y = heat_to_elec()[0]
         
     x = get_temp_data("weekly")[0]
-    y = y/1000
+    y = y/1000/47.3
     df["x"] = x
     df["y"] = y
     #print(df)
 
     total_elec_demand = round(df["y"].sum())
 
-    fig, ax = plt.subplots()
+    #fig, ax = plt.subplots()
 
     ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
     
+    '''
     df["y"] = df.apply(lambda row: row["y"] + .8652 * degree_change if row["x"] > 22.267 #Add according to positive slope if starts in cooling region
     else row["y"] + .8652 * (row["x"] - 22.267 + degree_change) if row["x"]+ degree_change  >22.267 and row["x"] > 16
     else row["y"] if row["x"] > 16 
@@ -904,14 +925,21 @@ def gw_elec_Spain_t(degree_change, slope_factor, yseries):
 
     
     ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with modification")
+
+    '''
+    y = heat_to_elec()[0]
+    y = y/1000/47.3
+    df["y"] = y
+    if degree_change == 2:
+        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with heating demand")
     ax.set_title("Spain")
     #ax.set_ylabel("Electricity demand (MWh)")
 
     #plt.savefig(f"images/GWESP_incr{degree_change}_slope{slope_factor}")
-    plt.close(fig)
+    #plt.close(fig)
     return ax
 
-def gw_elec_Colorado_t(degree_change, slope_factor, yseries):
+def gw_elec_Colorado_t(degree_change, slope_factor, yseries, ax):
     '''As it stands, we do not '''
     df = pd.DataFrame()
     if yseries == "elec":
@@ -920,17 +948,22 @@ def gw_elec_Colorado_t(degree_change, slope_factor, yseries):
         y = heat_to_elec()[2]
         
     x = get_temp_data("weekly")[2]
-    y = y/1000
+    y = y/1000/5.78
     df["x"] = x
     df["y"] = y
     #print(df)
 
     total_elec_demand = round(df["y"].sum())
 
-    fig, ax = plt.subplots()
+    #fig, ax = plt.subplots()
 
     ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
-
+    y = heat_to_elec()[2]
+    y = y/1000/5.78
+    df["y"] = y
+    if degree_change == 2:
+        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with heating demand")
+    '''
     df["y"] = df.apply(lambda row: row["y"] + .232 * degree_change if row["x"] > 15.56 #Add according to positive slope if starts in cooling region
     else row["y"] + .232 * (row["x"] - 15.56 + degree_change) if row["x"]+ degree_change  >15.56 and row["x"] > 7.32
     else row["y"] if row["x"] > 7.32
@@ -945,20 +978,20 @@ def gw_elec_Colorado_t(degree_change, slope_factor, yseries):
     df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
     #print(df)
     ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with modification")
-
+    
     ax.axvline(7.32, color='black',ls='--', alpha = 0.5)
     ax.text(7.32, ax.get_ybound()[1]-0.500, "T_th", horizontalalignment = "center", color = "C3")
 
 
     ax.axvline(15.56, color='black',ls='--', alpha = 0.5)  
     ax.text(15.56, ax.get_ybound()[1]-0.500, "T_th", horizontalalignment = "center", color = "C2")
-
+    '''
     #ax.legend()
     ax.set_title("Colorado")
     ax.set_ylabel("Electricity demand (GWh)")
     #plt.savefig(f"images/GWCO_incr{degree_change}_slope{slope_factor}")
     # plt.show()
-    plt.close(fig)
+    #plt.close(fig)
     return ax
 
 
@@ -970,13 +1003,16 @@ def gw_elec_Colorado_t(degree_change, slope_factor, yseries):
 #     for slope in slopes[1:]:
 #         gw_elec_Spain(degree, slope)
 
-def gw_elec_California_t(degree_change, slope_factor, yseries):
+def gw_elec_California_t(degree_change, slope_factor, yseries, ax):
     '''Here, I am trying to model what would happen to electricity demand in California if
     the temperature increases uniformly by x degrees due to global warming
     
     For california, we assume that the electricity demand would be constant with change in 
     temperature until it reaches a threshold temperature (15.79 degrees). Then, there is
-    a linear increase'''
+    a linear increase
+    
+    Right now, I want to make a graph which shows no heating demand added
+    '''
     df = pd.DataFrame()
     
     x = get_temp_data("weekly")[3]
@@ -984,20 +1020,27 @@ def gw_elec_California_t(degree_change, slope_factor, yseries):
         y = get_electricity_data("weekly")[3]
     else:
         y = heat_to_elec()[3]
-        
-    y = y/1000
+   
+    # print (x)
+    # print (y)
+    y = y/1000/39.5
     df["x"] = x
     df["y"] = y
+    #print (df)
 
     total_elec_demand = round(df["y"].sum())
 
-    fig, ax = plt.subplots()
+    #fig, ax = plt.subplots()
     ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
+    '''
+    if yseries == "elec":
 
-
-    df["y"] = df.apply(lambda row: row ["y"] + 1.093304 * degree_change if row["x"] > 15.79 
-    else row["y"] + 1.093304 * (row["x"] - 15.79 + degree_change) if row["x"]+ degree_change - 15.79 > 0 
-    else row["y"], axis = 1)
+        df["y"] = df.apply(lambda row: row ["y"] + 1.093304 * degree_change if row["x"] > 15.79 
+        else row["y"] + 1.093304 * (row["x"] - 15.79 + degree_change) if row["x"]+ degree_change - 15.79 > 0 
+        else row["y"], axis = 1)
+    
+    #To be continued
+        
 
     df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
     
@@ -1006,22 +1049,34 @@ def gw_elec_California_t(degree_change, slope_factor, yseries):
     else row["y"], axis = 1)
 
     ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with modification")
-
+    
     ax.axvline(15.79, color='black',ls='--', alpha = 0.5)
     ax.text(15.79, ax.get_ybound()[1]-1.500, "T_th", horizontalalignment = "center", color = "C2")
+    '''
 
+    y = heat_to_elec()[3]
+    # print(y)
+    y = y/1000/39.5
+    # df["y2"] = y 
+    # df["diff"] = df ["y2"] - df["y"]
+    # print (df)
+    df["y2"] = y
 
+    if degree_change == 2:
+        ax.scatter(df["x"], df["y2"], s = 15, marker = "^", color = "C1", label = "with heating demand")
     #ax.legend()
     ax.set_title("California")
     #ax.set_ylabel("Electricity demand (MWh)")
-    fig.subplots_adjust(bottom=0.2)
+    #fig.subplots_adjust(bottom=0.2)
     #print(df['y'].sum())
     #plt.savefig(f"images/GWCali_incr{degree_change}_slope{slope_factor}")
-    plt.close(fig)
+    #plt.close(fig)
     return ax
     #if x+degree_change-15.79 is greater than 0, then add this value times 1093.394 to y
+#gw_elec_California_t(2,1, "elec")
 
-def gw_elec_Denmark_t(degree_change, yseries):
+
+def gw_elec_Denmark_t(degree_change, yseries, ax):
     '''Here, I am trying to model what would happen to electricity demand in Denmark if
     the temperature increases uniformly by x degrees due to global warming
     
@@ -1038,14 +1093,20 @@ def gw_elec_Denmark_t(degree_change, yseries):
     else:
         y = heat_to_elec()[1]
 
-    y = y/1000
+    y = y/1000/5.86
     df["x"] = x
     df["y"] = y
 
     #total_elec_demand = round(df["y"].sum())
     #print(df['y'].sum())
-    fig, ax = plt.subplots()
+    #fig, ax = plt.subplots()
     ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "Historical")
+    #We want to make a second graph for the paper, where we add the heating demand
+    y = heat_to_elec()[1]
+    y = y/1000/5.86
+    df["y"] = y
+
+    '''
 
     df["y"] = df.apply(lambda row: row ["y"] if row["x"] > 15.8
     else row["y"] - .273665 * (15.8-row["x"]) if row["x"]+ degree_change - 15.8 > 0 
@@ -1062,12 +1123,16 @@ def gw_elec_Denmark_t(degree_change, yseries):
 
     ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "synthetic global warming (+2˚C) and additional cooling demand")
 
+    '''
+    if degree_change == 2:
+        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with heating demand")
+
     ax.set_title("Denmark")
     ax.set_ylabel("Electricity demand (GWh)")
     
 
 
-    plt.close(fig)
+    #plt.close(fig)
     #plt.savefig(f"images/GWDen_incr{degree_change}")
     #print(df['y'].sum())
 
@@ -1075,76 +1140,124 @@ def gw_elec_Denmark_t(degree_change, yseries):
 
 
 
-
-def gw_elec_all(yseries):
+def gw_elec_all_mod(yseries, val):
     #yseries can be 'elec' or "w_heat"
-    plt.rcdefaults()
-    #plt.rcParams.update({'font.size': 12})
-    fig2 = plt.figure()
+    '''Note: if val = 2, then we are including heating. Otherwise, we do not include heating'''
+    plt.rcParams.update({'font.size': 14})
+    fig,ax = plt.subplots(2,2,figsize = (7.5,6),sharex=True,sharey='row')
+    ax = ax.flatten()
 
-    ax1  = gw_elec_Denmark_t(2, yseries)
-    ax2 = gw_elec_Spain_t(2,2, yseries)
-    ax3 = gw_elec_Colorado_t(2,2, yseries)
-    ax4 = gw_elec_California_t(2,2, yseries)
+
+
+
+    gw_elec_Denmark_t(val, yseries, ax[0])
+    gw_elec_Spain_t(val,1, yseries, ax[1])
+    gw_elec_Colorado_t(val,1, yseries, ax[2])
+    gw_elec_California_t(val,1, yseries, ax[3])
  
-    ax1.figure = fig2
-    ax2.figure = fig2
-    ax3.figure = fig2
-    ax4.figure = fig2
 
-    fig2.axes.append(ax1)
-    fig2.add_axes(ax1)
-    fig2.axes.append(ax2)
-    fig2.add_axes(ax2)
-    fig2.axes.append(ax3)
-    fig2.add_axes(ax3)
-    fig2.axes.append(ax4)
-    fig2.add_axes(ax4)
-
-    dummy = fig2.add_subplot(221)
-    ax1.set_position(dummy.get_position())
-    dummy.remove()
-    axpos1 = ax1.get_position()
-
-    ax1.set_position([axpos1.x0, axpos1.y0+0.04, axpos1.width, axpos1.height])
+    # ax[1].set_ylabel("")
+    # ax[3].set_ylabel("")
+    # ax[2].set_title("")
+    # ax[3].set_title("")
 
 
-    dummy = fig2.add_subplot(222)
-    ax2.set_position(dummy.get_position())
-    dummy.remove()
-    axpos2 = ax2.get_position()
-    ax2.set_position([axpos2.x0+0.05, axpos2.y0+0.04, axpos2.width, axpos2.height])
+    fig.supylabel (r"$\bf{Demand\:\:per\:\:capita\:\:(kWh)}$",fontweight="bold",fontsize=14, y = 0.55)
+    fig.supxlabel (r"$\bf{Temperature\:\:(˚C)}$",fontweight="bold",fontsize=14, y = 0.11)
+    for ax in plt.gcf().get_axes():
+        ax.set_xlim(-10, 30)
+        ax.set_ylabel("")
 
-    dummy = fig2.add_subplot(223)
-    ax3.set_position(dummy.get_position())
-    dummy.remove()
-    axpos3 = ax3.get_position()
-    ax3.set_position([axpos3.x0, axpos3.y0+0.01, axpos3.width, axpos3.height])
+    
+    if val == 2:
 
-    dummy = fig2.add_subplot(224)
-    ax4.set_position(dummy.get_position())
-    dummy.remove()
-    axpos4 = ax4.get_position()
-    ax4.set_position([axpos4.x0+0.05, axpos4.y0+0.01, axpos4.width, axpos4.height])
+        for ax in plt.gcf().get_axes():
+            ax.set_ylim(0.5, 4)
+        fig.legend(lines1, labels1, bbox_to_anchor=(0.82, 0.1), ncol=2)
+    else:
+        for ax in plt.gcf().get_axes():
+            ax.set_ylim(0.45, 1.55)
+    
 
-    #fig2.set_size_inches(6.4, 5)
-    fig2.patch.set_facecolor("white")
+
+    #fig2.set_size_inches(9, 7) #For some reason this is best for the pdf
+    fig.patch.set_facecolor("white")
     #fig2.suptitle("Increase of 4 degrees")
 
-    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines1, labels1 = ax.get_legend_handles_labels()
 
-    fig2.legend(lines1, labels1, bbox_to_anchor=(1, 0.075), ncol=2)
 
-    fig2.text(0.93, 0.08, "˚C")
+    #fig.text(0.93, 0.13, "˚C")
     #fig2.text(0.93, 0.53, "˚C", fontsize = 12)
-    fig2.suptitle(r"$\bf{Electricity\:Demand\:Sensitivity\:To\:Temperature$", fontsize = 16)
+    fig.suptitle(r"$\bf{Electricity\:Demand\:Sensitivity\:To\:Temperature$", fontsize = 14)
+    fig.tight_layout(rect = [0.02, 0.05, 1, 1])
 
-    fig2.savefig("Images/elct_dmd_gw_2C_2slope")
+    #plt.tight_layout()
+    #fig2.savefig("Images/Paper/elecdem_temp_all.pdf")
+
+    #fig.savefig("Images/Paper/elecdem_newplot.pdf")
     
     
     plt.show()
 
-gw_elec_all("w_heat")
+gw_elec_all_mod("elec", 3)
+
+
+def gw_elec_all_mod(yseries):
+    #yseries can be 'elec' or "w_heat"
+    plt.rcParams.update({'font.size': 14})
+    fig,ax = plt.subplots(2,2,figsize = (7.5,6),sharex=True,sharey='row')
+    ax = ax.flatten()
+
+
+
+
+    gw_elec_Denmark_t(2, yseries, ax[0])
+    gw_elec_Spain_t(2,1, yseries, ax[1])
+    gw_elec_Colorado_t(2,1, yseries, ax[2])
+    gw_elec_California_t(2,1, yseries, ax[3])
+ 
+
+    # ax[1].set_ylabel("")
+    # ax[3].set_ylabel("")
+    # ax[2].set_title("")
+    # ax[3].set_title("")
+
+
+    fig.supylabel (r"$\bf{Demand\:\:per\:\:capita\:\:(kWh)}$",fontweight="bold",fontsize=14, y = 0.55)
+    fig.supxlabel (r"$\bf{Temperature\:\:(˚C)}$",fontweight="bold",fontsize=14, y = 0.11)
+    for ax in plt.gcf().get_axes():
+        ax.set_xlim(-10, 30)
+        ax.set_ylim(0.5, 4)
+        ax.set_ylabel("")
+
+    
+
+
+
+    #fig2.set_size_inches(9, 7) #For some reason this is best for the pdf
+    fig.patch.set_facecolor("white")
+    #fig2.suptitle("Increase of 4 degrees")
+
+    lines1, labels1 = ax.get_legend_handles_labels()
+
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.82, 0.1), ncol=2)
+
+    #fig.text(0.93, 0.13, "˚C")
+    #fig2.text(0.93, 0.53, "˚C", fontsize = 12)
+    fig.suptitle(r"$\bf{Electricity\:Demand\:Sensitivity\:To\:Temperature$", fontsize = 14)
+    fig.tight_layout(rect = [0.02, 0.05, 1, 1])
+
+    #plt.tight_layout()
+    #fig2.savefig("Images/Paper/elecdem_temp_all.pdf")
+
+    fig.savefig("Images/Paper/elecdem_temp_newplot.pdf")
+    
+    
+    plt.show()
+
+
+
 
 #Before, California and Colorado did not have the added heating demand. Since I calculated the 
 #heating demand out of heating degree days, I was able to add this to California
@@ -1529,6 +1642,80 @@ def mod_dfs(elec, temp):
     df['b'] = temp
     print(df.head())
 
+def gw_elec_all(yseries):
+    #yseries can be 'elec' or "w_heat"
+    plt.rcdefaults()
+    #plt.rcParams.update({'font.size': 12})
+    fig2 = plt.figure()
 
+    ax1  = gw_elec_Denmark_t(2, yseries)
+    ax2 = gw_elec_Spain_t(2,1, yseries)
+    ax3 = gw_elec_Colorado_t(2,1, yseries)
+    ax4 = gw_elec_California_t(2,1, yseries)
+ 
+    ax1.figure = fig2
+    ax2.figure = fig2
+    ax3.figure = fig2
+    ax4.figure = fig2
+
+    fig2.axes.append(ax1)
+    fig2.add_axes(ax1)
+    fig2.axes.append(ax2)
+    fig2.add_axes(ax2)
+    fig2.axes.append(ax3)
+    fig2.add_axes(ax3)
+    fig2.axes.append(ax4)
+    fig2.add_axes(ax4)
+
+    dummy = fig2.add_subplot(221)
+    ax1.set_position(dummy.get_position())
+    dummy.remove()
+    axpos1 = ax1.get_position()
+
+    ax1.set_position([axpos1.x0, axpos1.y0+0.04, axpos1.width, axpos1.height])
+
+    for ax in plt.gcf().get_axes():
+        ax.set_xlim(-10, 30)
+        ax.set_ylim(0.5, 4)
+
+    
+
+    dummy = fig2.add_subplot(222)
+    ax2.set_position(dummy.get_position())
+    dummy.remove()
+    axpos2 = ax2.get_position()
+    ax2.set_position([axpos2.x0+0.05, axpos2.y0+0.04, axpos2.width, axpos2.height])
+
+    dummy = fig2.add_subplot(223)
+    ax3.set_position(dummy.get_position())
+    dummy.remove()
+    axpos3 = ax3.get_position()
+    ax3.set_position([axpos3.x0, axpos3.y0+0.01, axpos3.width, axpos3.height])
+
+    dummy = fig2.add_subplot(224)
+    ax4.set_position(dummy.get_position())
+    dummy.remove()
+    axpos4 = ax4.get_position()
+    ax4.set_position([axpos4.x0+0.05, axpos4.y0+0.01, axpos4.width, axpos4.height])
+
+    #fig2.set_size_inches(9, 7) #For some reason this is best for the pdf
+    fig2.patch.set_facecolor("white")
+    #fig2.suptitle("Increase of 4 degrees")
+
+    lines1, labels1 = ax1.get_legend_handles_labels()
+
+    fig2.legend(lines1, labels1, bbox_to_anchor=(0.78, 0.075), ncol=2)
+
+    fig2.text(0.96, 0.08, "˚C")
+    #fig2.text(0.93, 0.53, "˚C", fontsize = 12)
+    fig2.suptitle(r"$\bf{Electricity\:Demand\:Sensitivity\:To\:Temperature$", fontsize = 16)
+
+    #plt.tight_layout()
+    #fig2.savefig("Images/Paper/elecdem_temp_all.pdf")
+    
+    
+    plt.show()
+
+#gw_elec_all("elec")
 
 
