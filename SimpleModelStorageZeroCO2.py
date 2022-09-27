@@ -196,7 +196,7 @@ def add_generators(networks, CF_wind, cap_cost_wind, CF_solar, cap_cost_solar
                    carrier = "onshorewind",
                    capital_cost = cap_cost_wind,
                    marginal_cost = 0,
-                 p_max_pu = CF_wind[networks.index(n)])
+                 p_max_pu = CF_wind[networks.index(n)]) #This is the timeseries.
         
         n.add("Generator",
                    "solar",
