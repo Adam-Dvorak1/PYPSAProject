@@ -12,6 +12,7 @@ import matplotlib.gridspec as gridspec
 import pathlib
 import matplotlib
 import csv
+import glob
 
 #network = Denmark, nspain, ncal, ncolorado
 Denmark = pypsa.Network()
@@ -417,14 +418,14 @@ def find_C02lim_data(n, name, co2lim):
 
 
 
-# make_dir("batterycostLOGJan31")
+# make_dir("solarcost_elec_27_Sept")
 
-# DNK_solar_data = list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 100), repeat("dirname here")))
-# ESP_solar_data = list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(4, 6.31, 100), repeat("dirname here")))
-# CA_solar_data = list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(4, 6.31, 100), repeat("dirname here")))
-# CO_solar_data = list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(4, 6.31, 100), repeat("dirname here")))
+# DNK_solar_data = list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 100), repeat("solarcost_elec_27_Sept")))
+# ESP_solar_data = list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(4, 6.31, 100), repeat("solarcost_elec_27_Sept")))
+# CA_solar_data = list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(4, 6.31, 100), repeat("solarcost_elec_27_Sept")))
+# CO_solar_data = list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(4, 6.31, 100), repeat("solarcost_elec_27_Sept")))
 
-#find_wind_data()
+# #find_wind_data()
 # for network in mynetworks:
 #     reset_stats(network)
 
@@ -531,7 +532,8 @@ def netcdf_to_csv(country, dataset):
 
 def netcdf_csv_all():
     countries = ["Denmark", "Spain", "CA", "CO"]
-    datasets = ["battcostLOGFeb24_2deg_2sl", "windcostLOGFeb24_2deg_2sl", "solarcostLOGFeb24_2deg_2sl", "battcostLOGFeb8", "windcostLOGFeb7", "solarcostLOGFeb7"]
+    # datasets = ["battcostLOGFeb24_2deg_2sl", "windcostLOGFeb24_2deg_2sl", "solarcostLOGFeb24_2deg_2sl", "battcostLOGFeb8", "windcostLOGFeb7", "solarcostLOGFeb7"]
+    datasets = ["solarcost_w_heat_27_Sept"]
     for country, data in [(country, data) for country in countries for data in datasets]:
         netcdf_to_csv(country, data)
 #netcdf_csv_all()
@@ -555,6 +557,16 @@ def iterate_netcdf_co2(country):
 
 
 
+def make_new_run(filename, runtype):
+    '''The purpose of this function is to only have one runname. Then, it runs the program and performs the following functions
+    
+    The runtype can be either "solar", "wind", or "batt"
+    '''
+    if runtype == "solar":
+        list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 100), repeat(filename)))
+        list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(4, 6.31, 100), repeat("solarcost_elec_27_Sept")))
+        list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(4, 6.31, 100), repeat("solarcost_elec_27_Sept")))
+        list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(4, 6.31, 100), repeat("solarcost_elec_27_Sept")))
 
 
 
@@ -1609,43 +1621,43 @@ def increase_temp(degree_change, slope_factor):
 #df_elec, df_co_elec, df_cal_elec = increase_temp (2, 2)
 
 
-Denmark.remove("Load", "load")
-Denmark.add("Load",
-            "load", 
-            bus="electricity bus", 
-            p_set=df_elec['DNKcombine'])
-Spain.remove("Load", "load")
-Spain.add("Load",
-            "load", 
-            bus="electricity bus", 
-            p_set=df_elec['ESPcombine'])
-CA.remove("Load", "load")
-CA.add("Load",
-            "load", 
-            bus="electricity bus", 
-            p_set=df_cal_elec["adjust_elec_demand"])
-CO.remove("Load", "load")
-CO.add("Load",
-            "load", 
-            bus="electricity bus", 
-            p_set=df_co_elec["adjust_elec_demand"])
+# Denmark.remove("Load", "load")
+# Denmark.add("Load",
+#             "load", 
+#             bus="electricity bus", 
+#             p_set=df_elec['DNKcombine'])
+# Spain.remove("Load", "load")
+# Spain.add("Load",
+#             "load", 
+#             bus="electricity bus", 
+#             p_set=df_elec['ESPcombine'])
+# CA.remove("Load", "load")
+# CA.add("Load",
+#             "load", 
+#             bus="electricity bus", 
+#             p_set=df_cal_elec["adjust_elec_demand"])
+# CO.remove("Load", "load")
+# CO.add("Load",
+#             "load", 
+#             bus="electricity bus", 
+#             p_set=df_co_elec["adjust_elec_demand"])
 
 #On the solarcost
-# make_dir("solarcostLOGFeb24_2deg_2sl")
-for network in mynetworks:
-    reset_stats(network)
+make_dir("solarcost_w_heat_27_Sept")
+# for network in mynetworks:
+#     reset_stats(network)
 
-# list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb24_2deg_2sl")))
-# list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb24_2deg_2sl")))
+# list(map(find_solar_data, repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 100), repeat("solarcost_w_heat_27_Sept")))
+# list(map(find_solar_data, repeat(Spain), repeat("Spain"), np.logspace(4, 6.31, 100), repeat("solarcost_w_heat_27_Sept")))
 
-# list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb24_2deg_2sl")))
-# list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(4, 6.31, 100), repeat("solarcostLOGFeb24_2deg_2sl")))
+# list(map(find_solar_data, repeat(CA), repeat("CA"), np.logspace(4, 6.31, 100), repeat("solarcost_w_heat_27_Sept")))
+# list(map(find_solar_data, repeat(CO), repeat("CO"), np.logspace(4, 6.31, 100), repeat("solarcost_w_heat_27_Sept")))
 
 # make_dir("windcostLOGFeb24_2deg_2sl")
 
 
-for network in mynetworks:
-    reset_stats(network)
+# for network in mynetworks:
+#     reset_stats(network)
 
 # list(map(find_wind_data, repeat(Denmark), repeat("Denmark"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb24_2deg_2sl")))
 # list(map(find_wind_data, repeat(Spain), repeat("Spain"), np.logspace(5, 6.5, 100), repeat("windcostLOGFeb24_2deg_2sl")))
@@ -1656,8 +1668,8 @@ for network in mynetworks:
 #11 Feb--we want to 
 
 
-for network in mynetworks:
-    reset_stats(network)
+# for network in mynetworks:
+#     reset_stats(network)
 
 # make_dir("battcostLOGFeb24_2deg_2sl")
 # list(map(find_batt_data, repeat(Denmark), repeat("Denmark"), np.logspace(4.5, 6, 100), repeat("battcostLOGFeb24_2deg_2sl")))
@@ -1674,48 +1686,49 @@ for network in mynetworks:
 
 
 
-#These are with heat but no increase in ac 
-solardnk2 = pd.read_csv("results/csvs/Denmark/solarcostLOGFeb7.csv")
-solaresp2 = pd.read_csv("results/csvs/Spain/solarcostLOGFeb7.csv")
-solarcol2 = pd.read_csv("results/csvs/CO/solarcostLOGFeb7.csv")
-solarcal2 = pd.read_csv("results/csvs/CA/solarcostLOGFeb7.csv")
+#These are without heat and no increase in ac--september 27
+# solardnk2 = pd.read_csv("results/csvs/Denmark/solarcost_elec_27_Sept")
+# solaresp2 = pd.read_csv("results/csvs/Spain/solarcost_elec_27_Sept")
+# solarcol2 = pd.read_csv("results/csvs/CO/solarcost_elec_27_Sept")
+# solarcal2 = pd.read_csv("results/csvs/CA/solarcost_elec_27_Sept")
 
 
-winddnk2 = pd.read_csv("results/csvs/Denmark/windcostLOGFeb7.csv")
-windesp2 = pd.read_csv("results/csvs/Spain/windcostLOGFeb7.csv")
-windcol2 = pd.read_csv("results/csvs/CO/windcostLOGFeb7.csv")
-windcal2 = pd.read_csv("results/csvs/CA/windcostLOGFeb7.csv")
+# winddnk2 = pd.read_csv("results/csvs/Denmark/windcostLOGFeb7.csv")
+# windesp2 = pd.read_csv("results/csvs/Spain/windcostLOGFeb7.csv")
+# windcol2 = pd.read_csv("results/csvs/CO/windcostLOGFeb7.csv")
+# windcal2 = pd.read_csv("results/csvs/CA/windcostLOGFeb7.csv")
 
 
-battdnk2 = pd.read_csv("results/csvs/Denmark/battcostLOGFeb8.csv")
-battesp2 = pd.read_csv("results/csvs/Spain/battcostLOGFeb8.csv")
-battcol2 = pd.read_csv("results/csvs/CO/battcostLOGFeb8.csv")
-battcal2 = pd.read_csv("results/csvs/CA/battcostLOGFeb8.csv")
+# battdnk2 = pd.read_csv("results/csvs/Denmark/battcostLOGFeb8.csv")
+# battesp2 = pd.read_csv("results/csvs/Spain/battcostLOGFeb8.csv")
+# battcol2 = pd.read_csv("results/csvs/CO/battcostLOGFeb8.csv")
+# battcal2 = pd.read_csv("results/csvs/CA/battcostLOGFeb8.csv")
 
 
 
-#2deg 2slope
-solardnk = pd.read_csv("results/csvs/Denmark/solarcostLOGFeb24_2deg_2sl.csv")
-solaresp = pd.read_csv("results/csvs/Spain/solarcostLOGFeb24_2deg_2sl.csv")
-solarcol = pd.read_csv("results/csvs/CO/solarcostLOGFeb24_2deg_2sl.csv")
-solarcal = pd.read_csv("results/csvs/CA/solarcostLOGFeb24_2deg_2sl.csv")
+# This solardnk is with heat and no increase in ac--september 27
+# solardnk = pd.read_csv("results/csvs/Denmark/solarcost_w_heat_27_Sept")
+# solaresp = pd.read_csv("results/csvs/Spain/solarcost_w_heat_27_Sept")
+# solarcol = pd.read_csv("results/csvs/CO/solarcost_w_heat_27_Sept")
+# solarcal = pd.read_csv("results/csvs/CA/solarcost_w_heat_27_Sept")
 
 
-winddnk = pd.read_csv("results/csvs/Denmark/windcostLOGFeb24_2deg_2sl.csv")
-windesp = pd.read_csv("results/csvs/Spain/windcostLOGFeb24_2deg_2sl.csv")
-windcol = pd.read_csv("results/csvs/CO/windcostLOGFeb24_2deg_2sl.csv")
-windcal = pd.read_csv("results/csvs/CA/windcostLOGFeb24_2deg_2sl.csv")
+# winddnk = pd.read_csv("results/csvs/Denmark/windcostLOGFeb24_2deg_2sl.csv")
+# windesp = pd.read_csv("results/csvs/Spain/windcostLOGFeb24_2deg_2sl.csv")
+# windcol = pd.read_csv("results/csvs/CO/windcostLOGFeb24_2deg_2sl.csv")
+# windcal = pd.read_csv("results/csvs/CA/windcostLOGFeb24_2deg_2sl.csv")
 
 
-battdnk = pd.read_csv("results/csvs/Denmark/battcostLOGFeb24_2deg_2sl.csv")
-battesp = pd.read_csv("results/csvs/Spain/battcostLOGFeb24_2deg_2sl.csv")
-battcol = pd.read_csv("results/csvs/CO/battcostLOGFeb24_2deg_2sl.csv")
-battcal = pd.read_csv("results/csvs/CA/battcostLOGFeb24_2deg_2sl.csv")
+# battdnk = pd.read_csv("results/csvs/Denmark/battcostLOGFeb24_2deg_2sl.csv")
+# battesp = pd.read_csv("results/csvs/Spain/battcostLOGFeb24_2deg_2sl.csv")
+# battcol = pd.read_csv("results/csvs/CO/battcostLOGFeb24_2deg_2sl.csv")
+# battcal = pd.read_csv("results/csvs/CA/battcostLOGFeb24_2deg_2sl.csv")
+
 
 def mod_csvs():
     '''The purpose of this function is to turn the columns of the csvs into only having float values.
     Before we had a problem where we would also get values that are not floats, in square brackets'''
-    for file in glob.glob('results3/csvs/**/*'):
+    for file in glob.glob('results/csvs/**/*'):
         path = file
         df = pd.read_csv(path)
         for column in df:
@@ -1730,6 +1743,8 @@ def mod_csvs():
         df.to_csv(path)
             
 #mod_csvs()
+
+
 
 
 def pen_plus_solar_curtailoverlap():
@@ -2007,23 +2022,23 @@ def pen_plus_solar_curtailoverlap_t():
 
     plt.rcdefaults()
     plt.rcParams.update({'font.size': 14})
-    solardnk = pd.read_csv("results/csvs/Denmark/solarcostLOGFeb24_2deg_2sl.csv")
-    solaresp = pd.read_csv("results/csvs/Spain/solarcostLOGFeb24_2deg_2sl.csv")
-    solarcol = pd.read_csv("results/csvs/CO/solarcostLOGFeb24_2deg_2sl.csv")
-    solarcal = pd.read_csv("results/csvs/CA/solarcostLOGFeb24_2deg_2sl.csv")
+    solardnk = pd.read_csv("results/csvs/Denmark/solarcost_w_heat_27_Sept.csv")
+    solaresp = pd.read_csv("results/csvs/Spain/solarcost_w_heat_27_Sept.csv")
+    solarcol = pd.read_csv("results/csvs/CO/solarcost_w_heat_27_Sept.csv")
+    solarcal = pd.read_csv("results/csvs/CA/solarcost_w_heat_27_Sept.csv")
 
-    solardnk2 = pd.read_csv("results/csvs/Denmark/solarcostLOGFeb7.csv")
-    solaresp2 = pd.read_csv("results/csvs/Spain/solarcostLOGFeb7.csv")
-    solarcol2 = pd.read_csv("results/csvs/CO/solarcostLOGFeb7.csv")
-    solarcal2 = pd.read_csv("results/csvs/CA/solarcostLOGFeb7.csv")
+    solardnk2 = pd.read_csv("results/csvs/Denmark/solarcost_elec_27_Sept.csv")
+    solaresp2 = pd.read_csv("results/csvs/Spain/solarcost_elec_27_Sept.csv")
+    solarcol2 = pd.read_csv("results/csvs/CO/solarcost_elec_27_Sept.csv")
+    solarcal2 = pd.read_csv("results/csvs/CA/solarcost_elec_27_Sept.csv")
 
     #plt.rcParams.update({'font.size': 14})
     fig = plt.figure(figsize=(10, 8))
     outer = gridspec.GridSpec(2, 2, wspace=0.2, hspace=0.2)
-    inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.1, hspace=0, height_ratios = [1, 2])
-    inner_esp = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[1], wspace=0.1, hspace=0, height_ratios = [1, 2])
-    inner_col = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[2], wspace=0.1, hspace=0, height_ratios = [1, 2])
-    inner_cal = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[3], wspace=0.1, hspace=0, height_ratios = [1, 2])
+    inner_dnk = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0], wspace=0.05, hspace=0, height_ratios = [1, 2])#reduce wspace?
+    inner_esp = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[1], wspace=0.05, hspace=0, height_ratios = [1, 2])
+    inner_col = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[2], wspace=0.05, hspace=0, height_ratios = [1, 2])
+    inner_cal = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[3], wspace=0.05, hspace=0, height_ratios = [1, 2])
 
     axden0 = plt.Subplot(fig, inner_dnk[0])
     axden1 = plt.Subplot(fig, inner_dnk[1])
@@ -2090,7 +2105,7 @@ def pen_plus_solar_curtailoverlap_t():
     axden1.set_ylim(0, 1)
     axden0.set_ylim(0, 1)
 
-    axden1.set_ylabel("Penetration")
+    axden1.set_ylabel("Solar\nShare")
     #axden1.set_xlabel("Percent flexible source")
 
     axden1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
@@ -2189,7 +2204,7 @@ def pen_plus_solar_curtailoverlap_t():
     axcol1.set_ylim(0, 1)
     axcol0.set_ylim(0, 1)
 
-    axcol1.set_ylabel("Penetration")
+    axcol1.set_ylabel("Solar\nShare")
     #axcol1.set_xlabel(r"$\bf{Cost\;of\;solar\;(€/MW)}$", x = 1.1, y = 0.1, fontsize = 14)
 
     axcol1.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
@@ -2255,6 +2270,10 @@ def pen_plus_solar_curtailoverlap_t():
     axcal1.axvline(1.3, color='black',ls='--')
     #axcal1.text(0.85,0.05,  "Today's range", fontsize = 12, horizontalalignment = "center", rotation = "vertical")
  
+
+    axcal1.set_xlabel("Cost Solar PV (€/Wp)")
+    axcol1.set_xlabel("Cost Solar PV (€/Wp)")
+
     for ax in plt.gcf().get_axes():
         ax.minorticks_on()
       
@@ -2279,14 +2298,14 @@ def pen_plus_solar_curtailoverlap_t():
     lines1, labels1 = axden1.get_legend_handles_labels()
 
     fig.legend(lines1, labels1, bbox_to_anchor=(0.85, 1.015), ncol=4)
-    fig.text(0.88, 0.08, "€/Wp")
+    #fig.text(0.88, 0.08, "€/Wp")
     #fig.suptitle(r"$\bf{Sensitivity\;to\;Cost\;of\;Solar\;(€/W)}$", fontsize = 24)
     #fig.supxlabel(r"$\bf{Cost(€/MW)}$", fontsize = 20)
     
-    plt.savefig("Images/solar_compare_gw_var2.pdf")
+    plt.savefig("Images/solar_compare_wHeat_and_eleconly_sept27data.pdf")
     plt.show()
 
-pen_plus_solar_curtailoverlap_t()
+#pen_plus_solar_curtailoverlap_t()
 
 
 def pen_plus_wind_curtailoverlap_t():
@@ -2546,8 +2565,8 @@ def pen_plus_wind_curtailoverlap_t():
     #plt.savefig("Images/Paper/Figure_wind_cost_paper.pdf")
     plt.savefig("Images/Paper/Figure_wind_cost_paper.png", dpi = 600)
     plt.show()
-   
-pen_plus_wind_curtailoverlap_t()
+
+# pen_plus_wind_curtailoverlap_t()
 
 
 def pen_plus_batt_curtailoverlap():
@@ -2790,7 +2809,7 @@ def pen_plus_batt_curtailoverlap():
 
     plt.savefig("Images/Paper/Figure_batt_compare_gw_var2.png", dpi = 600)
     plt.show()
-pen_plus_batt_curtailoverlap()
+# pen_plus_batt_curtailoverlap()
 
 
 def pen_plus_curtail_overlap_select(choice):
