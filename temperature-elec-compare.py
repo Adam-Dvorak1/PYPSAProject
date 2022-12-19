@@ -601,6 +601,7 @@ def elec_vs_temp_California():
 '''This section of equations considers what happens if you take advantage of the relationship between electricity demand and temperature
 to see what happens if you are to increase the temperature by x degrees. In addition, one can '''
 
+#%%
 def plot_ED_and_CF_data_all():
     '''This function plots the electricity demand for one country on one axis and the capacity factors on other axes (sharing a y axis).
     Modify it to change which country (make sure CA and CO use "Time in 2011")
@@ -644,11 +645,11 @@ def plot_ED_and_CF_data_all():
     # windCo = get_wind_data("weekly")[2]
     # windCo = windCo/windCo.mean()
 
-    elecCo = USdf["COdem"]
+    elecCo = USdf["COdem"].copy()
     elecCo = elecCo/elecCo.mean()
-    solarCo = USdf["COsol"]
+    solarCo = USdf["COsol"].copy()
     solarCo = solarCo/solarCo.mean()
-    windCo = USdf['COwind']
+    windCo = USdf['COwind'].copy()
     windCo = windCo/windCo.mean()
 
 
@@ -789,18 +790,10 @@ def plot_ED_and_CF_data_all():
     #plt.savefig("images/EDandCFALL_postervar")
     plt.show()
 
-#plot_ED_and_CF_data_all()
-
-#plot_ED_and_CF_data()
-
-
-degrees = [2, 4, 6]
-slopes = [1, 2, 3]
-
-
-degrees2 = [0]
-degrees3 = [8]
 
 
 
 
+# %%
+plot_ED_and_CF_data_all()
+# %%
