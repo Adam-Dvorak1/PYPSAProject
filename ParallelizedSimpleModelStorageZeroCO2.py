@@ -23,6 +23,12 @@ __spec__ = "ModuleSpec(name='builtins', loader=<class'_frozen_importlib.BuiltinI
 
 
 
+def make_a_list(network, country, costrange, folder):
+    mylist = []
+    for number in costrange:
+        atuple = (network, country, number, folder)
+        mylist.append(atuple)
+    return mylist
 
 def set_hours(mynetworks):
     hours_in_2015 = pd.date_range('2015-01-01T00:00Z','2015-12-31T23:00Z', freq='H') #for network, nspain
@@ -162,7 +168,7 @@ def reset_stats(n):
     n.generators.loc[['OCGT'], ['capital_cost']] = annuity(25,0.07)*453000*(1+0.018)
     n.stores.loc[['battery'], ['capital_cost']] =  annuity(20, 0.07) * 232000
 
-def find_solar_data(*args):
+def find_solar_data_BAD(*args):
     print(args)
     #Takes annualized coefficient and multiplies by investment cost
     n = args[0]
@@ -183,7 +189,23 @@ def find_solar_data(*args):
 
     n.export_to_netcdf("NetCDF/"+ name + f"/{dirname}/{solar_cost}solar_cost.nc")
     
+def find_solar_data(n, name, solar_cost, dirname):
+    #Takes annualized coefficient and multiplies by investment cost
+  
+    annualized_solar_cost =  0.07846970300338728* solar_cost
+    n.generators.loc[['solar'],['capital_cost']] = annualized_solar_cost
     
+    #this substitutes the current solar cost in our generator for a new cost
+
+    
+    n.lopf(n.snapshots, 
+             pyomo=False,
+             solver_name='gurobi')
+
+
+    n.export_to_netcdf("NetCDF/"+ name + f"/{dirname}/{solar_cost}solar_cost.nc")
+
+
 def make_dir(foldername):
     dir = pathlib.Path().resolve() #This is the current path
     mypath = str(dir) + "/NetCDF" #Going into the NetCDF folder
@@ -1371,7 +1393,7 @@ def increase_temp(degree_change, slope_factor):
 
 
 
-##--##
+
 
 def mod_csvs():
     '''The purpose of this function is to turn the columns of the csvs into only having float values.
@@ -1474,6 +1496,8 @@ if __name__ == "__main__":
     add_carriers(mynetworks)
 
 
+
+
     # 1A add onshore wind data for DNK and ESP
     df_onshorewind = pd.read_csv('data_extra/onshore_wind_1979-2017.csv', sep=';', index_col=0)
     df_onshorewind.index = pd.to_datetime(df_onshorewind.index)
@@ -1563,8 +1587,11 @@ if __name__ == "__main__":
     #make_dir("This_is_a_test")
     #find_solar_data(Denmark, "Denmark", 100000, "This_is_a_test")
 
+    f = make_a_list(CA, "CA", np.logspace(4, 5, 4), "This_is_a_test")
+    g = make_a_list(Denmark, "Denmark", np.logspace(4, 5, 4), "This_is_a_test")
     with Pool(processes=4) as pool:
-        pool.map(find_solar_data, [repeat(Denmark), repeat("Denmark"), np.logspace(4, 6.31, 4), repeat("This_is_a_test")]) 
+        pool.starmap(find_solar_data, f)
+        pool.starmap(find_solar_data, g)  
 
 
 
@@ -1623,7 +1650,8 @@ if __name__ == "__main__":
                 p_set=df_co_elec["adjust_elec_demand"])
 
 
-
+    # f2 = make_a_list(CO, "CO", np.logspace(4, 5, 4), "helloworld")
+    # print (CO.loads_t)
     ##------------------------<<<Mod electricity loads with increased cooling/global warming demand>>>---------------
     '''I wonder if what I was doing before was comparing the electricity demand with the cooling/global warming,
     or the elec with heating with the cooling/global warming'''

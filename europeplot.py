@@ -84,18 +84,18 @@ cdict = {'Bosnia_Herzegovina':'Bosnia and Herzegovina',
          'United_Kingdom':'United Kingdom',
          'Macedonia':'North Macedonia'}
 
-import_relative = pd.read_csv('../data/Import_percentages.csv',index_col=0)
+# import_relative = pd.read_csv('../data/Import_percentages.csv',index_col=0)
 
-import_relative = import_relative.T
-import_relative['Other'] = import_relative['Not specified'] + import_relative['Other Europe'] + import_relative['Other non-Europe']
-import_relative.drop(columns=['Not specified','Other Europe','Other non-Europe'],inplace=True)
-import_relative = import_relative.T
+# import_relative = import_relative.T
+# import_relative['Other'] = import_relative['Not specified'] + import_relative['Other Europe'] + import_relative['Other non-Europe']
+# import_relative.drop(columns=['Not specified','Other Europe','Other non-Europe'],inplace=True)
+# import_relative = import_relative.T
 
-cons_by_sector = pd.read_csv('../data/gas_cons_by_sector.csv',index_col=0)
-cons_by_sector = cons_by_sector.T
-cons_by_sector['Other'] = cons_by_sector['Transport'] + cons_by_sector['District heating plants']
-cons_by_sector.drop(columns=['Transport','District heating plants'],inplace=True)
-cons_by_sector = cons_by_sector.T
+# cons_by_sector = pd.read_csv('../data/gas_cons_by_sector.csv',index_col=0)
+# cons_by_sector = cons_by_sector.T
+# cons_by_sector['Other'] = cons_by_sector['Transport'] + cons_by_sector['District heating plants']
+# cons_by_sector.drop(columns=['Transport','District heating plants'],inplace=True)
+# cons_by_sector = cons_by_sector.T
 
 country_coord = pd.read_csv('Countries_lat_lon.csv',
                             sep=';',header=None) # Country center coordinates
@@ -116,18 +116,18 @@ country_coord.loc['Serbia'] = ['RS',43.5,21]
 country_coord.loc['Greece'] = ['GR',39.0742,22.5]
 country_coord.loc['Croatia'] = ['HR',45.1,16.4]
 
-gas_df = pd.read_csv('../data/gas_consumption.csv',sep=';',index_col=0)
-gas_df['gas_consumption_2019_TWh'] = gas_df['gas_consumption_2019_ktoe']*0.01163 # Convert from ktoe to TWh
-gas_df['gas_imports_2019_TWh'] = gas_df['gas_imports_2019_mcm']/1000*9.7769444 # Convert from mcm to TWh
-gas_df['gas_inland demand_2019_TWh'] = gas_df['gas_Inland_demand_2019_TJ']*0.000277777778 # Convert from TJ to TWh
+# gas_df = pd.read_csv('../data/gas_consumption.csv',sep=';',index_col=0)
+# gas_df['gas_consumption_2019_TWh'] = gas_df['gas_consumption_2019_ktoe']*0.01163 # Convert from ktoe to TWh
+# gas_df['gas_imports_2019_TWh'] = gas_df['gas_imports_2019_mcm']/1000*9.7769444 # Convert from mcm to TWh
+# gas_df['gas_inland demand_2019_TWh'] = gas_df['gas_Inland_demand_2019_TJ']*0.000277777778 # Convert from TJ to TWh
 
 # max_val = gas_df['gas_consumption_2019_TWh'].max()
 # max_val = gas_df['gas_imports_2019_TWh'].max()
-max_val = gas_df['gas_' + case + '_2019_TWh'].max()
+# max_val = gas_df['gas_' + case + '_2019_TWh'].max()
 
-max_val_idx = gas_df['gas_' + case + '_2019_TWh'].idxmax()
+# max_val_idx = gas_df['gas_' + case + '_2019_TWh'].idxmax()
 
-norm=plt.Normalize(-10,gas_df.max().perc_of_pe)
+# norm=plt.Normalize(-10,gas_df.max().perc_of_pe)
 cmap = cm.get_cmap('Blues', 12)
 fig, ax = plt.subplots(1,1,figsize=(10,20)) # Initialise figure
 m_plot = Basemap(width=11500000/2.9,height=9000000/2.2,projection='laea',
@@ -135,50 +135,50 @@ m_plot = Basemap(width=11500000/2.9,height=9000000/2.2,projection='laea',
 for c in Europe_ia3.keys():
     if c == 'Bosnia_Herzegovina' or c == 'United_Kingdom':
         CC_plot = country_coord.loc[cdict[c]]
-        gas_abs = gas_df.loc[cdict[c]].T['gas_' + case + '_2019_TWh']
-        gas_rel = gas_df.loc[cdict[c]].perc_of_pe
+        # gas_abs = gas_df.loc[cdict[c]].T['gas_' + case + '_2019_TWh']
+        # gas_rel = gas_df.loc[cdict[c]].perc_of_pe
     elif c == 'Czech_Republic':
         CC_plot = country_coord.loc['Czech Republic']
-        gas_abs = gas_df.loc[cdict[c]].T['gas_' + case + '_2019_TWh']
-        gas_rel = gas_df.loc[cdict[c]].perc_of_pe
+        # gas_abs = gas_df.loc[cdict[c]].T['gas_' + case + '_2019_TWh']
+        # gas_rel = gas_df.loc[cdict[c]].perc_of_pe
     elif c == 'Macedonia':
         CC_plot = country_coord.loc['Macedonia [FYROM]']
-        gas_abs = gas_df.loc[cdict[c]].T['gas_' + case + '_2019_TWh']
-        gas_rel = gas_df.loc[cdict[c]].perc_of_pe
+        # gas_abs = gas_df.loc[cdict[c]].T['gas_' + case + '_2019_TWh']
+        # gas_rel = gas_df.loc[cdict[c]].perc_of_pe
     elif c == 'Switzerland':
         CC_plot = country_coord.loc[c]
-        gas_abs = gas_df.loc[c].gas_consumption_2019_TWh # only have one source on Switzerland
-        gas_rel = gas_df.loc[c].perc_of_pe
+        # gas_abs = gas_df.loc[c].gas_consumption_2019_TWh # only have one source on Switzerland
+        # gas_rel = gas_df.loc[c].perc_of_pe
     else:
         CC_plot = country_coord.loc[c]
-        gas_abs = gas_df.loc[c].T['gas_' + case + '_2019_TWh']
-        gas_rel = gas_df.loc[c].perc_of_pe
+        # gas_abs = gas_df.loc[c].T['gas_' + case + '_2019_TWh']
+        # gas_rel = gas_df.loc[c].perc_of_pe
     
     #Shape files: https://www.gadm.org/download_country_v3.html
-    m_plot.readshapefile('shapefiles/gadm36_' + Europe_ia3[c] + '_0',c,drawbounds=True,linewidth = 0,color='k')
+    m_plot.readshapefile('shapefiles/gadm36_' + Europe_ia3[c] + '_0',c,drawbounds=True,linewidth = 1,color='k')
     patches = []
-    value = gas_rel
+    # value = gas_rel
     for info, shape in zip(eval('m_plot.' + c + '_info'), eval('m_plot.' + c)):
         patches.append(Polygon(np.array(shape), True))
-    patch1=ax.add_collection(PatchCollection(patches, facecolor= cmap(norm(value))))
+    patch1=ax.add_collection(PatchCollection(patches, facecolor= cmap(1)))
     
     # ax.annotate(CC_plot.Code,xy=m_plot(np.array(CC_plot.Lon.item()-1), np.array(CC_plot.Lat.item())),color='k', zorder=13)
-    x,y=m_plot(np.array(CC_plot.Lon.item()-1), np.array(CC_plot.Lat.item()))
-    m_plot.plot(x,y,"o",markersize=gas_abs/max_val*30,color='magenta',zorder=100)
+    # x,y=m_plot(np.array(CC_plot.Lon.item()-1), np.array(CC_plot.Lat.item()))
+    # m_plot.plot(x,y,"o",markersize=gas_abs/max_val*30,color='magenta',zorder=100)
 
 xlim = ax.get_xlim()[1] - ax.get_xlim()[0]
 ylim = ax.get_ylim()[1] - ax.get_ylim()[0]
 
 
 # ax.text(0.02*xlim,0.95*ylim,'2019 EU-28+NO+CH gas ' + case,fontsize=fs,fontweight='bold')
-ax.text(0.02*xlim,0.95*ylim,'2019 gas demand',fontsize=fs,fontweight='bold')
-ax.plot(0.05*xlim,0.9*ylim,'o',markersize=900/max_val*30,color='magenta')
-# ax.text(0.1*xlim,0.9*ylim,str(round(max_val)) + ' TWh',fontsize=fs)
-ax.text(0.1*xlim,0.9*ylim,'900 TWh',fontsize=fs)
+# ax.text(0.02*xlim,0.95*ylim,'2019 gas demand',fontsize=fs,fontweight='bold')
+# ax.plot(0.05*xlim,0.9*ylim,'o',markersize=900/max_val*30,color='magenta')
+# # ax.text(0.1*xlim,0.9*ylim,str(round(max_val)) + ' TWh',fontsize=fs)
+# ax.text(0.1*xlim,0.9*ylim,'900 TWh',fontsize=fs)
 
-ax.plot(0.05*xlim,0.85*ylim,'o',markersize=900/max_val*15,color='magenta')
-# ax.text(0.1*xlim,0.84*ylim,str(round(0.5*max_val)) + ' TWh',fontsize=fs)
-ax.text(0.1*xlim,0.84*ylim,'450 TWh',fontsize=fs)
+# ax.plot(0.05*xlim,0.85*ylim,'o',markersize=900/max_val*15,color='magenta')
+# # ax.text(0.1*xlim,0.84*ylim,str(round(0.5*max_val)) + ' TWh',fontsize=fs)
+# ax.text(0.1*xlim,0.84*ylim,'450 TWh',fontsize=fs)
 
 # max_width = 0.05
 # x = 0.8*xlim
@@ -191,26 +191,26 @@ ax.text(0.1*xlim,0.84*ylim,'450 TWh',fontsize=fs)
 # ax.text(0.88*xlim,0.9*ylim,'40 %',fontsize=fs)
 # ax.text(0.88*xlim,0.835*ylim,'20 %',fontsize=fs)
 
-cb_ax = fig.add_axes([0.85,0.295,0.02,0.21])
-norm = mpl.colors.Normalize(vmin=-10, vmax=gas_df['perc_of_pe'].max())    
-cb1 = mpl.colorbar.ColorbarBase(cb_ax,orientation='vertical', cmap=cmap,norm=norm,boundaries=np.arange(0,gas_df.max().perc_of_pe)) #,ticks=bounds, boundaries=bounds) #ticks=[0.15,0.25,0.48,0.90])
-cb1.set_label('Gas % of total energy demand',zorder=10,fontsize=fs)
-cb1.ax.tick_params(labelsize=fs)
+# cb_ax = fig.add_axes([0.85,0.295,0.02,0.21])
+# norm = mpl.colors.Normalize(vmin=-10, vmax=gas_df['perc_of_pe'].max())    
+# cb1 = mpl.colorbar.ColorbarBase(cb_ax,orientation='vertical', cmap=cmap,norm=norm,boundaries=np.arange(0,gas_df.max().perc_of_pe)) #,ticks=bounds, boundaries=bounds) #ticks=[0.15,0.25,0.48,0.90])
+# cb1.set_label('Gas % of total energy demand',zorder=10,fontsize=fs)
+# cb1.ax.tick_params(labelsize=fs)
 
-#%% Pie chart - import
-pc_imp_ax = fig.add_axes([1.25,0.49,0.35,0.2])
-pc_imp_ax.pie(import_relative['imp'].values,labels=import_relative.index,colors=colpal1[0:len(import_relative['imp'].values)],startangle = 90,textprops={'fontsize': 19})
+# #%% Pie chart - import
+# pc_imp_ax = fig.add_axes([1.25,0.49,0.35,0.2])
+# pc_imp_ax.pie(import_relative['imp'].values,labels=import_relative.index,colors=colpal1[0:len(import_relative['imp'].values)],startangle = 90,textprops={'fontsize': 19})
 
-pc_imp_ax.set_title('Gas origin (2019)',fontsize=fs,fontweight='bold')
+# pc_imp_ax.set_title('Gas origin (2019)',fontsize=fs,fontweight='bold')
 
-#%% Pie chart - consumption by sectors
-pc_sec_ax = fig.add_axes([1.25,0.29,0.35,0.2])
-pc_sec_ax.pie(cons_by_sector['consumption [TWh]'].values,labels=cons_by_sector.index,colors=colpal2[0:len(import_relative['imp'].values)],startangle = 90,textprops={'fontsize': 19})
+# #%% Pie chart - consumption by sectors
+# pc_sec_ax = fig.add_axes([1.25,0.29,0.35,0.2])
+# pc_sec_ax.pie(cons_by_sector['consumption [TWh]'].values,labels=cons_by_sector.index,colors=colpal2[0:len(import_relative['imp'].values)],startangle = 90,textprops={'fontsize': 19})
 
-pc_sec_ax.set_title('Consumption by sector (2015)',fontsize=fs,fontweight='bold')
+# pc_sec_ax.set_title('Consumption by sector (2015)',fontsize=fs,fontweight='bold')
 
-pc_sec_ax.text(0.95,-0.5,'(Individual heating',fontsize=19)
-pc_sec_ax.text(1,-0.65,'+ cooking)',fontsize=19)
+# pc_sec_ax.text(0.95,-0.5,'(Individual heating',fontsize=19)
+# pc_sec_ax.text(1,-0.65,'+ cooking)',fontsize=19)
 
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
@@ -219,51 +219,51 @@ ax.spines['left'].set_visible(False)
 
 #%% Arrows
 
-if arrows == True:
-    max_width = 0.05
+# if arrows == True:
+#     max_width = 0.05
     
-    # From Russia
-    width = max_width #  38 %
-    lon = 28
-    lat = 53
-    x,y=m_plot(lon,lat)
-    u,v=-2,-1.5
-    m_plot.quiver(x,y,u,v,width=width,headlength=0.5,headaxislength=0.5,headwidth=1.5)
-    ax.text(1.01*x,y,'Russia',fontsize=fs)
+#     # From Russia
+#     width = max_width #  38 %
+#     lon = 28
+#     lat = 53
+#     x,y=m_plot(lon,lat)
+#     u,v=-2,-1.5
+#     m_plot.quiver(x,y,u,v,width=width,headlength=0.5,headaxislength=0.5,headwidth=1.5)
+#     ax.text(1.01*x,y,'Russia',fontsize=fs)
     
-    # From Algeria 
-    width = max_width*(7/38) # 7 %
-    lon = 4
-    lat = 36
-    x,y=m_plot(lon,lat)
-    u,v=0,1
-    m_plot.quiver(x,y,u,v,width=width,headlength=0.5,headaxislength=0.5,headwidth=2)
-    ax.text(x*1.05,y*1.2,'Algeria',fontsize=fs)
+#     # From Algeria 
+#     width = max_width*(7/38) # 7 %
+#     lon = 4
+#     lat = 36
+#     x,y=m_plot(lon,lat)
+#     u,v=0,1
+#     m_plot.quiver(x,y,u,v,width=width,headlength=0.5,headaxislength=0.5,headwidth=2)
+#     ax.text(x*1.05,y*1.2,'Algeria',fontsize=fs)
     
-    # Own production
-    width = max_width*(29/38) # 18 % from Norway + 5 % from Netherlands + 6 % from other European
-    lon = 0.3
-    lat = 62
-    x,y=m_plot(lon,lat)
-    u,v=0.6,-1.9
-    m_plot.quiver(x,y,u,v,width=width,headlength=0.5,headaxislength=0.5,headwidth=1.5)
-    ax.text(0.85*x,1.065*y,'Own',fontsize=fs)
-    ax.text(0.75*x,1.02*y,'production',fontsize=fs)
+#     # Own production
+#     width = max_width*(29/38) # 18 % from Norway + 5 % from Netherlands + 6 % from other European
+#     lon = 0.3
+#     lat = 62
+#     x,y=m_plot(lon,lat)
+#     u,v=0.6,-1.9
+#     m_plot.quiver(x,y,u,v,width=width,headlength=0.5,headaxislength=0.5,headwidth=1.5)
+#     ax.text(0.85*x,1.065*y,'Own',fontsize=fs)
+#     ax.text(0.75*x,1.02*y,'production',fontsize=fs)
     
-    # Other non-Europe
-    width = max_width*((17 + 7)/38) # 17 % + 7 % not specified
-    lon = -8
-    lat = 47
-    x,y=m_plot(lon,lat)
-    u,v=1,0
-    m_plot.quiver(x,y,u,v,width=width,headlength=0.5,headaxislength=0.5,headwidth=2)
-    ax.text(0.1*x,y*0.95,'Other',fontsize=fs)
-    ax.text(0.1*x,y*0.86,'non-European',fontsize=fs)
+#     # Other non-Europe
+#     width = max_width*((17 + 7)/38) # 17 % + 7 % not specified
+#     lon = -8
+#     lat = 47
+#     x,y=m_plot(lon,lat)
+#     u,v=1,0
+#     m_plot.quiver(x,y,u,v,width=width,headlength=0.5,headaxislength=0.5,headwidth=2)
+#     ax.text(0.1*x,y*0.95,'Other',fontsize=fs)
+#     ax.text(0.1*x,y*0.86,'non-European',fontsize=fs)
 
     #fig.savefig('../figures/Gas_' + case + '_map_with_arrowstest.jpeg',format='jpeg',dpi=300,bbox_inches='tight')  
 
 #else:
     #fig.savefig('../figures/Gas_' + case + '_map_wo_arrowstest.jpeg',format='jpeg',dpi=300,bbox_inches='tight')  
-
+fig.savefig("test.jpeg", format = "jpeg", dpi = 300, bbox_inches = 'tight')
 plt.show()
 # fig.savefig('../figures/Gas_imports_map_wo_arrows.jpeg',format='jpeg',dpi=300,bbox_inches='tight')  

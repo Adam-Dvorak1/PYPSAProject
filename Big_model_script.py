@@ -1525,11 +1525,12 @@ def four_latitude_comparecost():
     fig.text(0.02, 0.33, "No", fontweight= "bold", rotation = 90, fontsize = fs)
 
     fig.text(0.41, 0.18, "Countries ordered by latitude",fontsize=fs)
+    plt.subplots_adjust(wspace=0.02, hspace=0.05)
 
-    plt.savefig("Images/Paper/fourlatitude_compare.png", dpi = 600)
+    #plt.savefig("Images/Paper/fourlatitude_compare.pdf")
 
     plt.show()
-four_latitude_comparecost()
+#four_latitude_comparecost()
 
 def solar_by_wind(path, ax):
     mypath = str(path)
@@ -1785,6 +1786,7 @@ def solar_by_solar_all():
 
     fig.legend(handles, labels, prop={'size':fs-4}, ncol=2, loc = (0.39, 0.01))
     fig.tight_layout(rect = [0.03, 0.1, 1, 0.9])
+    plt.subplots_adjust(wspace = 0.02, hspace = 0.05)
     #fig.suptitle("Solar share by solar capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
     fig.text(0.325, 0.12, "No", fontweight= "bold", fontsize = fs)
     fig.text(0.76, 0.12, "Yes", fontweight= "bold", fontsize = fs)
@@ -1797,10 +1799,11 @@ def solar_by_solar_all():
     
 
     plt.savefig("Images/Paper/cap_factor_solar.pdf")
+    plt.savefig("Images/Paper/cap_factor_solar.png", dpi = 600)
 
 
     plt.show()
-#solar_by_solar_all()
+solar_by_solar_all()
 
 
 def find_solar_share(path):
@@ -1904,7 +1907,9 @@ def solar_by_wind_all():
     labels = labels0 + labels2 + labels1 + labels3
 
     fig.legend(handles, labels, prop={'size':fs-4}, ncol=2, loc = (0.39, 0.01))
+
     fig.tight_layout(rect = [0.03, 0.1, 1, 0.9])
+    plt.subplots_adjust(wspace=0.02, hspace=0.05)
     # fig.suptitle("Solar share by wind capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
 
     fig.text(0.325, 0.12, "No", fontweight= "bold", fontsize = fs)
@@ -1918,7 +1923,7 @@ def solar_by_wind_all():
     plt.savefig("Images/Paper/cap_wind_paper.png", dpi = 600)
 
     plt.show()
-solar_by_wind_all()
+#solar_by_wind_all()
 
 
 
