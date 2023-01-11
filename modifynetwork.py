@@ -4,6 +4,44 @@ from helpers import annual_cost
 
 
 
+def change_loads_costs(network, solar_mult):
+
+
+    network.generators.loc['solar', 'capital_cost'] = annual_cost("solar-utility") * solar_mult
+
+
+    return network
+
+
+def solve_network(network, solar_mult):
+
+    n = change_loads_costs(network, solar_mult)
+
+        
+    n.lopf(n.snapshots, 
+             pyomo=False,
+             solver_name='gurobi')
+
+
+def to_netcdf(network, solar_mult, runname):
+    n = solve_network(network, solar_mult)
+
+    #note, I will need to change path to add the name of the network 
+
+    solar_mult = round(solar_mult)
+
+    megen_mult = megen_mult * annual_cost("methanation") #This should be a variable passed. I think it takes a significant time x 100 to do this. Maybe  maybe not
+
+    megen_mult = round(megen_mult)
+
+    n_name = n.name 
+
+    path = path + f"/gas_dem_{gas_mult}_megen_cost_{megen_mult}.nc"
+    
+    n.export_to_netcdf(path)
+
+
+
 def find_solar_data(n, name, solar_cost, dirname):
     #Takes annualized coefficient and multiplies by investment cost
   
