@@ -133,8 +133,12 @@ def plot_ED_and_CF_data_all():
     plt.rcParams.update({'font.size': 12})
 
     EUdf = pd.read_csv("data/EUcfs.csv", index_col=0, parse_dates = True)
-    USdf = pd.read_csv("data/CA_CO_modelenergy.csv", index_col = 0, parse_dates=True)
+    # EUdf = EUdf.rolling(2).mean()
+    # EUdf = EUdf.iloc[::2].shift(-1)[:-1]
 
+    USdf = pd.read_csv("data/CA_CO_modelenergy.csv", index_col = 0, parse_dates=True)
+    # USdf = USdf.rolling(2).mean()
+    # USdf = USdf.iloc[::2].shift(-1)[:-1]
 
     elecdnk = EUdf["DNKdem"]
     elecdnk = elecdnk/elecdnk.mean()
@@ -169,13 +173,13 @@ def plot_ED_and_CF_data_all():
     windCA = USdf['CAwind']
     windCA = windCA/windCA.mean()
 
-    fig, axs = plt.subplots(4, 1)
+    fig, axs = plt.subplots(2, 2)
     fig.set_size_inches(6.4, 8)
 
 
     '''Denmark'''
     
-    axdnk1 = axs[0]
+    axdnk1 = axs[0, 0]
     # axdnk2=axdnk1.twinx()
     # axdnk3 = axdnk1.twinx()
 
@@ -183,56 +187,42 @@ def plot_ED_and_CF_data_all():
     axdnk1.plot(solardnk, 'C1-',  label = "Solar CF")
     axdnk1.plot(winddnk, 'C0-',  label = "Wind CF")
 
-    axdnk1.set_ylabel("Denmark")
-    # axdnk2.set_ylabel("Solar CF")
-    # axdnk3.set_ylabel("Wind CF")
-
-    
-    # axdnk2.spines['right'].set_position(('outward', 60))
-    # axdnk2.text(1.02, 0.6, "0.29", color = 'C0', transform = axdnk2.transAxes)
-    # axdnk2.text(1.02, 0.4, "0.11", color = 'C1', transform = axdnk2.transAxes)
+    axdnk1.set_title("Denmark")
 
     axdnk1.yaxis.label.set_color('k')
-    # axdnk2.yaxis.label.set_color('C1')
-    # axdnk3.yaxis.label.set_color('C0')
 
-    # axdnk1.set_ylim(0.76, 1.24)
-    # axdnk2.set_ylim(0.1, 2.2)
-    # axdnk3.set_ylim(0.1, 2.2)
 
     dnkticks = np.array([0, 1, 2])
     axdnk1.set_yticks(dnkticks)
-    # axdnk2.set_yticks(dnkticks)
-    # axdnk3.set_yticks(dnkticks)
 
 
 
     '''Spain'''
     
-    axdnk1 = axs[1]
-    axdnk2 = axdnk1.twinx()
-    axdnk3 = axdnk1.twinx()
+    axdnk1 = axs[0, 1]
+    # axdnk2 = axdnk1.twinx()
+    # axdnk3 = axdnk1.twinx()
 
     axdnk1.plot(elecesp, 'k-', label = "Electricity demand")
-    axdnk2.plot(solaresp, 'C1-',  label = "Solar CF")
-    axdnk3.plot(windesp, 'C0-',  label = "Wind CF")
+    axdnk1.plot(solaresp, 'C1-',  label = "Solar CF")
+    axdnk1.plot(windesp, 'C0-',  label = "Wind CF")
 
-    axdnk1.set_ylabel("Spain")
+    axdnk1.set_title("Spain")
     # axdnk1.yaxis.labelpad = 20
     # axdnk2.set_ylabel("Solar CF")
     # axdnk3.set_ylabel("Wind CF")
-    axdnk3.text(1.08, -0.6, "Wind CF", fontsize = 15, color = 'C0', transform = axdnk2.transAxes, rotation = 'vertical')
-    axdnk3.text(1.28, -0.6, "Solar CF", fontsize = 15, color = 'C1', transform = axdnk2.transAxes, rotation = 'vertical')
-    axdnk3.text(-0.13, -1.1, "Electricity demand", fontsize = 15, color = 'k', transform = axdnk2.transAxes, rotation = 'vertical')
+    # axdnk3.text(1.08, -0.6, "Wind CF", fontsize = 15, color = 'C0', transform = axdnk2.transAxes, rotation = 'vertical')
+    # axdnk3.text(1.28, -0.6, "Solar CF", fontsize = 15, color = 'C1', transform = axdnk2.transAxes, rotation = 'vertical')
+    # axdnk3.text(-0.13, -1.1, "Electricity demand", fontsize = 15, color = 'k', transform = axdnk2.transAxes, rotation = 'vertical')
 
     
-    axdnk2.spines['right'].set_position(('outward', 60))
+    # axdnk2.spines['right'].set_position(('outward', 60))
     # axdnk2.text(1.02, 0.6, "0.23", color = 'C0', transform = axdnk2.transAxes)
     # axdnk2.text(1.02, 0.4, "0.17", color = 'C1', transform = axdnk2.transAxes)
 
     axdnk1.yaxis.label.set_color('k')
-    axdnk2.yaxis.label.set_color('C1')
-    axdnk3.yaxis.label.set_color('C0')
+    # axdnk2.yaxis.label.set_color('C1')
+    # axdnk3.yaxis.label.set_color('C0')
 
     # axdnk1.set_ylim(0.76, 1.24)
     # axdnk2.set_ylim(0.6, 1.4)
@@ -241,100 +231,95 @@ def plot_ED_and_CF_data_all():
     espticks = np.array([0, 1, 2])
 
     axdnk1.set_yticks(espticks)
-    axdnk2.set_yticks(espticks)
-    axdnk3.set_yticks(espticks)
+    # axdnk2.set_yticks(espticks)
+    # axdnk3.set_yticks(espticks)
 
 
 
 
     '''Colorado'''
     
-    axdnk1 = axs[2]
-    axdnk2 = axdnk1.twinx()
-    axdnk3 = axdnk1.twinx()
+    axdnk1 = axs[1, 0]
+    # axdnk2 = axdnk1.twinx()
+    # axdnk3 = axdnk1.twinx()
 
     axdnk1.plot(elecCo, 'k-', label = "Electricity demand")
-    axdnk2.plot(solarCo, 'C1-',  label = "Solar CF")
-    axdnk3.plot(windCo, 'C0-',  label = "Wind CF")
+    axdnk1.plot(solarCo, 'C1-',  label = "Solar CF")
+    axdnk1.plot(windCo, 'C0-',  label = "Wind CF")
 
-    axdnk1.set_ylabel("Colorado")
+    axdnk1.set_title("Colorado")
     # axdnk2.set_ylabel("Solar CF", color = 'C1')
     # axdnk3.set_ylabel("Wind CF")
 
     
-    axdnk2.spines['right'].set_position(('outward', 60))
+    # axdnk2.spines['right'].set_position(('outward', 60))
     # axdnk2.text(1.02, 0.6, "0.31", color = 'C0', transform = axdnk2.transAxes)
     # axdnk2.text(1.02, 0.4, "0.20", color = 'C1', transform = axdnk2.transAxes)
 
     axdnk1.yaxis.label.set_color('k')
-    axdnk2.yaxis.label.set_color('C1')
-    axdnk3.yaxis.label.set_color('C0')
+    # axdnk2.yaxis.label.set_color('C1')
+    # axdnk3.yaxis.label.set_color('C0')
 
-    axdnk1.set_ylim(0.76, 1.24)
-    axdnk2.set_ylim(0.7, 1.3)
-    axdnk3.set_ylim(0.2, 1.8)
+    # axdnk1.set_ylim(0.76, 1.24)
+    # axdnk2.set_ylim(0.7, 1.3)
+    # axdnk3.set_ylim(0.2, 1.8)
 
+    dnkticks = np.array([0.5, 1, 1.5])
+    axdnk1.set_yticks(dnkticks)
 
 
 
     '''California'''
     
-    axdnk1 = axs[3]
-    axdnk2 = axdnk1.twinx()
-    axdnk3 = axdnk1.twinx()
+    axdnk1 = axs[1, 1]
+    # axdnk2 = axdnk1.twinx()
+    # axdnk3 = axdnk1.twinx()
 
     axdnk1.plot(elecCA, 'k-', label = "Electricity demand")
-    axdnk2.plot(solarCA, 'C1-',  label = "Solar CF")
-    axdnk3.plot(windCA, 'C0-',  label = "Wind CF")
+    axdnk1.plot(solarCA, 'C1-',  label = "Solar CF")
+    axdnk1.plot(windCA, 'C0-',  label = "Wind CF")
 
-    axdnk1.set_ylabel("California")
+    axdnk1.set_title("California")
     # axdnk2.set_ylabel("Solar CF")
     # axdnk3.set_ylabel("Wind CF")
 
     
-    axdnk2.spines['right'].set_position(('outward', 60))
+    # axdnk2.spines['right'].set_position(('outward', 60))
     # axdnk2.text(1.3, 0.6, "0.18", color = 'C0', transform = axdnk2.transAxes)
     # axdnk2.text(1.02, 0.4, "0.20", color = 'C1', transform = axdnk2.transAxes)
 
     axdnk1.yaxis.label.set_color('k')
-    axdnk2.yaxis.label.set_color('C1')
-    axdnk3.yaxis.label.set_color('C0')
 
-    axdnk1.set_ylim(0.76, 1.24)
-    axdnk2.set_ylim(0.76, 1.24)
-    axdnk3.set_ylim(0.3, 1.7)
+    dnkticks = np.array([0.5, 1, 1.5])
+    axdnk1.set_yticks(dnkticks)
 
 
-    for ax in axs.flat:
-        ax.set_xticks([])
-        ax.yaxis.labelpad = 30
-
-    axdnk2.xaxis.set_major_locator(AutoLocator()) 
+    # axdnk1.xaxis.set_major_locator(AutoLocator()) 
+    for ax in axs.flat[:2]:
 
 
 
-    fmt = mdates.DateFormatter("%b")
-    axdnk2.xaxis.set_major_formatter(fmt)
- 
+        ax.set_xticklabels([])
+        # ax.yaxis.labelpad = 30
+    for ax in axs.flat[2:]:
+        fmt = mdates.DateFormatter("%b")
+        ax.xaxis.set_major_formatter(fmt)
+
 
 
 
     lines1, labels1 = axdnk1.get_legend_handles_labels()
-    lines2, labels2 = axdnk2.get_legend_handles_labels()
-    lines3, labels3 = axdnk3.get_legend_handles_labels()
 
 
 
 
 
-    fig.legend(lines1+lines2+lines3, labels1+labels2+labels3, bbox_to_anchor=(0.85, 0.06), fontsize = 10, ncol=3)
-    # fig.tight_layout()
-    #fig.suptitle(r"$\bf{Seasonal\:Variation\:of\:Wind,\:Solar,\:and\:Electricity\:Demand}$", fontsize = 14)
-    #fig.set_size_inches(6.4, 6)
-    #plt.text(0.5, 0.5, "test")
+
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.85, 0.06), fontsize = 11, ncol=3)
+
     plt.subplots_adjust(hspace=0.1)
 
-    plt.savefig("images/Paper/Figure1_EDandCF12Jan.png", dpi = 500)
+    plt.savefig("images/Paper/Figure1_EDandCF12Jan_1weeksavg.png", dpi = 500)
     plt.show()
 
 
