@@ -1,4 +1,4 @@
-#%%
+
 import pypsa
 import pandas as pd
 import numpy as np
@@ -16,14 +16,6 @@ import matplotlib
 import csv
 import glob
 
-
-#%%
-def make_a_list(network, country, costrange, folder):
-    mylist = []
-    for number in costrange:
-        atuple = (network, country, number, folder)
-        mylist.append(atuple)
-    return mylist
 
 #%%
 def pen_plus_any_curtailoverlap_t(w_heat, wo_heat, mytype):
@@ -358,7 +350,10 @@ def pen_plus_any_curtailoverlap_t(w_heat, wo_heat, mytype):
 
 
 pen_plus_any_curtailoverlap_t("solarcost_heatelec_26_Oct.csv", "solarcost_elec_26_Oct.csv", "solar")
-#%%
+
+
+
+
 def pen_plus_any_poster_curtailoverlap_t(w_heat, wo_heat, mytype):
     '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
     a scaling log of solar. It is very long. It uses gridspec to order the axes, and other than that
@@ -643,68 +638,5 @@ def pen_plus_any_poster_curtailoverlap_t(w_heat, wo_heat, mytype):
 
 
 
-# if __name__ == "__main__":
-    # Denmark = pypsa.Network()
-    # Spain = pypsa.Network()
-    # CA = pypsa.Network()
-    # CO = pypsa.Network()    
-        
-    # mynetworks = [Denmark, Spain, CA, CO]
-
-    # set_hours(mynetworks)
-    # for network in mynetworks:
-    #     add_bus(network)
-        
-
-    # df_elec = pd.read_csv('data/electricity_demand.csv', sep=';', index_col=0)# in MWh
-    # df_elec.index = pd.to_datetime(df_elec.index) #change index to datatime
-
-    # df_cal_elec = pd.read_csv('data_extra/CaliforniaTimeSeries.csv', index_col=0)
-    # df_cal_elec.index = pd.to_datetime(df_cal_elec.index)
-
-    # df_co_elec = pd.read_csv('data_extra/ColoradoTimeSeries.csv', index_col=0)
-    # df_co_elec.index = pd.to_datetime(df_co_elec.index)
-
-    # #We want to simulate electrification of heating. We can then add to Denmark and Spain
-    # df_heat = pd.read_csv('data/heat_demand.csv', sep=';', index_col=0)# in MWh
-    # df_heat.index = pd.to_datetime(df_heat.index) #change index to datatime
-    # heatCA = pd.read_csv("data/TemperatureData/ninja_2011_weather_country_US.CA_merra-2_population_weighted.csv",  header = 2, index_col=0)
-    # heatCA.index = pd.to_datetime(heatCA.index)
-    # heatCO = pd.read_csv("data/TemperatureData/ninja_2011_weather_country_US.CO_merra-2_population_weighted.csv",  header = 2, index_col=0)
-    # heatCO.index = pd.to_datetime(heatCO.index)
-
-
-
-    # df_elec["DNKheat"] = df_heat["DNK"]
-    # df_elec["ESPheat"] = df_heat["ESP"]
-
-    # df_elec["DNKcombine"] = df_elec.apply(lambda row: row["DNK"] + row["DNKheat"]/3, axis = 1)
-    # df_elec["ESPcombine"] = df_elec.apply(lambda row: row["ESP"] + row["ESPheat"]/3, axis = 1)
-
-    # heatCA["HDD"] = heatCA.apply(lambda row: 17 - row["temperature"] if row["temperature"] < 17 else 0, axis = 1)
-    # heatCO["HDD"] = heatCO.apply(lambda row: 17 - row["temperature"] if row["temperature"] < 17 else 0, axis = 1)
-
-    # df_cal_elec["HDD"] = heatCA["HDD"]
-    # df_cal_elec["heating_demand"] = df_cal_elec.apply(lambda row: 1715 * row["HDD"] + 6356, axis = 1)# 1715 is California's G factor, MWh/HDD. 6356 is the constant, that we get from water heating
-    # df_cal_elec["adjust_elec_demand"] =  df_cal_elec["demand_mwh"] + 1/3 * df_cal_elec["heating_demand"]
-
-    # df_co_elec["HDD"] = heatCO["HDD"]
-    # df_co_elec["heating_demand"]= df_co_elec.apply(lambda row: 1782 * row["HDD"] + 6472, axis = 1)
-    # df_co_elec["adjust_elec_demand"] =  df_co_elec["demand_mwh"] + 1/3 * df_co_elec["heating_demand"]
-
-
-
-
-
-
-
-
-    # Spain.add("Load",
-    #             "load", 
-    #             bus="electricity bus", 
-    #             p_set=df_elec['ESP'])
-
-
-    # f = make_a_list("Spain", np.logspace(4, 5, 4), "helloworld")
-
-
+if __name__ == "__main__":
+    pen_plus_any_curtailoverlap_t("solarcost_heatelec_26_Oct.csv", "solarcost_elec_26_Oct.csv", "solar")
