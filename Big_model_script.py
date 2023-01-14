@@ -1,4 +1,4 @@
-
+#%%
 import resource
 import pypsa
 import pandas as pd
@@ -13,16 +13,17 @@ import os
 import re
 import matplotlib.image as mpimg
 import matplotlib.gridspec as gridspec
-import seaborn as sns
+import adjustText
+from adjustText import adjust_text
 import pathlib
 import matplotlib
 import csv
 import glob
-import yaml
-from pylab import *
-from sklearn.metrics import r2_score
-import xarray as xr
 
+from pylab import *
+
+import xarray as xr
+#%%
 '''The issue is that before we could just get one item from each country. Now we need entire time series'''
 
 
@@ -1170,7 +1171,7 @@ def add_to_df_choice(filepath):
 
     return(latcsv_path)
 
-
+#%%
 
 def rsquared(x, y):
     """ Return R^2 where x and y are array-like."""
@@ -1178,7 +1179,7 @@ def rsquared(x, y):
     slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x, y)
     return r_value**2
 
-
+#%%
 def compare_cost_lat():
 
     opts = mypath.split("_")
@@ -1334,7 +1335,7 @@ def solar_by_latitude(path):
     fig.savefig(parentpath / "graphs/solar_by_lat")
 
     plt.show()
-    
+#%%
 def solar_by_latitude_comparecost(path, ax):
     '''The goal of this function is to plot solar share on the y axis and country ordered by
     latitude on the x axis. Then, we will plot the three different costs'''
@@ -1429,9 +1430,9 @@ def solar_by_latitude_comparecost(path, ax):
     x2 = solar_latdf_cheapest["country"]
     y2 = solar_latdf_cheapest["percent"]
 
-    ax.scatter(x, y, label = 'default', color = '#004488')
-    ax.scatter(x1, y1, label = 'less optimistic', color = '#BB5566')
-    ax.scatter(x2, y2, label = 'optimistic', color = '#DDAA33')
+    ax.scatter(x, y, label = 'default', color = 'C0')
+    ax.scatter(x1, y1, label = 'less optimistic', color = 'C1')
+    ax.scatter(x2, y2, label = 'optimistic', color = 'C2')
     ax.grid(True)
     # ax.set_xlabel("Country sorted by latitude")
     ax.set_ylabel("Optimal solar share (%)")
@@ -1466,7 +1467,6 @@ def solar_by_latitude_comparecost(path, ax):
     #plt.show()
   
 #solar_by_latitude_comparecost("results/adam_latitude_compare_no_sectors_no_transmission_3h3/csvs/gen_and_lat.csv", )
-  
 def four_latitude_comparecost():
     '''The goal of this function is to plot four of any given function (in this case solar_by_latitude_comparecost) in a grid
     such that we can see the appropriate differences between sectors/no sectors, '''
@@ -1532,6 +1532,235 @@ def four_latitude_comparecost():
     plt.show()
 #four_latitude_comparecost()
 
+    # plt.show()
+#%%
+
+def solar_by_solar(path, ax):
+    mypath = str(path)
+    
+    opts = mypath.split("_")
+    print(opts)
+    for opt in opts:
+        contains_digit = len(re.findall('\d+', opt)) > 0
+        if contains_digit:
+            f = re.findall(r'\d+', opt)
+            hrs = f[0]
+            hrs = hrs + "h"
+    if "sectors" in opts:
+        idxsec = opts.index('sectors')
+        idxsec -= 1
+        sec = opts[idxsec]
+        if sec == "yes":
+            sec = 'with'
+        else:
+            sec = 'without'
+        sec = sec + " sectors"
+    if "transmission" in opts:
+        idxtrans = opts.index('transmission')
+        idxtrans -= 1
+        trans = opts[idxtrans]
+        if trans == "yes":
+            trans = 'with'
+        else:
+            trans = 'without'
+        trans = trans + " transmission"
+
+    
+    
+
+    plt.rcdefaults()
+    solar_latdf = pd.read_csv(path)
+    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
+    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only interested in wind share
+    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
+    #solar_latdf['windpercent'] = solar_latdf["fraction"] * 100
+    solar_latdf['solarpercent'] = solar_latdf['solarfrac'] * 100
+    
+    
+    #plotting: latitude on x axis, solar fraction on y axis
+
+    # fig, ax = plt.subplots()
+
+    x = solar_latdf["solarcf"]
+    y = solar_latdf["solarpercent"]
+
+
+    ax.scatter(x, y)
+    #ax.set_xlabel("Solar capacity factor")
+    ax.set_ylabel("Optimal solar share (%)")
+    #ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
+
+
+    
+    for idx, row in solar_latdf.iterrows():
+        ax.annotate(row['country'], (row['solarcf']* 1.007, row['solarpercent']* 0.97), fontsize = 15)
+    
+
+
+    m, b = np.polyfit(x, y, 1)
+    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
+
+
+
+    ax.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
+    
+    r_sq = rsquared(x, y)
+    #ax.text(0, 1.1, "r² = {:.3f}".format(r_sq), transform = ax.transAxes)
+    #ax.annotate("r-squared = {:.3f}".format(r2_score(x, y)), (60, 100))
+
+
+    #fig.legend()
+    handles, labels = ax.get_legend_handles_labels()
+    labels[0] = "r² = {:.3f}".format(r_sq)
+    ax.legend(handles, [labels[0]])
+    ax.legend().set_visible(False)
+    
+    parentpath = path.parent.parent#path is csv, parent is csv folder, parent is run
+
+    #fig.savefig(parentpath / "graphs/solar_by_solarcf") #subdir graphs
+
+    parentpath = parentpath.parent.parent #parentpath is run folder, parent is results, parent is pypsaproject
+
+    return labels
+    #fig.savefig(parentpath / f"Images/Shown images/11:5 meeting/solar_by_solarcf{sec}_{trans}")
+    
+
+    #plt.show()
+
+
+
+def solar_by_solar_all():
+    run0 = "adam_latitude_compare_no_sectors_yes_transmission_3h"
+    run1 = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
+    run2 = "adam_latitude_compare_no_sectors_no_transmission_3h3"
+    run3 = "adam_latitude_compare_yes_sectors_no_transmission_3h"
+    path0 = 'results/' + run0 + '/csvs/gen_and_lat.csv'
+    path1 = 'results/' + run1 + '/csvs/gen_and_lat.csv'
+    path2 = 'results/' + run2 + '/csvs/gen_and_lat.csv'
+    path3 = 'results/' + run3 + '/csvs/gen_and_lat.csv'
+    path0 = pathlib.Path(path0)
+    path1 = pathlib.Path(path1)
+    path2 = pathlib.Path(path2)
+    path3 = pathlib.Path(path3)
+    
+    plt.rcParams.update({'font.size': 18})
+    fs = 23
+    plt.rcParams['axes.labelsize'] = fs
+    plt.rcParams['xtick.labelsize'] = fs
+    plt.rcParams['ytick.labelsize'] = fs
+
+    fig,ax = plt.subplots(2,2,figsize=(13,9),sharex=True,sharey='row')
+    ax = ax.flatten()
+    #solar_by_latitude_comparecost(path0, ax[0]) #We know that solar_by_latitude_comparecost is also compatible
+
+    labels0 = solar_by_solar(path0, ax[0])
+    labels1 = solar_by_solar(path1, ax[1])
+    
+    labels2 = solar_by_solar(path2, ax[2])
+    
+    labels3 = solar_by_solar(path3, ax[3])
+    ax[1].lines[-1].set_color('C1')
+    ax[2].lines[-1].set_color('C2')
+    ax[3].lines[-1].set_color('C3')
+
+    ax0points = [child for child in ax[0].get_children() if isinstance(child, matplotlib.text.Annotation)]
+    adjust_text(ax0points, ax = ax[0])
+    ax1points = [child for child in ax[1].get_children() if isinstance(child, matplotlib.text.Annotation)]
+    adjust_text(ax1points, ax = ax[1])
+    ax2points = [child for child in ax[2].get_children() if isinstance(child, matplotlib.text.Annotation)]
+    adjust_text(ax2points, ax = ax[2])
+    ax3points = [child for child in ax[3].get_children() if isinstance(child, matplotlib.text.Annotation)]
+    adjust_text(ax3points, ax = ax[3])    
+
+
+    fig.supxlabel(r"$\bf{Sectors}$" ,fontsize=fs, y = 0.11, x = 0.53)
+    fig.supylabel ( r"$\bf{Transmission}$",fontsize=fs, y = 0.53)
+    ax[3].set_xlabel(" ",fontsize=fs)
+    #ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs, y = 0)
+    #plt.gca().lines[-].set_color('C2')
+    ax[0].set_ylabel("Solar share" , fontsize = fs, y = -0.1)
+    #ax[2].set_ylabel(r"$\bf{No}$", fontsize = fs, x = 0.1)
+    ax[2].tick_params(axis='x', labelsize = fs-2, rotation = 40)
+    ax[3].tick_params(axis='x', labelsize = fs-2, rotation = 40)
+    for anax in ax:
+        anax.xaxis.set_tick_params(length = 4, width = 2)
+        anax.yaxis.set_tick_params(length = 4, width = 2)
+
+
+    ax[0].set_title("")
+    ax[2].set_ylabel("")
+    ax[1].set_title("")
+    #plt.gca().lines[-3].set_color('C1')
+    ax[1].set_ylabel("")
+    ax[3].set_ylabel("")
+    ax[2].set_title("")
+    
+    #ax[0].get_lines().set_color('black')
+
+
+
+    ax[3].set_title("")
+
+    handles0, labels = ax[0].get_legend_handles_labels()
+    handles1, labels = ax[1].get_legend_handles_labels()
+    handles2, labels = ax[2].get_legend_handles_labels()
+    handles3, labels = ax[3].get_legend_handles_labels()
+
+    handles = handles0 + handles2 + handles1 + handles3
+    labels = labels0 + labels2 + labels1 + labels3
+
+    fig.legend(handles, labels, prop={'size':fs-1}, ncol=2, loc = (0.28, 0.01))
+    fig.tight_layout(rect = [0.03, 0.1, 1, 0.9])
+    plt.subplots_adjust(wspace = 0.02, hspace = 0.05)
+    #fig.suptitle("Solar share by solar capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
+    fig.text(0.325, 0.12, "No", fontweight= "bold", fontsize = fs)
+    fig.text(0.76, 0.12, "Yes", fontweight= "bold", fontsize = fs)
+
+    fig.text(0.02, 0.73, "Yes", fontweight= "bold", rotation = 90, fontsize = fs)
+    fig.text(0.02, 0.33, "No", fontweight= "bold", rotation = 90, fontsize = fs)
+
+    fig.text(0.43, 0.16, "Capacity factor of Solar",fontsize=fs)
+
+
+    plt.savefig("Images/Paper/cap_factor_solar.pdf")
+    plt.savefig("Images/Paper/cap_factor_solar.png", dpi = 600)
+
+
+    plt.show()
+solar_by_solar_all()
+#%%
+
+def find_solar_share(path):
+    df0 = pd.read_csv(path)
+    tot = df0['Generation'].sum()
+    df0sol = df0.query('carrier == "solar"')
+    soltot = df0sol['Generation'].sum()
+    print(soltot/tot)
+
+
+def solar_share_tot():
+    run0 = "adam_latitude_compare_no_sectors_yes_transmission_3h"
+    run1 = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
+    run2 = "adam_latitude_compare_no_sectors_no_transmission_3h3"
+    run3 = "adam_latitude_compare_yes_sectors_no_transmission_3h"
+    path0 = 'results/' + run0 + '/csvs/gen_and_lat.csv'
+    path1 = 'results/' + run1 + '/csvs/gen_and_lat.csv'
+    path2 = 'results/' + run2 + '/csvs/gen_and_lat.csv'
+    path3 = 'results/' + run3 + '/csvs/gen_and_lat.csv'
+    path0 = pathlib.Path(path0)
+    path1 = pathlib.Path(path1)
+    path2 = pathlib.Path(path2)
+    path3 = pathlib.Path(path3)
+    
+    find_solar_share(path0)
+    find_solar_share(path1)
+    find_solar_share(path2)
+    find_solar_share(path3)
+
+
+#solar_share_tot()
+
+#%%
 def solar_by_wind(path, ax):
     mypath = str(path)
     
@@ -1591,7 +1820,7 @@ def solar_by_wind(path, ax):
 
 
     for idx, row in solar_latdf.iterrows():
-        ax.annotate(row['country'], (row['year_CF']* 1.007, row['solarpercent']* 0.97), fontsize = 11)
+        ax.annotate(row['country'], (row['year_CF']* 1.007, row['solarpercent']* 0.97), fontsize = 15)
     
 
     m, b = np.polyfit(x, y, 1)
@@ -1622,221 +1851,6 @@ def solar_by_wind(path, ax):
     
     return labels
 
-    # plt.show()
-
-
-def solar_by_solar(path, ax):
-    mypath = str(path)
-    
-    opts = mypath.split("_")
-    print(opts)
-    for opt in opts:
-        contains_digit = len(re.findall('\d+', opt)) > 0
-        if contains_digit:
-            f = re.findall(r'\d+', opt)
-            hrs = f[0]
-            hrs = hrs + "h"
-    if "sectors" in opts:
-        idxsec = opts.index('sectors')
-        idxsec -= 1
-        sec = opts[idxsec]
-        if sec == "yes":
-            sec = 'with'
-        else:
-            sec = 'without'
-        sec = sec + " sectors"
-    if "transmission" in opts:
-        idxtrans = opts.index('transmission')
-        idxtrans -= 1
-        trans = opts[idxtrans]
-        if trans == "yes":
-            trans = 'with'
-        else:
-            trans = 'without'
-        trans = trans + " transmission"
-
-    
-    
-
-    plt.rcdefaults()
-    solar_latdf = pd.read_csv(path)
-    solar_latdf = solar_latdf.iloc[:, 1:] #get rid of weird second index
-    solar_latdf = solar_latdf[solar_latdf['carrier'] == 'solar']#only interested in wind share
-    solar_latdf = solar_latdf.iloc[:-2, :] #get rid of MT and CY, which have 0 according to our model
-    #solar_latdf['windpercent'] = solar_latdf["fraction"] * 100
-    solar_latdf['solarpercent'] = solar_latdf['solarfrac'] * 100
-    
-    
-    #plotting: latitude on x axis, solar fraction on y axis
-
-    # fig, ax = plt.subplots()
-
-    x = solar_latdf["solarcf"]
-    y = solar_latdf["solarpercent"]
-
-
-    ax.scatter(x, y)
-    #ax.set_xlabel("Solar capacity factor")
-    ax.set_ylabel("Optimal solar share (%)")
-    #ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
-
-
-
-    for idx, row in solar_latdf.iterrows():
-        ax.annotate(row['country'], (row['solarcf']* 1.007, row['solarpercent']* 0.97), fontsize = 11)
-    
-
-    m, b = np.polyfit(x, y, 1)
-    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
-
-
-
-    ax.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
-    
-    r_sq = rsquared(x, y)
-    #ax.text(0, 1.1, "r² = {:.3f}".format(r_sq), transform = ax.transAxes)
-    #ax.annotate("r-squared = {:.3f}".format(r2_score(x, y)), (60, 100))
-
-
-    #fig.legend()
-    handles, labels = ax.get_legend_handles_labels()
-    labels[0] = "r² = {:.3f}".format(r_sq)
-    ax.legend(handles, [labels[0]])
-    ax.legend().set_visible(False)
-    
-    parentpath = path.parent.parent#path is csv, parent is csv folder, parent is run
-
-    #fig.savefig(parentpath / "graphs/solar_by_solarcf") #subdir graphs
-
-    parentpath = parentpath.parent.parent #parentpath is run folder, parent is results, parent is pypsaproject
-
-    return labels
-    #fig.savefig(parentpath / f"Images/Shown images/11:5 meeting/solar_by_solarcf{sec}_{trans}")
-    
-
-    #plt.show()
-
-
-
-def solar_by_solar_all():
-    run0 = "adam_latitude_compare_no_sectors_yes_transmission_3h"
-    run1 = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
-    run2 = "adam_latitude_compare_no_sectors_no_transmission_3h3"
-    run3 = "adam_latitude_compare_yes_sectors_no_transmission_3h"
-    path0 = 'results/' + run0 + '/csvs/gen_and_lat.csv'
-    path1 = 'results/' + run1 + '/csvs/gen_and_lat.csv'
-    path2 = 'results/' + run2 + '/csvs/gen_and_lat.csv'
-    path3 = 'results/' + run3 + '/csvs/gen_and_lat.csv'
-    path0 = pathlib.Path(path0)
-    path1 = pathlib.Path(path1)
-    path2 = pathlib.Path(path2)
-    path3 = pathlib.Path(path3)
-    
-    plt.rcParams.update({'font.size': 18})
-    fs = 20
-    plt.rcParams['axes.labelsize'] = fs
-    plt.rcParams['xtick.labelsize'] = fs
-    plt.rcParams['ytick.labelsize'] = fs
-
-    fig,ax = plt.subplots(2,2,figsize=(13,9),sharex=True,sharey='row')
-    ax = ax.flatten()
-    #solar_by_latitude_comparecost(path0, ax[0]) #We know that solar_by_latitude_comparecost is also compatible
-    labels0 = solar_by_solar(path0, ax[0])
-    labels1 = solar_by_solar(path1, ax[1])
-    
-    labels2 = solar_by_solar(path2, ax[2])
-    
-    labels3 = solar_by_solar(path3, ax[3])
-    ax[1].lines[-1].set_color('C1')
-    ax[2].lines[-1].set_color('C2')
-    ax[3].lines[-1].set_color('C3')
-
-
-    fig.supxlabel(r"$\bf{Sectors}$" ,fontsize=fs, y = 0.11, x = 0.53)
-    fig.supylabel ( r"$\bf{Transmission}$",fontsize=fs, y = 0.53)
-    ax[3].set_xlabel(" ",fontsize=fs)
-    #ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs, y = 0)
-    #plt.gca().lines[-].set_color('C2')
-    ax[0].set_ylabel("Solar share" , fontsize = fs, y = -0.1)
-    #ax[2].set_ylabel(r"$\bf{No}$", fontsize = fs, x = 0.1)
-    ax[2].tick_params(axis='x', labelsize = fs-4)
-    ax[3].tick_params(axis='x', labelsize = fs-4)
-
-    ax[0].set_title("")
-    ax[2].set_ylabel("")
-    ax[1].set_title("")
-    #plt.gca().lines[-3].set_color('C1')
-    ax[1].set_ylabel("")
-    ax[3].set_ylabel("")
-    ax[2].set_title("")
-    
-    #ax[0].get_lines().set_color('black')
-
-
-
-    ax[3].set_title("")
-
-    handles0, labels = ax[0].get_legend_handles_labels()
-    handles1, labels = ax[1].get_legend_handles_labels()
-    handles2, labels = ax[2].get_legend_handles_labels()
-    handles3, labels = ax[3].get_legend_handles_labels()
-
-    handles = handles0 + handles2 + handles1 + handles3
-    labels = labels0 + labels2 + labels1 + labels3
-
-    fig.legend(handles, labels, prop={'size':fs-4}, ncol=2, loc = (0.39, 0.01))
-    fig.tight_layout(rect = [0.03, 0.1, 1, 0.9])
-    plt.subplots_adjust(wspace = 0.02, hspace = 0.05)
-    #fig.suptitle("Solar share by solar capacity factor", x = 0.55, fontsize = fs, weight = 'bold')
-    fig.text(0.325, 0.12, "No", fontweight= "bold", fontsize = fs)
-    fig.text(0.76, 0.12, "Yes", fontweight= "bold", fontsize = fs)
-
-    fig.text(0.02, 0.73, "Yes", fontweight= "bold", rotation = 90, fontsize = fs)
-    fig.text(0.02, 0.33, "No", fontweight= "bold", rotation = 90, fontsize = fs)
-
-    fig.text(0.43, 0.16, "Capacity factor of Solar",fontsize=fs)
-
-    
-
-    plt.savefig("Images/Paper/cap_factor_solar.pdf")
-    plt.savefig("Images/Paper/cap_factor_solar.png", dpi = 600)
-
-
-    plt.show()
-solar_by_solar_all()
-
-
-def find_solar_share(path):
-    df0 = pd.read_csv(path)
-    tot = df0['Generation'].sum()
-    df0sol = df0.query('carrier == "solar"')
-    soltot = df0sol['Generation'].sum()
-    print(soltot/tot)
-
-
-def solar_share_tot():
-    run0 = "adam_latitude_compare_no_sectors_yes_transmission_3h"
-    run1 = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
-    run2 = "adam_latitude_compare_no_sectors_no_transmission_3h3"
-    run3 = "adam_latitude_compare_yes_sectors_no_transmission_3h"
-    path0 = 'results/' + run0 + '/csvs/gen_and_lat.csv'
-    path1 = 'results/' + run1 + '/csvs/gen_and_lat.csv'
-    path2 = 'results/' + run2 + '/csvs/gen_and_lat.csv'
-    path3 = 'results/' + run3 + '/csvs/gen_and_lat.csv'
-    path0 = pathlib.Path(path0)
-    path1 = pathlib.Path(path1)
-    path2 = pathlib.Path(path2)
-    path3 = pathlib.Path(path3)
-    
-    find_solar_share(path0)
-    find_solar_share(path1)
-    find_solar_share(path2)
-    find_solar_share(path3)
-
-
-#solar_share_tot()
-
-
 def solar_by_wind_all():
     run0 = "adam_latitude_compare_no_sectors_yes_transmission_3h"
     run1 = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
@@ -1854,7 +1868,7 @@ def solar_by_wind_all():
 
     
     plt.rcParams.update({'font.size': 18})
-    fs = 20
+    fs = 23
     plt.rcParams['axes.labelsize'] = fs
     plt.rcParams['xtick.labelsize'] = fs
     plt.rcParams['ytick.labelsize'] = fs
@@ -1868,6 +1882,16 @@ def solar_by_wind_all():
     labels2 = solar_by_wind(path2, ax[2])
     
     labels3 = solar_by_wind(path3, ax[3])
+
+    ax0points = [child for child in ax[0].get_children() if isinstance(child, matplotlib.text.Annotation)]
+    adjust_text(ax0points, ax = ax[0])
+    ax1points = [child for child in ax[1].get_children() if isinstance(child, matplotlib.text.Annotation)]
+    adjust_text(ax1points, ax = ax[1])
+    ax2points = [child for child in ax[2].get_children() if isinstance(child, matplotlib.text.Annotation)]
+    adjust_text(ax2points, ax = ax[2])
+    ax3points = [child for child in ax[3].get_children() if isinstance(child, matplotlib.text.Annotation)]
+    adjust_text(ax3points, ax = ax[3]) 
+
     ax[1].lines[-1].set_color('C1')
     ax[2].lines[-1].set_color('C2')
     ax[3].lines[-1].set_color('C3')
@@ -1881,8 +1905,8 @@ def solar_by_wind_all():
     #plt.gca().lines[-].set_color('C2')
     # ax[0].set_ylabel(r"$\bf{Yes}$" , fontsize = fs)
     # ax[2].set_ylabel(r"$\bf{No}$", fontsize = fs)
-    ax[2].tick_params(axis='x',  labelsize = fs-4)
-    ax[3].tick_params(axis='x',  labelsize = fs-4)
+    ax[2].tick_params(axis='x',  labelsize = fs-1, rotation = 40)
+    ax[3].tick_params(axis='x',  labelsize = fs-1, rotation = 40)
 
     ax[0].set_title("")
     ax[2].set_ylabel("")
@@ -1906,7 +1930,12 @@ def solar_by_wind_all():
     handles = handles0 + handles2 + handles1 + handles3
     labels = labels0 + labels2 + labels1 + labels3
 
-    fig.legend(handles, labels, prop={'size':fs-4}, ncol=2, loc = (0.39, 0.01))
+
+    for anax in ax:
+        anax.xaxis.set_tick_params(length = 4, width = 2)
+        anax.yaxis.set_tick_params(length = 4, width = 2)
+
+    fig.legend(handles, labels, prop={'size':fs-1}, ncol=2, loc = (0.28, 0.01))
 
     fig.tight_layout(rect = [0.03, 0.1, 1, 0.9])
     plt.subplots_adjust(wspace=0.02, hspace=0.05)
@@ -1923,9 +1952,9 @@ def solar_by_wind_all():
     plt.savefig("Images/Paper/cap_wind_paper.png", dpi = 600)
 
     plt.show()
-#solar_by_wind_all()
+solar_by_wind_all()
 
-
+#%%
 
 def solar_by_anycorr(path, timeframe, corrtype, ax):
     '''The goal of this function is to choose between different timeframes and types, such as weekly/3h, or Load, Heating, Cooling
@@ -2562,3 +2591,5 @@ def solar_by_corr(path):
 #     n.append(item)
 
 # print(n)
+
+# %%

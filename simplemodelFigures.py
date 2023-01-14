@@ -1,4 +1,4 @@
-
+#%%
 import pypsa
 import pandas as pd
 import numpy as np
@@ -15,6 +15,7 @@ from datetime import datetime
 import matplotlib
 import csv
 import glob
+import matplotlib.patches as mpatches
 
 
 #%%
@@ -37,7 +38,7 @@ def pen_plus_any_curtailoverlap_t(w_heat, wo_heat, mytype):
     #battery without heat--battcost_elec_28_Sept.csv
 
     plt.rcdefaults()
-    plt.rcParams.update({'font.size': 14})
+    plt.rcParams.update({'font.size': 15})
     solardnk = pd.read_csv("results/csvs/Denmark/" + w_heat)
     solaresp = pd.read_csv("results/csvs/Spain/"+ w_heat)
     solarcol = pd.read_csv("results/csvs/CO/"+ w_heat)
@@ -133,23 +134,21 @@ def pen_plus_any_curtailoverlap_t(w_heat, wo_heat, mytype):
     COL_sc2 = solarcol2['s_curtailment'].abs()
 
     if mytype == "solar":
-        axden0.scatter(s_cost, DNK_sc, s = 15, color = "C1")
-        axden0.scatter(s_cost, DNK_sc2, marker = "x", s = 15, color = "C1", alpha = 0.5) #Scatter or plot? 
+        axden0.scatter(s_cost, DNK_sc2, s = 15, color = "C1", label = "solar (elec)")
+        axden0.scatter(s_cost, DNK_sc, marker = "x", s = 15, color = "C1", alpha = 0.5, label = "solar (elec + heat)") #Scatter or plot? 
         axden0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-        axden0.set_ylabel("Curtailment")
+        axden0.set_ylabel("Curtailment", fontsize = 15)
         axden0.set_facecolor("#eeeeee")
 
         axesp0.scatter(s_cost, ESP_sc2, s = 15, color = "C1")
         axesp0.scatter(s_cost, ESP_sc, marker = "x", s = 15, color = "C1", alpha = 0.5)
-        # axesp0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-        #axesp0.set_ylabel("Curtailment")
         axesp0.set_facecolor("#eeeeee")
 
 
         axcol0.scatter(s_cost, COL_sc2, s = 15, color = "C1")
         axcol0.scatter(s_cost, COL_sc, marker = "x", s = 15, color = "C1", alpha = 0.5)
         axcol0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
-        axcol0.set_ylabel("Curtailment")
+        axcol0.set_ylabel("Curtailment", fontsize = 15)
         axcol0.set_facecolor("#eeeeee")
 
 
@@ -159,27 +158,13 @@ def pen_plus_any_curtailoverlap_t(w_heat, wo_heat, mytype):
         # axcal0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax = 1))
         axcal0.set_facecolor("#eeeeee")
 
-
-    #The one with the lower alpha also has the one with the "x" marker.
-
-
-    #Here, the original is the one with the lower alpha, not the one with the change in heat
-    # We expect solar to be less favored, so we expect solar to extend more in the original
-
-    #I think the reason why the labels and alphas and stuff are weird is because what is actually
-    #coloring the thing is the light blue. 
-
-
-    
-    axden1.stackplot(s_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar\nelec + heat", "Wind\nelec + heat"])
+    #DNK_sp is with heat, DNK_sp2 is without heat
+    axden1.stackplot(s_cost, DNK_sp, DNK_wp, colors = ["#f1c232","#2986cc"], labels = ["Solar", "Wind"])
     axden1.stackplot(s_cost, DNK_sp2, DNK_wp2, colors = ["#f1c232","#2986cc"], labels = ["Solar\nelec", "Wind\nelec"], alpha = 0.5)
-    axden1.set_ylabel("Solar\nShare")
+    axden1.set_ylabel("Solar\nShare", fontsize = 15)
 
 
     axden0.set_title("Denmark")
-
-    # axden0.spines["top"].set_visible(False)
-    # axden0.spines["right"].set_visible(False)
     plt.rcParams['hatch.linewidth'] = 1
 
     ####SPAIN####
@@ -195,10 +180,10 @@ def pen_plus_any_curtailoverlap_t(w_heat, wo_heat, mytype):
 
 
     ####Colorado#####
-
+    #COL_sp is with heat, COL_sp2 is without heat
     axcol1.stackplot(s_cost, COL_sp, COL_wp, colors = ["#f1c232","#2986cc"])
     axcol1.stackplot(s_cost, COL_sp2, COL_wp2, colors = ["#f1c232","#2986cc"], alpha = 0.5)
-    axcol1.set_ylabel("Solar\nShare")
+    axcol1.set_ylabel("Solar\nShare", fontsize = 15)
     axcol0.set_title("Colorado")
 
 
@@ -262,13 +247,13 @@ def pen_plus_any_curtailoverlap_t(w_heat, wo_heat, mytype):
         # "less optimistic" was something different
 
         if mytype == "solar":
-            ax.fill_between([0.019, 0.132], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "purple")
-            ax.axvline(0.529, color='black',ls='--')
-            ax.axvline(0.019, color='black',ls='--')
-            ax.text(0.045,0.05, "Future Range", fontsize = 16, horizontalalignment = "center", rotation = "vertical")
+            ax.fill_between([0.097, 0.319], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "purple")
+            ax.axvline(0.319, color='black',ls='--')
+            ax.axvline(0.097, color='black',ls='--')
+            ax.text(0.19,0.05, "Future Range", fontsize = 16, horizontalalignment = "center", rotation = "vertical")
             
             ax.text(0.85,0.05,  "Today's range", fontsize = 16, horizontalalignment = "center", rotation = "vertical")
-            ax.axvline(0.132, color='black',ls='--')
+            ax.axvline(0.529, color='black',ls='--')
             ax.fill_between([0.529, 1.3], y1 = 1, alpha = 0.3, edgecolor = "k", hatch = "//", facecolor = "gray")
             ax.axvline(1.3, color='black',ls='--')
 
@@ -321,8 +306,25 @@ def pen_plus_any_curtailoverlap_t(w_heat, wo_heat, mytype):
         xticks[-1].label1.set_visible(False)
 
     lines1, labels1 = axden1.get_legend_handles_labels()
+    lines2, labels2 = axden0.get_legend_handles_labels()
 
-    fig.legend(lines1, labels1, bbox_to_anchor=(0.85, 1.015), ncol=4)
+    lines1 = lines1[:2] #note--the labels as stand are correct but are misleading on the Figure because of the way that the lighter colors are plotted on top of the solid ones
+   
+
+    labels1 = labels1[:2]
+    print(labels1)
+    print(lines1)
+
+    patch = mpatches.Patch(color='#8da47e', label='Solar elec\nWind elec+heat')  
+
+    lines1.append(patch)
+    labels1.append('Solar (elec) \n Wind (elec + heat)')
+    
+
+    lines1 += lines2
+    labels1 += labels2
+
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.9, 1.02), ncol=4, fontsize = 13)
 
     curDT = datetime.now()
     version = curDT.strftime("_%d_%m_%Y")
@@ -335,8 +337,6 @@ def pen_plus_any_curtailoverlap_t(w_heat, wo_heat, mytype):
     elif mytype == "batt":
         save = "Images/Paper/Figure5_batt_sensitivity_w_and_woHeat_ver" + version
         #fig.suptitle(r"$\bf{Sensitivity\;to\;Cost\;of\;Battery\;(€/Wh)}$", fontsize = 24)
-
-
 
 
     plt.savefig(save + ".pdf")
@@ -353,7 +353,7 @@ pen_plus_any_curtailoverlap_t("solarcost_heatelec_26_Oct.csv", "solarcost_elec_2
 
 
 
-
+#%%
 def pen_plus_any_poster_curtailoverlap_t(w_heat, wo_heat, mytype):
     '''This makes a 2x2 grid of two axes each showing resource penetration and solar curtailment vs.
     a scaling log of solar. It is very long. It uses gridspec to order the axes, and other than that
@@ -640,3 +640,5 @@ def pen_plus_any_poster_curtailoverlap_t(w_heat, wo_heat, mytype):
 
 if __name__ == "__main__":
     pen_plus_any_curtailoverlap_t("solarcost_heatelec_26_Oct.csv", "solarcost_elec_26_Oct.csv", "solar")
+
+# %%
