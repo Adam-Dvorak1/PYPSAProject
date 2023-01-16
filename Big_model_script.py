@@ -1432,7 +1432,14 @@ def solar_by_latitude_comparecost(path, ax):
 
     ax.scatter(x, y, label = 'default', color = 'C0')
     ax.scatter(x1, y1, label = 'less optimistic', color = 'C1')
-    ax.scatter(x2, y2, label = 'optimistic', color = 'C2')
+    ax.scatter(x2, y2, label = 'optimistic', color = 'C2', s = 20)
+
+    for tick in ax.xaxis.get_major_ticks()[1::2]:
+        tick.set_pad(30)
+
+
+
+
     ax.grid(True)
     # ax.set_xlabel("Country sorted by latitude")
     ax.set_ylabel("Optimal solar share (%)")
@@ -1502,8 +1509,11 @@ def four_latitude_comparecost():
     #ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs)
     #ax[0].set_ylabel(r"$\bf{Yes}$" + '\nSolar Percent', fontsize = fs)
     #ax[2].set_ylabel(r"$\bf{No}$" + '\nSolar Percent', fontsize = fs)
-    ax[2].tick_params(axis='x', labelrotation =90, labelsize = fs-6)
-    ax[3].tick_params(axis='x', labelrotation = 90, labelsize = fs-6)
+    ax[2].tick_params(axis='x', labelrotation =90, labelsize = fs-2,)
+    ax[3].tick_params(axis='x', labelrotation = 90, labelsize = fs-2)
+
+    for line in ax[3].xaxis.get_ticklines()[1::2]:
+        line.set_markersize(50)
 
     ax[1].set_ylabel("")
     ax[3].set_ylabel("")
@@ -1527,10 +1537,11 @@ def four_latitude_comparecost():
     fig.text(0.41, 0.18, "Countries ordered by latitude",fontsize=fs)
     plt.subplots_adjust(wspace=0.02, hspace=0.05)
 
-    #plt.savefig("Images/Paper/fourlatitude_compare.pdf")
+    plt.savefig("Images/Paper/fourlatitude_compare.pdf")
+    plt.savefig("Images/Paper/fourlatitude_compare.png", dpi = 500)
 
     plt.show()
-#four_latitude_comparecost()
+four_latitude_comparecost()
 
     # plt.show()
 #%%
@@ -1935,7 +1946,7 @@ def solar_by_wind_all():
         anax.xaxis.set_tick_params(length = 4, width = 2)
         anax.yaxis.set_tick_params(length = 4, width = 2)
 
-    fig.legend(handles, labels, prop={'size':fs-1}, ncol=2, loc = (0.28, 0.01))
+    fig.legend(handles, labels, prop={'size':fs-2}, ncol=2, loc = (0.28, 0.0))
 
     fig.tight_layout(rect = [0.03, 0.1, 1, 0.9])
     plt.subplots_adjust(wspace=0.02, hspace=0.05)
