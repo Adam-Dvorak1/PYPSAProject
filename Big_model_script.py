@@ -225,96 +225,96 @@ def load_temp_data():
 
 
 
-# def retrieve_generators(filepath):
-#     '''This function takes a completed postnetwork, finds the resource frac
+def retrieve_generators(filepath):
+    '''This function takes a completed postnetwork, finds the resource frac
     
-#     This function is useful if there is one postnetwork per run name'''
+    This function is useful if there is one postnetwork per run name'''
     
-#     europe = pypsa.Network()
-#     europe.import_from_netcdf(filepath)
+    europe = pypsa.Network()
+    europe.import_from_netcdf(filepath)
 
-#     my_gen = ("offwind-ac", "offwind-dc", "solar", "onwind", "ror")
+    my_gen = ("offwind-ac", "offwind-dc", "solar", "onwind", "ror")
 
-#     #Before, we were missing 
-#     countries = eu28
-#     mydata = europe.generators_t.p
-#     mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
+    #Before, we were missing 
+    countries = eu28
+    mydata = europe.generators_t.p
+    mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
 
-#     mystorage = europe.storage_units_t.p
-#     #mystorage = mystorage[mystorage.columns[mystorage.columns.str.startswith(countries) ]] #this line is actually useless for PHS because all generators start with one of the european countries
-#     mystorage = mystorage[mystorage.columns[mystorage.columns.str.endswith("hydro")]]
+    mystorage = europe.storage_units_t.p
+    #mystorage = mystorage[mystorage.columns[mystorage.columns.str.startswith(countries) ]] #this line is actually useless for PHS because all generators start with one of the european countries
+    mystorage = mystorage[mystorage.columns[mystorage.columns.str.endswith("hydro")]]
 
-#     #This deals with p_nom_opt
-#     mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
+    #This deals with p_nom_opt
+    mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
 
     
-#     totalpowers = europe.generators.p_nom_opt#installed generators
-#     totalpowers = totalpowers[mydata.columns]
+    totalpowers = europe.generators.p_nom_opt#installed generators
+    totalpowers = totalpowers[mydata.columns]
 
-#     totalpowers = totalpowers.to_frame()
-#     totalpowers = totalpowers.T #The p_nom_opt is not a timeseries. However, before we were using timeseries. 
-#                                 # So, to make the same code work (combining similar names), we transpose it
-
-
-#     myloads = europe.loads_t.p
-#     myloads = myloads[myloads.columns[myloads.columns.str.startswith(countries)]]
-
-#     myloads = myloads-myloads.mean()
-#     myloads.rename(columns = lambda x: x[:2], inplace = True) #All of the loads are only named by the country
-#     myloads = myloads.groupby(level = 0, axis = 1).sum() #There are some duplicate loads. This groups them (adds them together)
-
-#     weekloads = myloads.rolling(56).mean()[::56]
-
-#     weekloads = weekloads.drop(0)# I did not add this line before. I wonder if this will make a difference
-#                                     #It did make a bit of a difference--about 1% Nothign to write home about
+    totalpowers = totalpowers.to_frame()
+    totalpowers = totalpowers.T #The p_nom_opt is not a timeseries. However, before we were using timeseries. 
+                                # So, to make the same code work (combining similar names), we transpose it
 
 
-#     #In this section, we attempt to add the covariance of solar with the cooling and heating degree days
-#     coolDD, heatDD = load_temp_data()
+    myloads = europe.loads_t.p
+    myloads = myloads[myloads.columns[myloads.columns.str.startswith(countries)]]
 
-#     coolDD = coolDD-coolDD.mean() #in the calculation of covariances, we want to use the difference between the amount of CDD/HDD and the mean
-#     heatDD = heatDD-heatDD.mean()
+    myloads = myloads-myloads.mean()
+    myloads.rename(columns = lambda x: x[:2], inplace = True) #All of the loads are only named by the country
+    myloads = myloads.groupby(level = 0, axis = 1).sum() #There are some duplicate loads. This groups them (adds them together)
 
-#     coolDD = coolDD.reset_index()
-#     coolDD = coolDD.drop('time', axis = 1)
+    weekloads = myloads.rolling(56).mean()[::56]
 
-#     heatDD = heatDD.reset_index()
-#     heatDD = heatDD.drop('time', axis = 1)
-#     heatDD = heatDD * -1
-
-#     coolweek = coolDD.rolling(56).mean()[::56]
-#     heatweek = heatDD.rolling(56).mean()[::56]
+    weekloads = weekloads.drop(0)# I did not add this line before. I wonder if this will make a difference
+                                    #It did make a bit of a difference--about 1% Nothign to write home about
 
 
+    #In this section, we attempt to add the covariance of solar with the cooling and heating degree days
+    coolDD, heatDD = load_temp_data()
 
-#     # coolsum = coolsum.T
+    coolDD = coolDD-coolDD.mean() #in the calculation of covariances, we want to use the difference between the amount of CDD/HDD and the mean
+    heatDD = heatDD-heatDD.mean()
+
+    coolDD = coolDD.reset_index()
+    coolDD = coolDD.drop('time', axis = 1)
+
+    heatDD = heatDD.reset_index()
+    heatDD = heatDD.drop('time', axis = 1)
+    heatDD = heatDD * -1
+
+    coolweek = coolDD.rolling(56).mean()[::56]
+    heatweek = heatDD.rolling(56).mean()[::56]
 
 
 
-#     for country in countries:
-#         resource_fracs = mydata
-#         resource_fracs = resource_fracs[[col for col in resource_fracs.columns if col.startswith(country)]]
-#         mydata[country + 'solar'] = resource_fracs[[col for col in resource_fracs.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
-#         mydata[country + 'wind'] = resource_fracs[[col for col in resource_fracs.columns if 'wind' in col]].sum(axis = 1)
-#         if any('ror' in col for col in resource_fracs.columns):#checks if there is a 'ror' column present
-#             mydata[country + 'ror'] =  resource_fracs[[col for col in resource_fracs.columns if 'ror' in col]].sum(axis = 1)
+    # coolsum = coolsum.T
+
+
+
+    for country in countries:
+        resource_fracs = mydata
+        resource_fracs = resource_fracs[[col for col in resource_fracs.columns if col.startswith(country)]]
+        mydata[country + 'solar'] = resource_fracs[[col for col in resource_fracs.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        mydata[country + 'wind'] = resource_fracs[[col for col in resource_fracs.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in resource_fracs.columns):#checks if there is a 'ror' column present
+            mydata[country + 'ror'] =  resource_fracs[[col for col in resource_fracs.columns if 'ror' in col]].sum(axis = 1)
 
 
 
 
-#         allsources = totalpowers
-#         allsources =allsources[[col for col in allsources.columns if col.startswith(country)]]
-#         totalpowers[country + 'solar'] = allsources[[col for col in allsources.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
-#         totalpowers[country + 'wind'] = allsources[[col for col in allsources.columns if 'wind' in col]].sum(axis = 1)
-#         if any('ror' in col for col in allsources.columns):#checks if there is a 'ror' column present
-#             totalpowers[country + 'ror'] =  allsources[[col for col in allsources.columns if 'ror' in col]].sum(axis = 1)
+        allsources = totalpowers
+        allsources =allsources[[col for col in allsources.columns if col.startswith(country)]]
+        totalpowers[country + 'solar'] = allsources[[col for col in allsources.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        totalpowers[country + 'wind'] = allsources[[col for col in allsources.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in allsources.columns):#checks if there is a 'ror' column present
+            totalpowers[country + 'ror'] =  allsources[[col for col in allsources.columns if 'ror' in col]].sum(axis = 1)
 
 
 
-#         allstorage = mystorage
-#         allstorage = allstorage[[col for col in allstorage.columns if col.startswith(country)]]
-#         if any ('hydro' in col for col in allstorage.columns):
-#             mydata[country + "hydro"] = allstorage[[col for col in allstorage.columns]].sum(axis = 1) 
+        allstorage = mystorage
+        allstorage = allstorage[[col for col in allstorage.columns if col.startswith(country)]]
+        if any ('hydro' in col for col in allstorage.columns):
+            mydata[country + "hydro"] = allstorage[[col for col in allstorage.columns]].sum(axis = 1) 
         
 
         
@@ -322,372 +322,372 @@ def load_temp_data():
 
 
 
-#     mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
+    mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
 
-#     #print(mydata)
+    #print(mydata)
 
-#     totalpowers = totalpowers[totalpowers.columns[~totalpowers.columns.str.contains('[0-9]+')]]
-#     totalpowers = totalpowers.T
-
-
-#     moddata = mydata-mydata.mean()
-
-#     weekdata = moddata.rolling(56).mean()[::56]
-#     weekdata = weekdata.drop(0)#question: we are dropping the first row because the rolling/mean combo makes the first row NaN.
-#     #However, what about the loads?
+    totalpowers = totalpowers[totalpowers.columns[~totalpowers.columns.str.contains('[0-9]+')]]
+    totalpowers = totalpowers.T
 
 
-#     covariances = pd.DataFrame()
+    moddata = mydata-mydata.mean()
 
-#     weekcovariances = pd.DataFrame()
+    weekdata = moddata.rolling(56).mean()[::56]
+    weekdata = weekdata.drop(0)#question: we are dropping the first row because the rolling/mean combo makes the first row NaN.
+    #However, what about the loads?
+
+
+    covariances = pd.DataFrame()
+
+    weekcovariances = pd.DataFrame()
     
-#     coolvariances = pd.DataFrame()
+    coolvariances = pd.DataFrame()
 
-#     coolweekvar = pd.DataFrame()
+    coolweekvar = pd.DataFrame()
 
-#     heatvariances = pd.DataFrame()
+    heatvariances = pd.DataFrame()
 
-#     heatweekvar = pd.DataFrame()
+    heatweekvar = pd.DataFrame()
     
-    
-
-
-#     for col in myloads.columns:
-#         covariances[col+'solar'] = myloads[col] * moddata[col + 'solar']/(myloads[col].std()*moddata[col + 'solar'].std())
-#         covariances[col+ 'wind'] = myloads[col] * moddata[col + 'wind']/(myloads[col].std()*moddata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             covariances[col + 'ror'] =  myloads[col] * moddata[col + 'ror']/(myloads[col].std()*moddata[col + 'ror'].std())
-
-
-#         weekcovariances[col+'solar'] = weekloads[col] * weekdata[col + 'solar']/(weekloads[col].std()*weekdata[col + 'solar'].std())
-#         weekcovariances[col+ 'wind'] = weekloads[col] * weekdata[col + 'wind']/(weekloads[col].std()*weekdata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             weekcovariances[col + 'ror'] =  weekloads[col] * weekdata[col + 'ror']/(weekloads[col].std()*weekdata[col + 'ror'].std())
     
 
-#         coolvariances[col + 'solar'] = coolDD[col] * moddata[col + 'solar']/(coolDD[col].std()*moddata[col + 'solar'].std())
-#         coolvariances[col + 'wind'] = coolDD[col] * moddata[col + 'wind']/(coolDD[col].std()*moddata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             coolvariances[col + 'ror'] =  coolDD[col] * moddata[col + 'ror']/(coolDD[col].std()*moddata[col + 'ror'].std())
+
+    for col in myloads.columns:
+        covariances[col+'solar'] = myloads[col] * moddata[col + 'solar']/(myloads[col].std()*moddata[col + 'solar'].std())
+        covariances[col+ 'wind'] = myloads[col] * moddata[col + 'wind']/(myloads[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            covariances[col + 'ror'] =  myloads[col] * moddata[col + 'ror']/(myloads[col].std()*moddata[col + 'ror'].std())
+
+
+        weekcovariances[col+'solar'] = weekloads[col] * weekdata[col + 'solar']/(weekloads[col].std()*weekdata[col + 'solar'].std())
+        weekcovariances[col+ 'wind'] = weekloads[col] * weekdata[col + 'wind']/(weekloads[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            weekcovariances[col + 'ror'] =  weekloads[col] * weekdata[col + 'ror']/(weekloads[col].std()*weekdata[col + 'ror'].std())
+    
+
+        coolvariances[col + 'solar'] = coolDD[col] * moddata[col + 'solar']/(coolDD[col].std()*moddata[col + 'solar'].std())
+        coolvariances[col + 'wind'] = coolDD[col] * moddata[col + 'wind']/(coolDD[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            coolvariances[col + 'ror'] =  coolDD[col] * moddata[col + 'ror']/(coolDD[col].std()*moddata[col + 'ror'].std())
         
-#         coolweekvar[col + 'solar'] = coolweek[col] * weekdata[col + 'solar']/(coolweek[col].std()*weekdata[col + 'solar'].std())
-#         coolweekvar[col + 'wind'] = coolweek[col] * weekdata[col + 'wind']/(coolweek[col].std()*weekdata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             coolweekvar[col + 'ror'] =  coolweek[col] * weekdata[col + 'ror']/(coolweek[col].std()*weekdata[col + 'ror'].std())
-
-
-        
-
-#         heatvariances[col + 'solar'] = heatDD[col] * moddata[col + 'solar']/(heatDD[col].std()*moddata[col + 'solar'].std())
-#         heatvariances[col + 'wind'] = heatDD[col] * moddata[col + 'wind']/(heatDD[col].std()*moddata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             heatvariances[col + 'ror'] =  heatDD[col] * moddata[col + 'ror']/(heatDD[col].std()*moddata[col + 'ror'].std())
-
-
-
-#         heatweekvar[col + 'solar'] = heatweek[col] * weekdata[col + 'solar']/(heatweek[col].std()*weekdata[col + 'solar'].std())
-#         heatweekvar[col + 'wind'] = heatweek[col] * weekdata[col + 'wind']/(heatweek[col].std()*weekdata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             heatweekvar[col + 'ror'] =  heatweek[col] * weekdata[col + 'ror']/(heatweek[col].std()*weekdata[col + 'ror'].std())
-    
-#     # print(weekcovariances)
-#     weekcovariances = weekcovariances.sum()/len(weekcovariances)
-#     weekcovariances.to_frame()
-#     # print(weekcovariances)
-
-#     covariances = covariances.sum()/len(covariances)
-#     covariances.to_frame()
-
-#     coolvariances = coolvariances.sum()/len(coolvariances)
-#     coolvariances.to_frame()
-
-#     heatvariances = heatvariances.sum()/len(heatvariances)
-#     heatvariances.to_frame()
-
-
-#     coolweekvar = coolweekvar.sum()/len(coolweekvar)
-#     coolweekvar.to_frame()
-
-#     heatweekvar = heatweekvar.sum()/len(heatweekvar)
-#     heatweekvar.to_frame()
-#     #print(covariances.columns)
-
-#     #In this section:
-#         #Bring in the relevant dataframes from temp function
-#         #Add to mydata: CDDs/day on average, HDDs/day on average
-#         #Also, covariance between CDD, HDDs
-    
-    
-
-
-
-
-    
-#     mydata = mydata.sum()
-
-
-
-    
-
-
-#     mydata = mydata.to_frame()
-
-#     mydata = pd.concat([mydata, totalpowers, covariances, weekcovariances, coolvariances, coolweekvar, heatvariances, heatweekvar], axis = 1)#We want to do the same thing with the
-#     #mydata = pd.concat([mydata, totalpowers, weekcovariances], axis = 1)
-
-#     #mydata.columns = ['0', 'p_nom_opt', 'load_corr', 'week_corr']
-
-#     #In this section of the code, I
-#         #Extract 
-#     #save csv in new file, related to filepath
-#     now_path = pathlib.Path(filepath)
-#     parent_path = now_path.parent
-#     run_directory = parent_path.parent
-
-
-    
-
-
-#     mydata.to_csv(run_directory / "csvs/generators_T.csv")
-
-
-
-
-#     return mydata
-
-# def mod_retrieve_generators(filepath):
-#     '''This function takes a completed postnetwork, finds the resource frac
-    
-#     This function is useful if there is one postnetwork per run name
-    
-#     This function is a test to see if the definition of covariance I have is wrong'''
-    
-#     europe = pypsa.Network()
-#     europe.import_from_netcdf(filepath)
-
-#     my_gen = ("offwind-ac", "offwind-dc", "solar", "onwind", "ror")
-
-#     #Before, we were missing 
-#     countries = eu28
-#     mydata = europe.generators_t.p
-#     mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
-
-#     mystorage = europe.storage_units_t.p
-#     #mystorage = mystorage[mystorage.columns[mystorage.columns.str.startswith(countries) ]] #this line is actually useless for PHS because all generators start with one of the european countries
-#     mystorage = mystorage[mystorage.columns[mystorage.columns.str.endswith("hydro")]]
-
-#     #This deals with p_nom_opt
-#     mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
-
-    
-#     totalpowers = europe.generators.p_nom_opt#installed generators
-#     totalpowers = totalpowers[mydata.columns]
-
-#     totalpowers = totalpowers.to_frame()
-#     totalpowers = totalpowers.T #The p_nom_opt is not a timeseries. However, before we were using timeseries. 
-#                                 # So, to make the same code work (combining similar names), we transpose it
-
-
-#     myloads = europe.loads_t.p
-#     myloads = myloads[myloads.columns[myloads.columns.str.startswith(countries)]]
-
-#     myloads = myloads-myloads.mean()
-#     myloads.rename(columns = lambda x: x[:2], inplace = True) #All of the loads are only named by the country
-#     myloads = myloads.groupby(level = 0, axis = 1).sum() #There are some duplicate loads. This groups them (adds them together)
-
-#     weekloads = myloads.rolling(56).mean()[::56]
-
-#     weekloads = weekloads.drop(0)# I did not add this line before. I wonder if this will make a difference
-#                                     #It did make a bit of a difference--about 1% Nothign to write home about
-
-
-#     #In this section, we attempt to add the covariance of solar with the cooling and heating degree days
-#     coolDD, heatDD = load_temp_data()
-
-#     coolDD = coolDD-coolDD.mean() #in the calculation of covariances, we want to use the difference between the amount of CDD/HDD and the mean
-#     heatDD = heatDD-heatDD.mean()
-
-#     coolDD = coolDD.reset_index()
-#     coolDD = coolDD.drop('time', axis = 1)
-
-#     heatDD = heatDD.reset_index()
-#     heatDD = heatDD.drop('time', axis = 1)
-#     heatDD = heatDD * -1
-
-#     coolweek = coolDD.rolling(56).mean()[::56]
-#     heatweek = heatDD.rolling(56).mean()[::56]
-
-
-
-#     # coolsum = coolsum.T
-
-
-
-#     for country in countries:
-#         resource_fracs = mydata
-#         resource_fracs = resource_fracs[[col for col in resource_fracs.columns if col.startswith(country)]]
-#         mydata[country + 'solar'] = resource_fracs[[col for col in resource_fracs.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
-#         mydata[country + 'wind'] = resource_fracs[[col for col in resource_fracs.columns if 'wind' in col]].sum(axis = 1)
-#         if any('ror' in col for col in resource_fracs.columns):#checks if there is a 'ror' column present
-#             mydata[country + 'ror'] =  resource_fracs[[col for col in resource_fracs.columns if 'ror' in col]].sum(axis = 1)
-
-
-
-
-#         allsources = totalpowers
-#         allsources =allsources[[col for col in allsources.columns if col.startswith(country)]]
-#         totalpowers[country + 'solar'] = allsources[[col for col in allsources.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
-#         totalpowers[country + 'wind'] = allsources[[col for col in allsources.columns if 'wind' in col]].sum(axis = 1)
-#         if any('ror' in col for col in allsources.columns):#checks if there is a 'ror' column present
-#             totalpowers[country + 'ror'] =  allsources[[col for col in allsources.columns if 'ror' in col]].sum(axis = 1)
-
-
-
-#         allstorage = mystorage
-#         allstorage = allstorage[[col for col in allstorage.columns if col.startswith(country)]]
-#         if any ('hydro' in col for col in allstorage.columns):
-#             mydata[country + "hydro"] = allstorage[[col for col in allstorage.columns]].sum(axis = 1) 
-        
-
-        
-
-
-
-
-#     mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
-
-#     #print(mydata)
-
-#     totalpowers = totalpowers[totalpowers.columns[~totalpowers.columns.str.contains('[0-9]+')]]
-#     totalpowers = totalpowers.T
-
-
-#     moddata = mydata-mydata.mean()#WE SUBTRACT THE MEAN HERE
-
-#     weekdata = moddata.rolling(56).mean()[::56]
-#     weekdata = weekdata.drop(0)#question: we are dropping the first row because the rolling/mean combo makes the first row NaN.
-#     #However, what about the loads?
-
-
-#     covariances = pd.DataFrame()
-
-#     weekcovariances = pd.DataFrame()
-    
-#     coolvariances = pd.DataFrame()
-
-#     coolweekvar = pd.DataFrame()
-
-#     heatvariances = pd.DataFrame()
-
-#     heatweekvar = pd.DataFrame()
-    
-    
-
-
-#     for col in myloads.columns:
-#         covariances[col+'solar'] =(myloads[col]-myloads[col].mean()) * (moddata[col + 'solar']-moddata[col + 'solar'].mean())/(myloads[col].std()*moddata[col + 'solar'].std())
-#         print(myloads[col].mean())
-#         print(moddata[col+'solar'].mean())
-#         covariances[col+ 'wind'] = (myloads[col]-myloads[col].mean()) * (moddata[col + 'wind']-moddata[col + 'wind'].mean())/(myloads[col].std()*moddata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             covariances[col + 'ror'] =  myloads[col] * moddata[col + 'ror']/(myloads[col].std()*moddata[col + 'ror'].std())
-
-
-#         weekcovariances[col+'solar'] = weekloads[col] * weekdata[col + 'solar']/(weekloads[col].std()*weekdata[col + 'solar'].std())
-#         weekcovariances[col+ 'wind'] = weekloads[col] * weekdata[col + 'wind']/(weekloads[col].std()*weekdata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             weekcovariances[col + 'ror'] =  weekloads[col] * weekdata[col + 'ror']/(weekloads[col].std()*weekdata[col + 'ror'].std())
-    
-
-#         coolvariances[col + 'solar'] = coolDD[col] * moddata[col + 'solar']/(coolDD[col].std()*moddata[col + 'solar'].std())
-#         coolvariances[col + 'wind'] = coolDD[col] * moddata[col + 'wind']/(coolDD[col].std()*moddata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             coolvariances[col + 'ror'] =  coolDD[col] * moddata[col + 'ror']/(coolDD[col].std()*moddata[col + 'ror'].std())
-        
-#         coolweekvar[col + 'solar'] = coolweek[col] * weekdata[col + 'solar']/(coolweek[col].std()*weekdata[col + 'solar'].std())
-#         coolweekvar[col + 'wind'] = coolweek[col] * weekdata[col + 'wind']/(coolweek[col].std()*weekdata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             coolweekvar[col + 'ror'] =  coolweek[col] * weekdata[col + 'ror']/(coolweek[col].std()*weekdata[col + 'ror'].std())
+        coolweekvar[col + 'solar'] = coolweek[col] * weekdata[col + 'solar']/(coolweek[col].std()*weekdata[col + 'solar'].std())
+        coolweekvar[col + 'wind'] = coolweek[col] * weekdata[col + 'wind']/(coolweek[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            coolweekvar[col + 'ror'] =  coolweek[col] * weekdata[col + 'ror']/(coolweek[col].std()*weekdata[col + 'ror'].std())
 
 
         
 
-#         heatvariances[col + 'solar'] = heatDD[col] * moddata[col + 'solar']/(heatDD[col].std()*moddata[col + 'solar'].std())
-#         heatvariances[col + 'wind'] = heatDD[col] * moddata[col + 'wind']/(heatDD[col].std()*moddata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             heatvariances[col + 'ror'] =  heatDD[col] * moddata[col + 'ror']/(heatDD[col].std()*moddata[col + 'ror'].std())
+        heatvariances[col + 'solar'] = heatDD[col] * moddata[col + 'solar']/(heatDD[col].std()*moddata[col + 'solar'].std())
+        heatvariances[col + 'wind'] = heatDD[col] * moddata[col + 'wind']/(heatDD[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            heatvariances[col + 'ror'] =  heatDD[col] * moddata[col + 'ror']/(heatDD[col].std()*moddata[col + 'ror'].std())
 
 
 
-#         heatweekvar[col + 'solar'] = heatweek[col] * weekdata[col + 'solar']/(heatweek[col].std()*weekdata[col + 'solar'].std())
-#         heatweekvar[col + 'wind'] = heatweek[col] * weekdata[col + 'wind']/(heatweek[col].std()*weekdata[col + 'wind'].std())
-#         if col + 'ror' in moddata.columns:
-#             heatweekvar[col + 'ror'] =  heatweek[col] * weekdata[col + 'ror']/(heatweek[col].std()*weekdata[col + 'ror'].std())
+        heatweekvar[col + 'solar'] = heatweek[col] * weekdata[col + 'solar']/(heatweek[col].std()*weekdata[col + 'solar'].std())
+        heatweekvar[col + 'wind'] = heatweek[col] * weekdata[col + 'wind']/(heatweek[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            heatweekvar[col + 'ror'] =  heatweek[col] * weekdata[col + 'ror']/(heatweek[col].std()*weekdata[col + 'ror'].std())
     
-#     # print(weekcovariances)
-#     weekcovariances = weekcovariances.sum()/len(weekcovariances)
-#     weekcovariances.to_frame()
-#     # print(weekcovariances)
+    # print(weekcovariances)
+    weekcovariances = weekcovariances.sum()/len(weekcovariances)
+    weekcovariances.to_frame()
+    # print(weekcovariances)
 
-#     covariances = covariances.sum()/len(covariances)
-#     covariances.to_frame()
+    covariances = covariances.sum()/len(covariances)
+    covariances.to_frame()
 
-#     coolvariances = coolvariances.sum()/len(coolvariances)
-#     coolvariances.to_frame()
+    coolvariances = coolvariances.sum()/len(coolvariances)
+    coolvariances.to_frame()
 
-#     heatvariances = heatvariances.sum()/len(heatvariances)
-#     heatvariances.to_frame()
+    heatvariances = heatvariances.sum()/len(heatvariances)
+    heatvariances.to_frame()
 
 
-#     coolweekvar = coolweekvar.sum()/len(coolweekvar)
-#     coolweekvar.to_frame()
+    coolweekvar = coolweekvar.sum()/len(coolweekvar)
+    coolweekvar.to_frame()
 
-#     heatweekvar = heatweekvar.sum()/len(heatweekvar)
-#     heatweekvar.to_frame()
-#     #print(covariances.columns)
+    heatweekvar = heatweekvar.sum()/len(heatweekvar)
+    heatweekvar.to_frame()
+    #print(covariances.columns)
 
-#     #In this section:
-#         #Bring in the relevant dataframes from temp function
-#         #Add to mydata: CDDs/day on average, HDDs/day on average
-#         #Also, covariance between CDD, HDDs
+    #In this section:
+        #Bring in the relevant dataframes from temp function
+        #Add to mydata: CDDs/day on average, HDDs/day on average
+        #Also, covariance between CDD, HDDs
     
     
 
-
-
-
-    
-#     mydata = mydata.sum()
 
 
 
     
+    mydata = mydata.sum()
 
-
-#     mydata = mydata.to_frame()
-
-#     mydata = pd.concat([mydata, totalpowers, covariances, weekcovariances, coolvariances, coolweekvar, heatvariances, heatweekvar], axis = 1)#We want to do the same thing with the
-#     #mydata = pd.concat([mydata, totalpowers, weekcovariances], axis = 1)
-
-#     #mydata.columns = ['0', 'p_nom_opt', 'load_corr', 'week_corr']
-
-#     #In this section of the code, I
-#         #Extract 
-#     #save csv in new file, related to filepath
-#     now_path = pathlib.Path(filepath)
-#     parent_path = now_path.parent
-#     run_directory = parent_path.parent
 
 
     
 
 
-#     mydata.to_csv(run_directory / "csvs/generators_test.csv")
+    mydata = mydata.to_frame()
+
+    mydata = pd.concat([mydata, totalpowers, covariances, weekcovariances, coolvariances, coolweekvar, heatvariances, heatweekvar], axis = 1)#We want to do the same thing with the
+    #mydata = pd.concat([mydata, totalpowers, weekcovariances], axis = 1)
+
+    #mydata.columns = ['0', 'p_nom_opt', 'load_corr', 'week_corr']
+
+    #In this section of the code, I
+        #Extract 
+    #save csv in new file, related to filepath
+    now_path = pathlib.Path(filepath)
+    parent_path = now_path.parent
+    run_directory = parent_path.parent
+
+
+    
+
+
+    mydata.to_csv(run_directory / "csvs/generators_T.csv")
 
 
 
 
-#     return mydata
+    return mydata
+
+def mod_retrieve_generators(filepath):
+    '''This function takes a completed postnetwork, finds the resource frac
+    
+    This function is useful if there is one postnetwork per run name
+    
+    This function is a test to see if the definition of covariance I have is wrong'''
+    
+    europe = pypsa.Network()
+    europe.import_from_netcdf(filepath)
+
+    my_gen = ("offwind-ac", "offwind-dc", "solar", "onwind", "ror")
+
+    #Before, we were missing 
+    countries = eu28
+    mydata = europe.generators_t.p
+    mydata = mydata[mydata.columns[mydata.columns.str.startswith(countries) ]]
+
+    mystorage = europe.storage_units_t.p
+    #mystorage = mystorage[mystorage.columns[mystorage.columns.str.startswith(countries) ]] #this line is actually useless for PHS because all generators start with one of the european countries
+    mystorage = mystorage[mystorage.columns[mystorage.columns.str.endswith("hydro")]]
+
+    #This deals with p_nom_opt
+    mydata = mydata[mydata.columns[mydata.columns.str.endswith(my_gen)]]
+
+    
+    totalpowers = europe.generators.p_nom_opt#installed generators
+    totalpowers = totalpowers[mydata.columns]
+
+    totalpowers = totalpowers.to_frame()
+    totalpowers = totalpowers.T #The p_nom_opt is not a timeseries. However, before we were using timeseries. 
+                                # So, to make the same code work (combining similar names), we transpose it
+
+
+    myloads = europe.loads_t.p
+    myloads = myloads[myloads.columns[myloads.columns.str.startswith(countries)]]
+
+    myloads = myloads-myloads.mean()
+    myloads.rename(columns = lambda x: x[:2], inplace = True) #All of the loads are only named by the country
+    myloads = myloads.groupby(level = 0, axis = 1).sum() #There are some duplicate loads. This groups them (adds them together)
+
+    weekloads = myloads.rolling(56).mean()[::56]
+
+    weekloads = weekloads.drop(0)# I did not add this line before. I wonder if this will make a difference
+                                    #It did make a bit of a difference--about 1% Nothign to write home about
+
+
+    #In this section, we attempt to add the covariance of solar with the cooling and heating degree days
+    coolDD, heatDD = load_temp_data()
+
+    coolDD = coolDD-coolDD.mean() #in the calculation of covariances, we want to use the difference between the amount of CDD/HDD and the mean
+    heatDD = heatDD-heatDD.mean()
+
+    coolDD = coolDD.reset_index()
+    coolDD = coolDD.drop('time', axis = 1)
+
+    heatDD = heatDD.reset_index()
+    heatDD = heatDD.drop('time', axis = 1)
+    heatDD = heatDD * -1
+
+    coolweek = coolDD.rolling(56).mean()[::56]
+    heatweek = heatDD.rolling(56).mean()[::56]
+
+
+
+    # coolsum = coolsum.T
+
+
+
+    for country in countries:
+        resource_fracs = mydata
+        resource_fracs = resource_fracs[[col for col in resource_fracs.columns if col.startswith(country)]]
+        mydata[country + 'solar'] = resource_fracs[[col for col in resource_fracs.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        mydata[country + 'wind'] = resource_fracs[[col for col in resource_fracs.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in resource_fracs.columns):#checks if there is a 'ror' column present
+            mydata[country + 'ror'] =  resource_fracs[[col for col in resource_fracs.columns if 'ror' in col]].sum(axis = 1)
+
+
+
+
+        allsources = totalpowers
+        allsources =allsources[[col for col in allsources.columns if col.startswith(country)]]
+        totalpowers[country + 'solar'] = allsources[[col for col in allsources.columns if col.endswith('solar')]].sum(axis = 1) #sums all the solar stuff together
+        totalpowers[country + 'wind'] = allsources[[col for col in allsources.columns if 'wind' in col]].sum(axis = 1)
+        if any('ror' in col for col in allsources.columns):#checks if there is a 'ror' column present
+            totalpowers[country + 'ror'] =  allsources[[col for col in allsources.columns if 'ror' in col]].sum(axis = 1)
+
+
+
+        allstorage = mystorage
+        allstorage = allstorage[[col for col in allstorage.columns if col.startswith(country)]]
+        if any ('hydro' in col for col in allstorage.columns):
+            mydata[country + "hydro"] = allstorage[[col for col in allstorage.columns]].sum(axis = 1) 
+        
+
+        
+
+
+
+
+    mydata = mydata[mydata.columns[~mydata.columns.str.contains('[0-9]+')]]#gets rid of old columns, not needed in new code
+
+    #print(mydata)
+
+    totalpowers = totalpowers[totalpowers.columns[~totalpowers.columns.str.contains('[0-9]+')]]
+    totalpowers = totalpowers.T
+
+
+    moddata = mydata-mydata.mean()#WE SUBTRACT THE MEAN HERE
+
+    weekdata = moddata.rolling(56).mean()[::56]
+    weekdata = weekdata.drop(0)#question: we are dropping the first row because the rolling/mean combo makes the first row NaN.
+    #However, what about the loads?
+
+
+    covariances = pd.DataFrame()
+
+    weekcovariances = pd.DataFrame()
+    
+    coolvariances = pd.DataFrame()
+
+    coolweekvar = pd.DataFrame()
+
+    heatvariances = pd.DataFrame()
+
+    heatweekvar = pd.DataFrame()
+    
+    
+
+
+    for col in myloads.columns:
+        covariances[col+'solar'] =(myloads[col]-myloads[col].mean()) * (moddata[col + 'solar']-moddata[col + 'solar'].mean())/(myloads[col].std()*moddata[col + 'solar'].std())
+        print(myloads[col].mean())
+        print(moddata[col+'solar'].mean())
+        covariances[col+ 'wind'] = (myloads[col]-myloads[col].mean()) * (moddata[col + 'wind']-moddata[col + 'wind'].mean())/(myloads[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            covariances[col + 'ror'] =  myloads[col] * moddata[col + 'ror']/(myloads[col].std()*moddata[col + 'ror'].std())
+
+
+        weekcovariances[col+'solar'] = weekloads[col] * weekdata[col + 'solar']/(weekloads[col].std()*weekdata[col + 'solar'].std())
+        weekcovariances[col+ 'wind'] = weekloads[col] * weekdata[col + 'wind']/(weekloads[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            weekcovariances[col + 'ror'] =  weekloads[col] * weekdata[col + 'ror']/(weekloads[col].std()*weekdata[col + 'ror'].std())
+    
+
+        coolvariances[col + 'solar'] = coolDD[col] * moddata[col + 'solar']/(coolDD[col].std()*moddata[col + 'solar'].std())
+        coolvariances[col + 'wind'] = coolDD[col] * moddata[col + 'wind']/(coolDD[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            coolvariances[col + 'ror'] =  coolDD[col] * moddata[col + 'ror']/(coolDD[col].std()*moddata[col + 'ror'].std())
+        
+        coolweekvar[col + 'solar'] = coolweek[col] * weekdata[col + 'solar']/(coolweek[col].std()*weekdata[col + 'solar'].std())
+        coolweekvar[col + 'wind'] = coolweek[col] * weekdata[col + 'wind']/(coolweek[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            coolweekvar[col + 'ror'] =  coolweek[col] * weekdata[col + 'ror']/(coolweek[col].std()*weekdata[col + 'ror'].std())
+
+
+        
+
+        heatvariances[col + 'solar'] = heatDD[col] * moddata[col + 'solar']/(heatDD[col].std()*moddata[col + 'solar'].std())
+        heatvariances[col + 'wind'] = heatDD[col] * moddata[col + 'wind']/(heatDD[col].std()*moddata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            heatvariances[col + 'ror'] =  heatDD[col] * moddata[col + 'ror']/(heatDD[col].std()*moddata[col + 'ror'].std())
+
+
+
+        heatweekvar[col + 'solar'] = heatweek[col] * weekdata[col + 'solar']/(heatweek[col].std()*weekdata[col + 'solar'].std())
+        heatweekvar[col + 'wind'] = heatweek[col] * weekdata[col + 'wind']/(heatweek[col].std()*weekdata[col + 'wind'].std())
+        if col + 'ror' in moddata.columns:
+            heatweekvar[col + 'ror'] =  heatweek[col] * weekdata[col + 'ror']/(heatweek[col].std()*weekdata[col + 'ror'].std())
+    
+    # print(weekcovariances)
+    weekcovariances = weekcovariances.sum()/len(weekcovariances)
+    weekcovariances.to_frame()
+    # print(weekcovariances)
+
+    covariances = covariances.sum()/len(covariances)
+    covariances.to_frame()
+
+    coolvariances = coolvariances.sum()/len(coolvariances)
+    coolvariances.to_frame()
+
+    heatvariances = heatvariances.sum()/len(heatvariances)
+    heatvariances.to_frame()
+
+
+    coolweekvar = coolweekvar.sum()/len(coolweekvar)
+    coolweekvar.to_frame()
+
+    heatweekvar = heatweekvar.sum()/len(heatweekvar)
+    heatweekvar.to_frame()
+    #print(covariances.columns)
+
+    #In this section:
+        #Bring in the relevant dataframes from temp function
+        #Add to mydata: CDDs/day on average, HDDs/day on average
+        #Also, covariance between CDD, HDDs
+    
+    
+
+
+
+
+    
+    mydata = mydata.sum()
+
+
+
+    
+
+
+    mydata = mydata.to_frame()
+
+    mydata = pd.concat([mydata, totalpowers, covariances, weekcovariances, coolvariances, coolweekvar, heatvariances, heatweekvar], axis = 1)#We want to do the same thing with the
+    #mydata = pd.concat([mydata, totalpowers, weekcovariances], axis = 1)
+
+    #mydata.columns = ['0', 'p_nom_opt', 'load_corr', 'week_corr']
+
+    #In this section of the code, I
+        #Extract 
+    #save csv in new file, related to filepath
+    now_path = pathlib.Path(filepath)
+    parent_path = now_path.parent
+    run_directory = parent_path.parent
+
+
+    
+
+
+    mydata.to_csv(run_directory / "csvs/generators_test.csv")
+
+
+
+
+    return mydata
 
 
 
@@ -1270,8 +1270,8 @@ def solar_by_latitude_comparecost(path, ax):
     solar_latdf = solar_latdf.sort_values(by = ['latitude'])
 
     #This is the first cheap path
-    costs_path = "results/adam_latitude_compare_anysectors_anytransmission_3h_futcost3/csvs/"
-    csvfile_cheap = '0.25_gen_and_lat_'+ searchsec + '_sectors_' + searchtrans + '_transmission.csv'
+    costs_path = "results/18Jan2023_ReviewerNewCosts/csvs/"
+    csvfile_cheap = '0.603_gen_and_lat_'+ searchsec + '_sectors_' + searchtrans + '_transmission.csv'
 
     total_path = costs_path + csvfile_cheap
     csvcheap_path = pathlib.Path(total_path)
@@ -1285,7 +1285,7 @@ def solar_by_latitude_comparecost(path, ax):
     
 
     #This is the cheapest path
-    csvfile_cheapest = '0.036_gen_and_lat_'+ searchsec + '_sectors_' + searchtrans + '_transmission.csv'
+    csvfile_cheapest = '0.183_gen_and_lat_'+ searchsec + '_sectors_' + searchtrans + '_transmission.csv'
     total_path2 = costs_path + csvfile_cheapest
     csvcheapest_path = pathlib.Path(total_path2)
 
@@ -1316,8 +1316,8 @@ def solar_by_latitude_comparecost(path, ax):
     x2 = solar_latdf_cheapest["country"]
     y2 = solar_latdf_cheapest["percent"]
 
-    ax.scatter(x, y, label = 'default', color = 'C0')
-    ax.scatter(x1, y1, label = 'less optimistic', color = 'C1')
+    ax.scatter(x, y, label = 'default', color = 'C0', s = 40)
+    ax.scatter(x1, y1, label = 'less optimistic', color = 'C1', s = 30)
     ax.scatter(x2, y2, label = 'optimistic', color = 'C2', s = 20)
 
     for tick in ax.xaxis.get_major_ticks()[1::2]:
@@ -1327,37 +1327,15 @@ def solar_by_latitude_comparecost(path, ax):
 
 
     ax.grid(True)
-    # ax.set_xlabel("Country sorted by latitude")
+
     ax.set_ylabel("Optimal solar share (%)")
-    # ax.set_title("Optimal solar share, " + sec + " and " + trans + " " + hrs)
 
-
-
-    # for idx, row in solar_latdf.iterrows():
-    #     ax.annotate(row['country'], (row['latitude']* 1.007, row['percent']* 0.97))
-    
-
-    # m, b = np.polyfit(x, y, 1)
-    #ax.axline(xy1 = (0, b), slope = m, color = 'r', label=f'$y = {m:.2f}x {b:+.2f}$')
-
-
-
-    #plt.plot(np.unique(x), np.poly1d(np.polyfit(x, y, 1))(np.unique(x)), label=f'$y = {m:.2f}x {b:+.2f}$')
-    
-    #ax.annotate("r-squared = {:.3f}".format(r2_score(x, y)), (60, 100))
 
     handles, labels = ax.get_legend_handles_labels()
 
     handles.reverse()
     labels.reverse()
 
-    # fig.legend(handles, labels)
-    # parentpath = path.parent.parent
-
-    #fig.savefig(parentpath / "graphs/solar_by_lat")
-
-    #No need to show 
-    #plt.show()
   
 #solar_by_latitude_comparecost("results/adam_latitude_compare_no_sectors_no_transmission_3h3/csvs/gen_and_lat.csv", )
 def four_latitude_comparecost():
@@ -1392,9 +1370,6 @@ def four_latitude_comparecost():
     fig.supxlabel(r"$\bf{Sectors}$",fontsize=fs, y = 0.11, x = 0.53)
     fig.supylabel (r"$\bf{Transmission}$",fontweight="bold",fontsize=fs, y = 0.6)
     ax[3].set_xlabel(" ",fontsize=fs)
-    #ax[2].set_xlabel(r"$\bf{No}$",fontsize=fs)
-    #ax[0].set_ylabel(r"$\bf{Yes}$" + '\nSolar Percent', fontsize = fs)
-    #ax[2].set_ylabel(r"$\bf{No}$" + '\nSolar Percent', fontsize = fs)
     ax[2].tick_params(axis='x', labelrotation =90, labelsize = fs-2,)
     ax[3].tick_params(axis='x', labelrotation = 90, labelsize = fs-2)
 
@@ -1423,11 +1398,11 @@ def four_latitude_comparecost():
     fig.text(0.41, 0.18, "Countries ordered by latitude",fontsize=fs)
     plt.subplots_adjust(wspace=0.02, hspace=0.05)
 
-    plt.savefig("Images/Paper/fourlatitude_compare.pdf")
-    plt.savefig("Images/Paper/fourlatitude_compare.png", dpi = 500)
+    plt.savefig("Images/Paper/fourlatitude_compare_revis.pdf")
+    plt.savefig("Images/Paper/fourlatitude_compare_revis.png", dpi = 500)
 
     plt.show()
-# four_latitude_comparecost()
+four_latitude_comparecost()
 
     # plt.show()
 #%%
@@ -1632,18 +1607,18 @@ def find_solar_share(path):
     tot = df0['Generation'].sum()
     df0sol = df0.query('carrier == "solar"')
     soltot = df0sol['Generation'].sum()
-    print(soltot/tot)
+    print( soltot/tot)
 
 
 def solar_share_tot():
-    run0 = "adam_latitude_compare_no_sectors_yes_transmission_3h"
-    run1 = "adam_latitude_compare_yes_sectors_yes_transmission_3h2"
-    run2 = "adam_latitude_compare_no_sectors_no_transmission_3h3"
-    run3 = "adam_latitude_compare_yes_sectors_no_transmission_3h"
-    path0 = 'results/' + run0 + '/csvs/gen_and_lat.csv'
-    path1 = 'results/' + run1 + '/csvs/gen_and_lat.csv'
-    path2 = 'results/' + run2 + '/csvs/gen_and_lat.csv'
-    path3 = 'results/' + run3 + '/csvs/gen_and_lat.csv'
+
+    cost = "0.603"
+    name = "18Jan2023_ReviewerNewCosts"
+    path0 = "results/"+ name + "/csvs/" + cost + "_gen_and_lat_yes_sectors_no_transmission.csv"
+    path1 = "results/"+ name + "/csvs/" + cost + "_gen_and_lat_no_sectors_yes_transmission.csv"
+    path2 = "results/"+ name + "/csvs/" + cost + "_gen_and_lat_no_sectors_no_transmission.csv"
+    path3 = "results/"+ name + "/csvs/" + cost + "_gen_and_lat_yes_sectors_yes_transmission.csv"
+    
     path0 = pathlib.Path(path0)
     path1 = pathlib.Path(path1)
     path2 = pathlib.Path(path2)
@@ -1655,7 +1630,7 @@ def solar_share_tot():
     find_solar_share(path3)
 
 
-#solar_share_tot()
+solar_share_tot()
 
 #%%
 def solar_by_wind(path, ax):
