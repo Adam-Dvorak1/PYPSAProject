@@ -297,40 +297,377 @@ def plot_ED_and_CF_data_all():
 
 plot_ED_and_CF_data_all()
 
+
+
+# %%
+########################################################################################
+#################### SECTION ABOUT FIGURES 2 and 3 in the PAPER ########################
+
+
+'''This section of code covers how Figures 2 and 3 are made.
+
+'''
+def get_electricity_data(timeframe):
+
+
+    ES_elec = df_elec['ESP']
+    DK_elec = df_elec['DNK']
+    CO_elec = df_co_elec['demand_mwh']
+    CA_elec = df_cal_elec['demand_mwh']
+    
+    
+    if timeframe == "weekly":
+        ESDayElec = ES_elec.rolling(168).mean()
+        ESDayElec = ESDayElec.iloc[::168].shift(-1)[:-1]
+        DKDayElec = DK_elec.rolling(168).mean()
+        DKDayElec = DKDayElec.iloc[::168].shift(-1)[:-1]
+        CODayElec = CO_elec.rolling(168).mean()
+        CODayElec = CODayElec.iloc[::168].shift(-1)[:-1]
+        CADayElec = CA_elec.rolling(168).mean()
+        CADayElec = CADayElec.iloc[::168].shift(-1)[:-1]
+    elif timeframe == "daily":
+        ESDayElec = ES_elec.rolling(24).mean()
+        ESDayElec = ESDayElec.iloc[::24].shift(-1)[:-1]
+        DKDayElec = DK_elec.rolling(24).mean()
+        DKDayElec = DKDayElec.iloc[::24].shift(-1)[:-1]
+        CODayElec = CO_elec.rolling(24).mean()
+        CODayElec = CODayElec.iloc[::24].shift(-1)[:-1]
+        CADayElec = CA_elec.rolling(24).mean()
+        CADayElec = CADayElec.iloc[::24].shift(-1)[:-1]
+
+    else:
+        ESDayElec = ES_elec
+        DKDayElec = DK_elec
+        CODayElec = CO_elec
+        CADayElec = CA_elec
+    
+    ESDayElec.columns = ["SpainElec"]
+    DKDayElec.columns = ["DenmarkElec"]
+    CODayElec.columns = ["ColoradoElec"]
+    CADayElec.columns = ["CaliforniaElec"]
+
+    #print (DKDayElec.head())
+
+    CODayElec.index = pd.to_datetime(CODayElec.index)
+    CADayElec.index = pd.to_datetime(CADayElec.index)
+
+    return ESDayElec, DKDayElec, CODayElec, CADayElec
+
+#get_electricity_data("weekly")
+
+def get_heat_demand_data(timeframe):
+    df_heat = pd.read_csv('data/heat_demand.csv', sep=';', index_col=0)# in MWh
+    df_heat.index = pd.to_datetime(df_heat.index) #change index to datatime
+
+    ES_heat = df_heat['ESP']
+    DK_heat = df_heat['DNK']
+
+    CA_heat = df_cal_elec["heating_demand"]
+    CO_heat = df_co_elec["heating_demand"]
+
+
+
+    if timeframe == "weekly":
+        ESDayheat = ES_heat.rolling(168).mean()
+        ESDayheat = ESDayheat.iloc[::168].shift(-1)[:-1]
+        DKDayheat = DK_heat.rolling(168).mean()
+        DKDayheat = DKDayheat.iloc[::168].shift(-1)[:-1]
+        CADay_heat = CA_heat.rolling(168).mean()
+        CADay_heat = CA_heat.iloc[::168].shift(-1)[:-1]
+        CODay_heat = CO_heat.rolling(168).mean()
+        CODay_heat = CO_heat.iloc[::168].shift(-1)[:-1]
+
+    elif timeframe == "daily":
+        ESDayheat = ES_heat.rolling(24).mean()
+        ESDayheat = ESDayheat.iloc[::24].shift(-1)[:-1]
+        DKDayheat = DK_heat.rolling(24).mean()
+        DKDayheat = DKDayheat.iloc[::24].shift(-1)[:-1]
+        CADay_heat = CA_heat.rolling(24).mean()
+        CADay_heat = CA_heat.iloc[::24].shift(-1)[:-1]
+        CODay_heat = CO_heat.rolling(24).mean()
+        CODay_heat = CO_heat.iloc[::24].shift(-1)[:-1]
+
+    else:
+        ESDayheat = ES_heat
+        DKDayheat = DK_heat
+        CADay_heat = CA_heat
+        CODay_heat = CO_heat
+
+
+    return ESDayheat, DKDayheat, CODay_heat, CADay_heat
+
+
+def heat_to_elec():
+    '''In this function, we want to add 3x of the heating demand to elec.
+    We are assuming a world of 100% electricity.'''
+    
+    #Here, we unpack the elec and heat data from get_electricity_data and 
+    # get_heat_demand_data
+    elec_data = get_electricity_data("weekly")
+    heat_data = get_heat_demand_data("weekly")
+
+    ESP_elec = elec_data[0]
+    DNK_elec = elec_data[1]
+    CO_elec = elec_data[2]
+    CA_elec = elec_data[3]
+
+    ESP_heat = heat_data[0]
+    DNK_heat = heat_data[1]
+    CO_heat = heat_data[2]
+    CA_heat = heat_data[3]
+
+    new_elec = pd.DataFrame()
+    states_elec = pd.DataFrame()
+
+
+    new_elec["ESP_demand"] = ESP_elec + ESP_heat/3
+    new_elec["DNK_demand"] = DNK_elec + DNK_heat/3
+    states_elec["CA_demand"] = CA_elec + CA_heat/3
+    states_elec["CO_demand"] = CO_elec + CO_heat/3
+
+
+    return new_elec["ESP_demand"], new_elec["DNK_demand"], states_elec["CO_demand"], states_elec["CA_demand"]
+
+    #Here, we return the new dataframe
+#heat_to_elec()
+
+def gw_elec_Spain_t(degree_change, slope_factor, yseries, ax):
+    '''This considers a universal degree change across all days. 
+    
+    We are modifying the functions such that there is a more accurate reflection of what we
+    are actually testing in the model--the presence or absence of heating demand. Luckily
+    we already have heating demand
+    
+    Note: we are using "degree_change", which is outdated, given we do no longer use it as global warming, as
+    an indicator of whether or not we want to include the 
+    
+    As of 23.1.23, we are no longer considering the global warming'''
+    df = pd.DataFrame()
+    if yseries == "elec":
+        y = get_electricity_data("weekly")[0]
+    else:
+        y = heat_to_elec()[0]
+        
+    x = get_temp_data("weekly")[0]
+    y = y/1000/47.3
+    df["x"] = x
+    df["y"] = y
+    #print(df)
+
+    total_elec_demand = round(df["y"].sum())
+
+    #fig, ax = plt.subplots()
+
+    ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
+    
+
+    y = heat_to_elec()[0]
+    y = y/1000/47.3
+    df["y"] = y
+    if degree_change == 2:
+        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with heating demand")
+    ax.set_title("Spain")
+    #ax.set_ylabel("Electricity demand (MWh)")
+
+    #plt.savefig(f"images/GWESP_incr{degree_change}_slope{slope_factor}")
+    #plt.close(fig)
+    return ax
+
+def gw_elec_Colorado_t(degree_change, slope_factor, yseries, ax):
+    '''As it stands, we do not '''
+    df = pd.DataFrame()
+    if yseries == "elec":
+        y = get_electricity_data("weekly")[2]
+    else:
+        y = heat_to_elec()[2]
+        
+    x = get_temp_data("weekly")[2]
+    y = y/1000/5.78
+    df["x"] = x
+    df["y"] = y
+    #print(df)
+
+    total_elec_demand = round(df["y"].sum())
+
+    #fig, ax = plt.subplots()
+
+    ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
+    y = heat_to_elec()[2]
+    y = y/1000/5.78
+    df["y"] = y
+    if degree_change == 2:
+        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with heating demand")
+    '''
+    df["y"] = df.apply(lambda row: row["y"] + .232 * degree_change if row["x"] > 15.56 #Add according to positive slope if starts in cooling region
+    else row["y"] + .232 * (row["x"] - 15.56 + degree_change) if row["x"]+ degree_change  >15.56 and row["x"] > 7.32
+    else row["y"] if row["x"] > 7.32
+    else row["y"] - 0.097281* (7.32- row["x"]) + 232 * (row["x"] + degree_change - 15.56) if row["x"] + degree_change > 7.32 and row["x"] + degree_change  > 15.56
+    else row["y"] - 0.097281 * (7.32- row["x"]) if row["x"] + degree_change > 7.32
+    else row["y"] - 0.097281 * degree_change, axis = 1)
+    df["y"] = df.apply(lambda row: row["y"] + (row ["y"] - 6.600) * (slope_factor-1) if row["x"] > 15.56 and row["y"] > 6.600
+    else row["y"], axis = 1)
+    df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
+    #print(df)
+    ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with modification")
+    
+    ax.axvline(7.32, color='black',ls='--', alpha = 0.5)
+    ax.text(7.32, ax.get_ybound()[1]-0.500, "T_th", horizontalalignment = "center", color = "C3")
+    ax.axvline(15.56, color='black',ls='--', alpha = 0.5)  
+    ax.text(15.56, ax.get_ybound()[1]-0.500, "T_th", horizontalalignment = "center", color = "C2")
+    '''
+    #ax.legend()
+    ax.set_title("Colorado")
+    ax.set_ylabel("Electricity demand (GWh)")
+    #plt.savefig(f"images/GWCO_incr{degree_change}_slope{slope_factor}")
+    # plt.show()
+    #plt.close(fig)
+    return ax
+
+
+
+
+def gw_elec_California_t(degree_change, slope_factor, yseries, ax):
+    '''Here, I am trying to model what would happen to electricity demand in California if
+    the temperature increases uniformly by x degrees due to global warming
+    
+    For california, we assume that the electricity demand would be constant with change in 
+    temperature until it reaches a threshold temperature (15.79 degrees). Then, there is
+    a linear increase
+    
+    Right now, I want to make a graph which shows no heating demand added
+    '''
+    df = pd.DataFrame()
+    
+    x = get_temp_data("weekly")[3]
+    if yseries == "elec":
+        y = get_electricity_data("weekly")[3]
+    else:
+        y = heat_to_elec()[3]
+   
+
+    y = y/1000/39.5
+    df["x"] = x
+    df["y"] = y
+
+
+    total_elec_demand = round(df["y"].sum())
+
+
+    ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "original")
+
+    y = heat_to_elec()[3]
+
+    y = y/1000/39.5
+
+    df["y2"] = y
+
+    if degree_change == 2:
+        ax.scatter(df["x"], df["y2"], s = 15, marker = "^", color = "C1", label = "with heating demand")
+    #ax.legend()
+    ax.set_title("California")
+    #ax.set_ylabel("Electricity demand (MWh)")
+    #fig.subplots_adjust(bottom=0.2)
+    #print(df['y'].sum())
+    #plt.savefig(f"images/GWCali_incr{degree_change}_slope{slope_factor}")
+    #plt.close(fig)
+    return ax
+
+
+
+def gw_elec_Denmark_t(degree_change, yseries, ax):
+    '''Here, I am trying to model what would happen to electricity demand in Denmark if
+    the temperature increases uniformly by x degrees due to global warming
+    
+    For Denmark we assume that the electricity demand would be constant with change in 
+    temperature until it reaches a threshold temperature (15.79 degrees). Then, there is
+    a linear increase'''
+    df = pd.DataFrame()
+    
+
+
+    x = get_temp_data("weekly")[1]
+    if yseries == "elec":
+        y = get_electricity_data("weekly")[1]
+    else:
+        y = heat_to_elec()[1]
+
+    y = y/1000/5.86
+    df["x"] = x
+    df["y"] = y
+
+    ax.scatter(df["x"], df["y"], s = 15, color = "C0", label = "Historical")
+
+    y = heat_to_elec()[1]
+    y = y/1000/5.86
+    df["y"] = y
+
+
+    if degree_change == 2:
+        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with heating demand")
+
+    ax.set_title("Denmark")
+    ax.set_ylabel("Electricity demand (GWh)")
+    
+
+
+    #plt.close(fig)
+    #plt.savefig(f"images/GWDen_incr{degree_change}")
+    #print(df['y'].sum())
+
+    return ax
+
+def gw_elec_all_mod(yseries):
+    #yseries can be 'elec' or "w_heat"
+    plt.rcParams.update({'font.size': 14})
+    fig,ax = plt.subplots(2,2,figsize = (7.5,6),sharex=True,sharey='row')
+    ax = ax.flatten()
+
+
+
+
+    gw_elec_Denmark_t(2, yseries, ax[0])
+    gw_elec_Spain_t(2,1, yseries, ax[1])
+    gw_elec_Colorado_t(2,1, yseries, ax[2])
+    gw_elec_California_t(2,1, yseries, ax[3])
+ 
+
+    # ax[1].set_ylabel("")
+    # ax[3].set_ylabel("")
+    # ax[2].set_title("")
+    # ax[3].set_title("")
+
+
+    fig.supylabel (r"$\bf{Demand\:\:per\:\:capita\:\:(kWh)}$",fontweight="bold",fontsize=14, y = 0.55)
+    fig.supxlabel (r"$\bf{Temperature\:\:(˚C)}$",fontweight="bold",fontsize=14, y = 0.11)
+    for ax in plt.gcf().get_axes():
+        ax.set_xlim(-10, 30)
+        ax.set_ylim(0.5, 4)
+        ax.set_ylabel("")
+
+    
+
+
+
+    #fig2.set_size_inches(9, 7) #For some reason this is best for the pdf
+    fig.patch.set_facecolor("white")
+    #fig2.suptitle("Increase of 4 degrees")
+
+    lines1, labels1 = ax.get_legend_handles_labels()
+
+    fig.legend(lines1, labels1, bbox_to_anchor=(0.82, 0.1), ncol=2)
+
+    #fig.text(0.93, 0.13, "˚C")
+    #fig2.text(0.93, 0.53, "˚C", fontsize = 12)
+    fig.suptitle(r"$\bf{Electricity\:Demand\:Sensitivity\:To\:Temperature$", fontsize = 14)
+    fig.tight_layout(rect = [0.02, 0.05, 1, 1])
+
+    #plt.tight_layout()
+    #fig2.savefig("Images/Paper/elecdem_temp_all.pdf")
+
+    # fig.savefig("Images/Paper/elecdem_plusheat_revision.png")
+    
+    
+    plt.show()
 # %%
 
-# %%
-#Question from reviewer #3--why is the capacity factor data 
-n = pypsa.Network()
-path = "NetCDF/CA/solarcost_elec_27_Sept/14565.766155244572solar_cost.nc"
-n.import_from_netcdf(path)
-powergen = n.generators_t.p
-powergen = powergen['solar']
 
-
-CAmonthpower = powergen.rolling(672).mean()#4 week rolling average
-CAmonthpower = CAmonthpower.iloc[::672].shift(-1)[:-1]
-
-opt_cap = n.generators.p_nom_opt['solar']
-capfacsolar = n.generators_t.p_max_pu['solar']
-capfacwind = n.generators_t.p_max_pu['onshorewind']
-
-maxgen = opt_cap * capfacs
-maxgen = maxgen.sum()
-
-totgen = n.generators_t.p['solar'].sum()
-
-totcapfacsolar = capfacsolar.sum()/8760
-totcapfacwind = capfacwind.sum()/8760
-
-
-print(totcapfacwind)
-print(totcapfacsolar)
-
-fig, ax = plt.subplots()
-
-ax.plot(CAmonthpower)
-
-plt.savefig("")
-plt.show()
-# %%
