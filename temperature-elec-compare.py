@@ -295,7 +295,7 @@ def plot_ED_and_CF_data_all():
 
 
 
-plot_ED_and_CF_data_all()
+#plot_ED_and_CF_data_all()
 
 
 
@@ -431,6 +431,7 @@ def heat_to_elec():
     #Here, we return the new dataframe
 #heat_to_elec()
 
+#%%
 def gw_elec_Spain_t(degree_change, slope_factor, yseries, ax):
     '''This considers a universal degree change across all days. 
     
@@ -465,7 +466,7 @@ def gw_elec_Spain_t(degree_change, slope_factor, yseries, ax):
     y = y/1000/47.3
     df["y"] = y
     if degree_change == 2:
-        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with heating demand")
+        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C3", label = "with heating demand")
     ax.set_title("Spain")
     #ax.set_ylabel("Electricity demand (MWh)")
 
@@ -496,31 +497,11 @@ def gw_elec_Colorado_t(degree_change, slope_factor, yseries, ax):
     y = y/1000/5.78
     df["y"] = y
     if degree_change == 2:
-        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with heating demand")
-    '''
-    df["y"] = df.apply(lambda row: row["y"] + .232 * degree_change if row["x"] > 15.56 #Add according to positive slope if starts in cooling region
-    else row["y"] + .232 * (row["x"] - 15.56 + degree_change) if row["x"]+ degree_change  >15.56 and row["x"] > 7.32
-    else row["y"] if row["x"] > 7.32
-    else row["y"] - 0.097281* (7.32- row["x"]) + 232 * (row["x"] + degree_change - 15.56) if row["x"] + degree_change > 7.32 and row["x"] + degree_change  > 15.56
-    else row["y"] - 0.097281 * (7.32- row["x"]) if row["x"] + degree_change > 7.32
-    else row["y"] - 0.097281 * degree_change, axis = 1)
-    df["y"] = df.apply(lambda row: row["y"] + (row ["y"] - 6.600) * (slope_factor-1) if row["x"] > 15.56 and row["y"] > 6.600
-    else row["y"], axis = 1)
-    df["x"] = df.apply(lambda row: row["x"] + degree_change, axis = 1)
-    #print(df)
-    ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with modification")
-    
-    ax.axvline(7.32, color='black',ls='--', alpha = 0.5)
-    ax.text(7.32, ax.get_ybound()[1]-0.500, "T_th", horizontalalignment = "center", color = "C3")
-    ax.axvline(15.56, color='black',ls='--', alpha = 0.5)  
-    ax.text(15.56, ax.get_ybound()[1]-0.500, "T_th", horizontalalignment = "center", color = "C2")
-    '''
-    #ax.legend()
+        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C3", label = "with heating demand")
+
     ax.set_title("Colorado")
     ax.set_ylabel("Electricity demand (GWh)")
-    #plt.savefig(f"images/GWCO_incr{degree_change}_slope{slope_factor}")
-    # plt.show()
-    #plt.close(fig)
+
     return ax
 
 
@@ -562,7 +543,7 @@ def gw_elec_California_t(degree_change, slope_factor, yseries, ax):
     df["y2"] = y
 
     if degree_change == 2:
-        ax.scatter(df["x"], df["y2"], s = 15, marker = "^", color = "C1", label = "with heating demand")
+        ax.scatter(df["x"], df["y2"], s = 15, marker = "^", color = "C3", label = "with heating demand")
     #ax.legend()
     ax.set_title("California")
     #ax.set_ylabel("Electricity demand (MWh)")
@@ -603,16 +584,12 @@ def gw_elec_Denmark_t(degree_change, yseries, ax):
 
 
     if degree_change == 2:
-        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C1", label = "with heating demand")
+        ax.scatter(df["x"], df["y"], s = 15, marker = "^", color = "C3", label = "with heating demand")
 
     ax.set_title("Denmark")
     ax.set_ylabel("Electricity demand (GWh)")
     
 
-
-    #plt.close(fig)
-    #plt.savefig(f"images/GWDen_incr{degree_change}")
-    #print(df['y'].sum())
 
     return ax
 
@@ -664,10 +641,12 @@ def gw_elec_all_mod(yseries):
     #plt.tight_layout()
     #fig2.savefig("Images/Paper/elecdem_temp_all.pdf")
 
-    # fig.savefig("Images/Paper/elecdem_plusheat_revision.png")
+    fig.savefig("Images/Paper/elecdem_plusheat_revision.png", dpi = 500)
     
     
     plt.show()
+
+gw_elec_all_mod("elec")
 # %%
 
 
